@@ -23,8 +23,7 @@ export default function Home() {
   const { isAuthenticated, login, logout } = useAuth()
   const [activeTab, setActiveTab] = useState('todo')
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
-
-  const tasks: Task[] = [
+  const [tasks, setTasks] = useState<Task[]>([
     {
       id: '1',
       title: 'プロジェクトMTG',
@@ -57,11 +56,20 @@ export default function Home() {
         { id: '3-3', text: 'レビュー依頼', completed: false }
       ]
     }
-  ]
+  ])
 
   // WeeklyScheduleのイベントをTaskDetailで表示するための関数
   const handleTaskSelect = (taskId: string) => {
     setSelectedTaskId(taskId)
+  }
+
+  // タスクの更新処理
+  const handleTaskUpdate = (updatedTask: Task) => {
+    setTasks(prevTasks =>
+      prevTasks.map(task =>
+        task.id === updatedTask.id ? updatedTask : task
+      )
+    )
   }
 
   if (!isAuthenticated) {
@@ -84,7 +92,10 @@ export default function Home() {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-3">
               <div className="text-sm">
-                <TaskDetail selectedTask={selectedTask} />
+                <TaskDetail
+                  selectedTask={selectedTask}
+                  onTaskUpdate={handleTaskUpdate}
+                />
               </div>
               <div className="text-sm">
                 <AdditionalTask />
