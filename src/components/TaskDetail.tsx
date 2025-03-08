@@ -2,20 +2,9 @@
 
 import React, { useState } from 'react'
 import { IoAdd, IoTrash, IoPencil, IoSave, IoClose } from 'react-icons/io5'
-
-interface Todo {
-  id: string
-  text: string
-  completed: boolean
-}
-
-interface Task {
-  id: string
-  title: string
-  description: string
-  todos: Todo[]
-  isNew?: boolean
-}
+import { Task, Todo } from '@/types/task'
+import { format } from 'date-fns'
+import { ja } from 'date-fns/locale'
 
 interface TaskDetailProps {
   selectedTask: Task | null
@@ -96,8 +85,9 @@ export default function TaskDetail({ selectedTask, onTaskUpdate }: TaskDetailPro
       const updatedTodos = editedTask.todos.map(todo =>
         todo.id === todoId ? { ...todo, completed: !todo.completed } : todo
       )
-      setEditedTask({ ...editedTask, todos: updatedTodos })
-      onTaskUpdate?.(editedTask)
+      const updatedTask = { ...editedTask, todos: updatedTodos }
+      setEditedTask(updatedTask)
+      onTaskUpdate?.(updatedTask)
     }
   }
 
@@ -117,7 +107,9 @@ export default function TaskDetail({ selectedTask, onTaskUpdate }: TaskDetailPro
       const newTodo: Todo = {
         id: `todo-${Date.now()}`,
         text: newTodoText.trim(),
-        completed: false
+        completed: false,
+        dueDate: new Date(),
+        estimatedHours: 0 // デフォルトの見積もり工数を0時間に設定
       }
       const updatedTask = {
         ...editedTask,
@@ -143,6 +135,26 @@ export default function TaskDetail({ selectedTask, onTaskUpdate }: TaskDetailPro
         setEditedTask(updatedTask)
         onTaskUpdate?.(updatedTask)
       }
+    }
+  }
+
+  // 進捗率を計算する関数
+  const calculateProgress = (todos: Todo[]) => {
+    if (todos.length === 0) return 0
+    const totalHours = todos.reduce((sum, todo) => sum + todo.estimatedHours, 0)
+    const completedHours = todos
+      .filter(todo => todo.completed)
+      .reduce((sum, todo) => sum + todo.estimatedHours, 0)
+    return Math.round((completedHours / totalHours) * 100)
+  }
+
+  // TODOの見積もり工数の更新
+  const handleEstimatedHoursChange = (todoId: string, hours: number) => {
+    if (editedTask) {
+      const updatedTodos = editedTask.todos.map(todo =>
+        todo.id === todoId ? { ...todo, estimatedHours: hours } : todo
+      )
+      setEditedTask({ ...editedTask, todos: updatedTodos })
     }
   }
 
@@ -183,7 +195,20 @@ export default function TaskDetail({ selectedTask, onTaskUpdate }: TaskDetailPro
             </>
           ) : (
             <>
-              <h2 className="text-xl font-bold text-gray-800">{taskToDisplay.title}</h2>
+              <div className="flex-1">
+                <h2 className="text-xl font-bold text-gray-800">{taskToDisplay.title}</h2>
+                <div className="mt-1 flex items-center gap-2">
+                  <div className="text-sm text-gray-500">
+                    進捗率: {calculateProgress(taskToDisplay.todos)}%
+                  </div>
+                  <div className="flex-1 h-2 bg-gray-200 rounded-full">
+                    <div
+                      className="h-full bg-blue-500 rounded-full"
+                      style={{ width: `${calculateProgress(taskToDisplay.todos)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
               <button
                 onClick={() => toggleEdit('title')}
                 className="p-1 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-gray-600"
@@ -242,12 +267,26 @@ export default function TaskDetail({ selectedTask, onTaskUpdate }: TaskDetailPro
             />
             {editState.todos[todo.id] ? (
               <div className="flex-1 flex items-center gap-2">
-                <input
-                  type="text"
-                  value={todo.text}
-                  onChange={(e) => handleTodoTextChange(todo.id, e.target.value)}
-                  className="flex-1 text-gray-800 border-b border-gray-300 focus:border-blue-500 focus:outline-none"
-                />
+                <div className="flex-1 space-y-2">
+                  <input
+                    type="text"
+                    value={todo.text}
+                    onChange={(e) => handleTodoTextChange(todo.id, e.target.value)}
+                    className="w-full text-gray-800 border-b border-gray-300 focus:border-blue-500 focus:outline-none"
+                  />
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-500">見積もり工数:</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={todo.estimatedHours}
+                      onChange={(e) => handleEstimatedHoursChange(todo.id, parseFloat(e.target.value) || 0)}
+                      className="w-20 text-sm border-b border-gray-300 focus:border-blue-500 focus:outline-none"
+                    />
+                    <span className="text-sm text-gray-500">時間</span>
+                  </div>
+                </div>
                 <button
                   onClick={() => handleSave(todo.id, true)}
                   className="p-1 text-green-600 hover:text-green-700"
@@ -263,9 +302,15 @@ export default function TaskDetail({ selectedTask, onTaskUpdate }: TaskDetailPro
               </div>
             ) : (
               <div className="flex-1 flex items-center gap-2">
-                <span className={`flex-1 text-gray-800 ${todo.completed ? 'line-through text-gray-500' : ''}`}>
-                  {todo.text}
-                </span>
+                <div className="flex-1">
+                  <span className={`text-gray-800 ${todo.completed ? 'line-through text-gray-500' : ''}`}>
+                    {todo.text}
+                  </span>
+                  <div className="text-xs text-gray-500 mt-1 space-y-1">
+                    <div>期日: {format(todo.dueDate, 'yyyy年M月d日', { locale: ja })}</div>
+                    <div>見積もり工数: {todo.estimatedHours}時間</div>
+                  </div>
+                </div>
                 <div className="flex gap-2 opacity-0 group-hover:opacity-100">
                   <button
                     onClick={() => toggleEdit(todo.id, true)}

@@ -10,14 +10,7 @@ import ProjectDetail from '@/components/ProjectDetail'
 import WeeklySchedule from '@/components/WeeklySchedule'
 import Auth from '@/components/Auth'
 import { useAuth } from '@/hooks/useAuth'
-
-interface Task {
-  id: string
-  title: string
-  description: string
-  todos: { id: string; text: string; completed: boolean }[]
-  isNew?: boolean
-}
+import { Task } from '@/types/task'
 
 export default function Home() {
   const { isAuthenticated, login, logout } = useAuth()
@@ -29,9 +22,9 @@ export default function Home() {
       title: 'プロジェクトMTG',
       description: 'プロジェクトの進捗確認と今後の方針について討議します。\n主な議題：\n1. 現在の進捗状況\n2. リスクの確認\n3. 次週の作業計画',
       todos: [
-        { id: '1-1', text: '議事録の作成', completed: false },
-        { id: '1-2', text: '参加者への資料共有', completed: false },
-        { id: '1-3', text: '次回MTGの日程調整', completed: false }
+        { id: '1-1', text: '議事録の作成', completed: false, dueDate: new Date(2025, 2, 5), estimatedHours: 2 },
+        { id: '1-2', text: '参加者への資料共有', completed: false, dueDate: new Date(2025, 2, 10), estimatedHours: 1 },
+        { id: '1-3', text: '次回MTGの日程調整', completed: false, dueDate: new Date(2025, 2, 15), estimatedHours: 0.5 }
       ],
       isNew: true
     },
@@ -40,9 +33,9 @@ export default function Home() {
       title: '要件定義',
       description: 'システムの要件定義を行います。\n機能要件と非機能要件を明確化し、ステークホルダーと合意を取ります。',
       todos: [
-        { id: '2-1', text: '機能要件の洗い出し', completed: true },
-        { id: '2-2', text: '非機能要件の定義', completed: false },
-        { id: '2-3', text: 'ステークホルダーとの合意', completed: false }
+        { id: '2-1', text: '機能要件の洗い出し', completed: true, dueDate: new Date(2025, 2, 20), estimatedHours: 8 },
+        { id: '2-2', text: '非機能要件の定義', completed: false, dueDate: new Date(2025, 2, 25), estimatedHours: 4 },
+        { id: '2-3', text: 'ステークホルダーとの合意', completed: false, dueDate: new Date(2025, 2, 28), estimatedHours: 2 }
       ],
       isNew: true
     },
@@ -51,9 +44,9 @@ export default function Home() {
       title: '要件定義書の作成',
       description: '要件定義書のドラフトを作成します。\n必要な図表やユースケースも含めて文書化します。',
       todos: [
-        { id: '3-1', text: '目次の作成', completed: false },
-        { id: '3-2', text: 'ユースケース図の作成', completed: false },
-        { id: '3-3', text: 'レビュー依頼', completed: false }
+        { id: '3-1', text: '目次の作成', completed: false, dueDate: new Date(2025, 2, 12), estimatedHours: 1 },
+        { id: '3-2', text: 'ユースケース図の作成', completed: false, dueDate: new Date(2025, 2, 18), estimatedHours: 4 },
+        { id: '3-3', text: 'レビュー依頼', completed: false, dueDate: new Date(2025, 2, 31), estimatedHours: 1 }
       ]
     }
   ])
@@ -70,6 +63,54 @@ export default function Home() {
         task.id === updatedTask.id ? updatedTask : task
       )
     )
+  }
+
+  // TODOの完了状態を更新
+  const handleTodoStatusChange = (taskId: string, todoId: string) => {
+    setTasks(prevTasks =>
+      prevTasks.map(task => {
+        if (task.id === taskId) {
+          return {
+            ...task,
+            todos: task.todos.map(todo =>
+              todo.id === todoId ? { ...todo, completed: !todo.completed } : todo
+            )
+          }
+        }
+        return task
+      })
+    )
+  }
+
+  const handleTodoUpdate = (todoId: string, taskId: string, newDate: Date) => {
+    setTasks(prevTasks => {
+      const updatedTasks = prevTasks.map(task => {
+        if (task.id === taskId) {
+          return {
+            ...task,
+            todos: task.todos.map(todo => {
+              if (todo.id === todoId) {
+                // 既存のTODOの日付と時間を更新
+                const updatedDueDate = new Date(newDate)
+                // 時間を保持
+                updatedDueDate.setHours(newDate.getHours())
+                updatedDueDate.setMinutes(0)
+                updatedDueDate.setSeconds(0)
+                updatedDueDate.setMilliseconds(0)
+
+                return {
+                  ...todo,
+                  dueDate: updatedDueDate
+                }
+              }
+              return todo
+            })
+          }
+        }
+        return task
+      })
+      return updatedTasks
+    })
   }
 
   if (!isAuthenticated) {
@@ -107,10 +148,15 @@ export default function Home() {
                   tasks={tasks}
                   selectedTaskId={selectedTaskId}
                   onTaskSelect={setSelectedTaskId}
+                  onTodoStatusChange={handleTodoStatusChange}
                 />
               </div>
               <div className="text-sm">
-                <WeeklySchedule onTaskSelect={handleTaskSelect} />
+                <WeeklySchedule
+                  tasks={tasks}
+                  onTaskSelect={handleTaskSelect}
+                  onTodoUpdate={handleTodoUpdate}
+                />
               </div>
               <div className="text-sm">
                 <ProjectDetail />
