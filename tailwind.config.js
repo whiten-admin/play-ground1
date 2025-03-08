@@ -6,7 +6,29 @@ module.exports = {
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        beige: {
+          50: '#f7f1e3',
+          100: '#eacbc2',
+          200: '#b6a2a2',
+        },
+        pink: {
+          50: '#f5e1da',
+          100: '#eacbc2',
+          200: '#f7f1e3',
+        },
+      },
+      animation: {
+        'float': 'float 3s ease-in-out infinite',
+      },
+      keyframes: {
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-10px)' },
+        },
+      },
+    },
   },
   plugins: [],
 } 
