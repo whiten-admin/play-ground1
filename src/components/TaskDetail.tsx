@@ -20,6 +20,20 @@ interface EditState {
   todos: { [key: string]: boolean }
 }
 
+// APIの使用回数を取得する関数をインポート
+const API_USAGE_KEY = 'openai_api_usage'
+const DAILY_LIMIT = 20
+
+function getApiUsageCount(): number {
+  const storedUsage = localStorage.getItem(API_USAGE_KEY)
+  if (!storedUsage) return 0
+
+  const usage = JSON.parse(storedUsage)
+  if (usage.date !== new Date().toISOString().split('T')[0]) return 0
+
+  return usage.count
+}
+
 export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSelect }: TaskDetailProps) {
   const [editState, setEditState] = useState<EditState>({
     title: false,
@@ -451,7 +465,7 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
                 ? 'text-gray-400 cursor-not-allowed' 
                 : 'text-yellow-500 hover:text-yellow-600'
             }`}
-            title="AIにTODOを提案してもらう"
+            title={`AIにTODOを提案してもらう (本日の使用回数: ${getApiUsageCount()}/${DAILY_LIMIT}回)`}
           >
             <IoBulb className="w-5 h-5" />
           </button>

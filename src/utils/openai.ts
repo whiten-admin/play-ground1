@@ -5,7 +5,53 @@ const openai = new OpenAI({
   dangerouslyAllowBrowser: true
 })
 
+// API使用回数の管理
+const API_USAGE_KEY = 'openai_api_usage'
+const DAILY_LIMIT = 20
+
+interface ApiUsage {
+  date: string;
+  count: number;
+}
+
+function getTodayDate(): string {
+  return new Date().toISOString().split('T')[0]
+}
+
+function getApiUsage(): ApiUsage {
+  const storedUsage = localStorage.getItem(API_USAGE_KEY)
+  if (!storedUsage) {
+    return { date: getTodayDate(), count: 0 }
+  }
+
+  const usage: ApiUsage = JSON.parse(storedUsage)
+  if (usage.date !== getTodayDate()) {
+    return { date: getTodayDate(), count: 0 }
+  }
+
+  return usage
+}
+
+function incrementApiUsage(): void {
+  const usage = getApiUsage()
+  usage.count += 1
+  localStorage.setItem(API_USAGE_KEY, JSON.stringify(usage))
+}
+
+function checkApiLimit(): boolean {
+  const usage = getApiUsage()
+  return usage.count < DAILY_LIMIT
+}
+
 export async function suggestTodos(taskTitle: string, taskDescription: string, currentTodos: string[]) {
+  if (!checkApiLimit()) {
+    throw new Error(`1日のAPI使用回数制限（${DAILY_LIMIT}回）を超えました。明日までお待ちください。`)
+  }
+
+  if (!process.env.NEXT_PUBLIC_OPENAI_API_KEY) {
+    throw new Error('OpenAI APIキーが設定されていません。')
+  }
+
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
@@ -36,15 +82,16 @@ export async function suggestTodos(taskTitle: string, taskDescription: string, c
     }
 
     const result = JSON.parse(completion.choices[0].message.content)
+    incrementApiUsage()
     return result.suggestions || []
   } catch (error: any) {
     console.error('Error suggesting todos:', error)
     
     // エラーメッセージの判定
     if (error?.status === 429) {
-      throw new Error('APIリクエストの制限に達しました。しばらく待ってから再度お試しください。')
+      throw new Error('OpenAI APIのリクエスト制限に達しました。しばらく待ってから再試行してください。')
     } else if (error?.status === 401) {
-      throw new Error('APIキーが無効です。APIキーを確認してください。')
+      throw new Error('OpenAI APIキーが無効です。APIキーを確認してください。')
     } else {
       throw new Error('TODOの提案中にエラーが発生しました。')
     }
