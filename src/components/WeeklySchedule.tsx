@@ -34,6 +34,7 @@ interface TodoWithMeta {
 export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: WeeklyScheduleProps) {
   const [isClient, setIsClient] = useState(false)
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [showWeekend, setShowWeekend] = useState(false)
 
   useEffect(() => {
     setIsClient(true)
@@ -42,9 +43,10 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: We
   // 週の開始日を取得（月曜始まり）
   const startDate = startOfWeek(currentDate, { locale: ja })
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startDate, i))
+  const displayDays = showWeekend ? weekDays : weekDays.slice(1, 6)
 
   // 時間帯の設定（9:00-18:00）
-  const timeSlots = Array.from({ length: 9 }, (_, i) => i + 9)
+  const timeSlots = Array.from({ length: 10 }, (_, i) => i + 9)
 
   // 前の週へ
   const previousWeek = () => {
@@ -174,15 +176,31 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: We
           </button>
         </div>
       </div>
+      <div className="flex items-center justify-end mb-2">
+        <button
+          onClick={() => setShowWeekend(!showWeekend)}
+          className="text-xs text-gray-600 hover:text-gray-800 flex items-center gap-1"
+        >
+          {showWeekend ? '土日を非表示' : '土日を表示'}
+          <span className="text-xs">
+            {showWeekend ? '▼' : '▶'}
+          </span>
+        </button>
+      </div>
       <div className="overflow-x-auto">
-        <div className="min-w-[800px]">
+        <div className={showWeekend ? "min-w-[800px]" : "min-w-[600px]"}>
           {/* 曜日ヘッダー */}
-          <div className="grid grid-cols-8 border-b">
-            <div className="h-10" />
-            {weekDays.map((day, index) => (
+          <div 
+            className="grid border-b" 
+            style={{ 
+              gridTemplateColumns: `3rem repeat(${displayDays.length}, 1fr)` 
+            }}
+          >
+            <div className="h-8 w-12" />
+            {displayDays.map((day, index) => (
               <div
                 key={index}
-                className={`text-center py-2 font-medium border-l ${
+                className={`text-center py-1 text-xs font-medium border-l ${
                   isToday(day) ? 'bg-blue-50' : ''
                 }`}
               >
@@ -192,7 +210,7 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: We
           </div>
 
           <DndContext
-            weekDays={weekDays}
+            weekDays={displayDays}
             timeSlots={timeSlots}
             tasks={tasks}
             onTaskSelect={onTaskSelect}
