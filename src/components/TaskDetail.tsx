@@ -1,10 +1,11 @@
 'use client'
 
 import React, { useState } from 'react'
-import { IoAdd, IoTrash, IoPencil, IoSave, IoClose } from 'react-icons/io5'
+import { IoAdd, IoTrash, IoPencil, IoSave, IoClose, IoBulb } from 'react-icons/io5'
 import { Task, Todo } from '@/types/task'
 import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
+import { suggestTodos } from '@/utils/openai'
 
 interface TaskDetailProps {
   selectedTask: Task | null
@@ -27,6 +28,9 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
   })
   const [editedTask, setEditedTask] = useState<Task | null>(null)
   const [newTodoText, setNewTodoText] = useState('')
+  const [isSuggestingTodos, setIsSuggestingTodos] = useState(false)
+  const [suggestedTodos, setSuggestedTodos] = useState<{ text: string; estimatedHours: number }[]>([])
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   // 編集モードの切り替え
   const toggleEdit = (field: 'title' | 'description' | string, isEditingTodo: boolean = false) => {
@@ -202,6 +206,55 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
   }
 
   const taskToDisplay = editedTask || selectedTask
+
+  // TODOの提案を取得
+  const handleSuggestTodos = async () => {
+    if (!taskToDisplay) return
+
+    try {
+      setIsSuggestingTodos(true)
+      setErrorMessage(null)
+      const suggestions = await suggestTodos(
+        taskToDisplay.title,
+        taskToDisplay.description,
+        taskToDisplay.todos.map(todo => todo.text)
+      )
+      setSuggestedTodos(suggestions)
+    } catch (error) {
+      console.error('Error getting todo suggestions:', error)
+      setErrorMessage(error instanceof Error ? error.message : 'TODOの提案中にエラーが発生しました。')
+      setSuggestedTodos([])
+    } finally {
+      setIsSuggestingTodos(false)
+    }
+  }
+
+  // 提案されたTODOを追加
+  const handleAddSuggestedTodo = (suggestion: { text: string; estimatedHours: number }) => {
+    if (!editedTask && selectedTask) {
+      setEditedTask(selectedTask)
+    }
+
+    const taskToUpdate = editedTask || selectedTask
+    if (taskToUpdate) {
+      const newTodo: Todo = {
+        id: `todo-${Date.now()}`,
+        text: suggestion.text,
+        completed: false,
+        dueDate: new Date(),
+        estimatedHours: suggestion.estimatedHours
+      }
+      const updatedTask = {
+        ...taskToUpdate,
+        todos: [...taskToUpdate.todos, newTodo]
+      }
+      setEditedTask(updatedTask)
+      onTaskUpdate?.(updatedTask)
+
+      // 追加したTODOを提案リストから削除
+      setSuggestedTodos(prev => prev.filter(todo => todo.text !== suggestion.text))
+    }
+  }
 
   return (
     <div className="bg-white rounded-lg shadow p-6 h-full">
@@ -390,7 +443,58 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
           >
             <IoAdd className="w-5 h-5" />
           </button>
+          <button
+            onClick={handleSuggestTodos}
+            disabled={isSuggestingTodos}
+            className={`ml-2 p-2 ${
+              isSuggestingTodos 
+                ? 'text-gray-400 cursor-not-allowed' 
+                : 'text-yellow-500 hover:text-yellow-600'
+            }`}
+            title="AIにTODOを提案してもらう"
+          >
+            <IoBulb className="w-5 h-5" />
+          </button>
         </div>
+
+        {errorMessage && (
+          <div className="mt-4 p-4 bg-red-50 rounded-lg">
+            <div className="text-sm text-red-600">
+              {errorMessage}
+            </div>
+          </div>
+        )}
+
+        {suggestedTodos.length > 0 && (
+          <div className="mt-4 p-4 bg-yellow-50 rounded-lg">
+            <h4 className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
+              <IoBulb className="w-4 h-4" />
+              AIからのTODO提案
+            </h4>
+            <div className="space-y-2">
+              {suggestedTodos.map((suggestion, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between bg-white p-2 rounded border border-yellow-200"
+                >
+                  <div className="flex-1">
+                    <div className="text-sm text-gray-800">{suggestion.text}</div>
+                    <div className="text-xs text-gray-500">
+                      見積もり工数: {suggestion.estimatedHours}時間
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleAddSuggestedTodo(suggestion)}
+                    className="ml-2 px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                    title="このTODOを採用"
+                  >
+                    採用
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

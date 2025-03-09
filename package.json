@@ -13,6 +13,7 @@
     "date-fns": "^4.1.0",
     "framer-motion": "^12.4.10",
     "next": "14.1.0",
+    "openai": "^4.86.2",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-draggable": "^4.4.6",
