@@ -151,14 +151,18 @@ export default function WeeklyScheduleDnd({
     return (
       <div className="relative">
         {timeSlots.map((hour) => (
-          <div key={hour} className="grid grid-cols-8">
-            <div className="h-16 text-xs text-right pr-2 pt-1 text-gray-500">
+          <div 
+            key={hour} 
+            className="grid" 
+            style={{ gridTemplateColumns: `3rem repeat(${weekDays.length}, 1fr)` }}
+          >
+            <div className="h-12 text-xs text-right pr-1 pt-1 text-gray-500 w-12">
               {`${hour}:00`}
             </div>
             {weekDays.map((_, dayIndex) => (
               <div
                 key={dayIndex}
-                className="h-16 border-t border-l relative"
+                className="h-12 border-t border-l relative"
               />
             ))}
           </div>
@@ -171,8 +175,12 @@ export default function WeeklyScheduleDnd({
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="relative">
         {timeSlots.map((hour) => (
-          <div key={hour} className="grid grid-cols-8">
-            <div className="h-16 text-xs text-right pr-2 pt-1 text-gray-500">
+          <div 
+            key={hour} 
+            className="grid" 
+            style={{ gridTemplateColumns: `3rem repeat(${weekDays.length}, 1fr)` }}
+          >
+            <div className="h-12 text-xs text-right pr-1 pt-1 text-gray-500 w-12">
               {`${hour}:00`}
             </div>
             {weekDays.map((day, dayIndex) => {
@@ -191,7 +199,7 @@ export default function WeeklyScheduleDnd({
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className={`h-16 border-t border-l relative ${
+                      className={`h-12 border-t border-l relative ${
                         snapshot.isDraggingOver ? 'bg-blue-50' : ''
                       }`}
                     >
@@ -212,11 +220,11 @@ export default function WeeklyScheduleDnd({
                               }}
                               style={{
                                 ...provided.draggableProps.style,
-                                height: `${todo.estimatedHours * 64}px`,
-                                width: 'calc(100% - 4px)',
+                                height: `${todo.estimatedHours * 48}px`,
+                                width: 'calc(100% - 2px)',
                                 position: 'absolute',
                                 top: 0,
-                                left: 2,
+                                left: 1,
                                 zIndex: snapshot.isDragging ? 100 : 1,
                               }}
                               className={`${

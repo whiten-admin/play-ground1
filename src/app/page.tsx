@@ -124,8 +124,11 @@ export default function Home() {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      <div className="w-36 flex-shrink-0">
+      <div className="w-36 flex-shrink-0 flex flex-col">
         <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        <div className="p-2">
+          <ProjectDetail />
+        </div>
       </div>
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header onLogout={logout} />
@@ -146,9 +149,6 @@ export default function Home() {
                   onTaskSelect={handleTaskSelect}
                   onTodoUpdate={handleTodoUpdate}
                 />
-              </div>
-              <div className="text-sm">
-                <ProjectDetail />
               </div>
             </div>
             <div className="space-y-3">
