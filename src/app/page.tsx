@@ -133,17 +133,6 @@ export default function Home() {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-3">
               <div className="text-sm">
-                <TaskDetail
-                  selectedTask={selectedTask}
-                  onTaskUpdate={handleTaskUpdate}
-                />
-              </div>
-              <div className="text-sm">
-                <AdditionalTask />
-              </div>
-            </div>
-            <div className="space-y-3">
-              <div className="text-sm">
                 <TodayTodo
                   tasks={tasks}
                   selectedTaskId={selectedTaskId}
@@ -160,6 +149,19 @@ export default function Home() {
               </div>
               <div className="text-sm">
                 <ProjectDetail />
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="text-sm">
+                <TaskDetail
+                  selectedTask={selectedTask}
+                  onTaskUpdate={handleTaskUpdate}
+                  tasks={tasks}
+                  onTaskSelect={setSelectedTaskId}
+                />
+              </div>
+              <div className="text-sm">
+                <AdditionalTask />
               </div>
             </div>
           </div>

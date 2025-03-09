@@ -9,6 +9,8 @@ import { ja } from 'date-fns/locale'
 interface TaskDetailProps {
   selectedTask: Task | null
   onTaskUpdate?: (updatedTask: Task) => void
+  tasks: Task[]
+  onTaskSelect: (taskId: string) => void
 }
 
 interface EditState {
@@ -17,7 +19,7 @@ interface EditState {
   todos: { [key: string]: boolean }
 }
 
-export default function TaskDetail({ selectedTask, onTaskUpdate }: TaskDetailProps) {
+export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSelect }: TaskDetailProps) {
   const [editState, setEditState] = useState<EditState>({
     title: false,
     description: false,
@@ -158,12 +160,45 @@ export default function TaskDetail({ selectedTask, onTaskUpdate }: TaskDetailPro
     }
   }
 
-  if (!selectedTask) {
+  // タスク一覧表示のレンダリング
+  const renderTaskList = () => {
     return (
-      <div className="bg-white rounded-lg shadow p-6 h-full flex items-center justify-center">
-        <p className="text-gray-500">タスクを選択してください</p>
+      <div className="bg-white rounded-lg shadow p-6 h-full">
+        <h2 className="text-xl font-bold text-gray-800 mb-4">タスク一覧</h2>
+        <div className="space-y-4">
+          {tasks.map((task) => (
+            <div
+              key={task.id}
+              onClick={() => onTaskSelect(task.id)}
+              className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-semibold text-gray-800">{task.title}</h3>
+              </div>
+              <p className="text-sm text-gray-600 mb-3 line-clamp-2">{task.description}</p>
+              <div className="flex items-center gap-2">
+                <div className="text-sm text-gray-500">
+                  進捗率: {calculateProgress(task.todos)}%
+                </div>
+                <div className="flex-1 h-2 bg-gray-200 rounded-full">
+                  <div
+                    className="h-full bg-blue-500 rounded-full"
+                    style={{ width: `${calculateProgress(task.todos)}%` }}
+                  />
+                </div>
+              </div>
+              <div className="mt-2 text-sm text-gray-500">
+                TODO: {task.todos.length}件
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     )
+  }
+
+  if (!selectedTask) {
+    return renderTaskList()
   }
 
   const taskToDisplay = editedTask || selectedTask
@@ -195,6 +230,12 @@ export default function TaskDetail({ selectedTask, onTaskUpdate }: TaskDetailPro
             </>
           ) : (
             <>
+              <button
+                onClick={() => onTaskSelect('')}
+                className="p-1 text-gray-500 hover:text-gray-700 mr-2"
+              >
+                ← 一覧へ戻る
+              </button>
               <div className="flex-1">
                 <h2 className="text-xl font-bold text-gray-800">{taskToDisplay.title}</h2>
                 <div className="mt-1 flex items-center gap-2">
