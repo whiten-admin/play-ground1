@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
 import { Project } from '@/types/project'
+import { formatProjectInfo } from '@/utils/openai'
 
 interface ProjectDetailModalProps {
   isOpen: boolean
@@ -16,7 +17,42 @@ export default function ProjectDetailModal({
   project,
   onUpdate,
 }: ProjectDetailModalProps) {
-  const [viewMode, setViewMode] = useState<'form' | 'text'>('form')
+  const [viewMode, setViewMode] = useState<'original' | 'summary'>('summary')
+  const [originalText, setOriginalText] = useState('')
+  const [summaryText, setSummaryText] = useState('')
+  const [isFormatting, setIsFormatting] = useState(false)
+  const [formatError, setFormatError] = useState<string | null>(null)
+  const [isInitialized, setIsInitialized] = useState(false)
+
+  // モーダルが開かれたときに初期化
+  useEffect(() => {
+    if (isOpen && !isInitialized) {
+      const text = generateProjectText()
+      setOriginalText(text)
+      setSummaryText(text) // 初期状態では要約テキストも同じ内容に設定
+      setIsInitialized(true)
+      setFormatError(null)
+    }
+  }, [isOpen, project, isInitialized])
+
+  // プロジェクト情報が変更されたらテキストを更新
+  useEffect(() => {
+    if (isInitialized) {
+      const text = generateProjectText()
+      setOriginalText(text)
+      // 要約テキストが原文と同じ場合のみ更新（編集されている場合は更新しない）
+      if (summaryText === originalText) {
+        setSummaryText(text)
+      }
+    }
+  }, [project])
+
+  // モーダルが閉じられたときに状態をリセット
+  useEffect(() => {
+    if (!isOpen) {
+      setIsInitialized(false)
+    }
+  }, [isOpen])
 
   // フェーズのラベルを取得
   const getPhaseLabel = (phase: Project['phase']) => {
@@ -70,6 +106,45 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
     `.trim()
   }
 
+  // 原文テキストの変更を処理
+  const handleOriginalTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setOriginalText(e.target.value)
+  }
+
+  // 要約テキストの変更を処理
+  const handleSummaryTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setSummaryText(e.target.value)
+  }
+
+  // ChatGPTを使用してテキストを整形
+  const handleFormatText = async () => {
+    if (!originalText.trim()) return
+
+    setIsFormatting(true)
+    setFormatError(null)
+
+    try {
+      const formattedText = await formatProjectInfo(originalText)
+      setSummaryText(formattedText)
+      setViewMode('summary')
+    } catch (error) {
+      setFormatError(error instanceof Error ? error.message : '整形中にエラーが発生しました')
+    } finally {
+      setIsFormatting(false)
+    }
+  }
+
+  // 表示モードを切り替え
+  const handleViewModeChange = (mode: 'original' | 'summary') => {
+    setViewMode(mode)
+  }
+
+  // プロジェクト情報を更新して閉じる
+  const handleSave = () => {
+    // ここでプロジェクト情報を更新する処理を追加
+    onClose()
+  }
+
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
@@ -105,213 +180,84 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
                     <button
                       type="button"
                       className={`px-3 py-1.5 text-xs font-medium rounded-md ${
-                        viewMode === 'form'
+                        viewMode === 'summary'
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
-                      onClick={() => setViewMode('form')}
+                      onClick={() => handleViewModeChange('summary')}
                     >
-                      フォーム表示
+                      要約テキスト
                     </button>
                     <button
                       type="button"
                       className={`px-3 py-1.5 text-xs font-medium rounded-md ${
-                        viewMode === 'text'
+                        viewMode === 'original'
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
-                      onClick={() => setViewMode('text')}
+                      onClick={() => handleViewModeChange('original')}
                     >
-                      テキスト表示
+                      原文テキスト
                     </button>
                   </div>
                 </div>
 
-                {viewMode === 'form' ? (
-                  <div className="space-y-6">
-                    {/* 基本情報セクション */}
-                    <section>
-                      <h4 className="text-sm font-medium text-gray-700 mb-3">基本情報</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs text-gray-500 mb-1">プロジェクト名</label>
-                          <input
-                            type="text"
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                            value={project.title}
-                            onChange={(e) => onUpdate({ ...project, title: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-500 mb-1">プロジェクトコード</label>
-                          <input
-                            type="text"
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                            value={project.code || ''}
-                            onChange={(e) => onUpdate({ ...project, code: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-500 mb-1">開始日</label>
-                          <input
-                            type="date"
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                            value={project.startDate || ''}
-                            onChange={(e) => onUpdate({ ...project, startDate: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-500 mb-1">終了予定日</label>
-                          <input
-                            type="date"
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                            value={project.endDate || ''}
-                            onChange={(e) => onUpdate({ ...project, endDate: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                    </section>
-
-                    {/* プロジェクト概要セクション */}
-                    <section>
-                      <h4 className="text-sm font-medium text-gray-700 mb-3">プロジェクト概要</h4>
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-xs text-gray-500 mb-1">概要</label>
-                          <textarea
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                            rows={3}
-                            value={project.description || ''}
-                            onChange={(e) => onUpdate({ ...project, description: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-500 mb-1">目的</label>
-                          <textarea
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                            rows={2}
-                            value={project.purpose || ''}
-                            onChange={(e) => onUpdate({ ...project, purpose: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                    </section>
-
-                    {/* 開発情報セクション */}
-                    <section>
-                      <h4 className="text-sm font-medium text-gray-700 mb-3">開発情報</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs text-gray-500 mb-1">開発手法</label>
-                          <select
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                            value={project.methodology || ''}
-                            onChange={(e) => onUpdate({ 
-                              ...project, 
-                              methodology: e.target.value as Project['methodology'] 
-                            })}
-                          >
-                            <option value="">選択してください</option>
-                            <option value="waterfall">ウォーターフォール</option>
-                            <option value="agile">アジャイル</option>
-                            <option value="hybrid">ハイブリッド</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-500 mb-1">開発フェーズ</label>
-                          <select
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                            value={project.phase || ''}
-                            onChange={(e) => onUpdate({ 
-                              ...project, 
-                              phase: e.target.value as Project['phase']
-                            })}
-                          >
-                            <option value="">選択してください</option>
-                            <option value="planning">企画</option>
-                            <option value="requirements">要件定義</option>
-                            <option value="design">設計</option>
-                            <option value="development">開発</option>
-                            <option value="testing">テスト</option>
-                            <option value="deployment">リリース</option>
-                            <option value="maintenance">保守運用</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-500 mb-1">開発規模（人月）</label>
-                          <input
-                            type="number"
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                            value={project.scale || ''}
-                            onChange={(e) => onUpdate({ ...project, scale: Number(e.target.value) })}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-500 mb-1">予算（万円）</label>
-                          <input
-                            type="number"
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                            value={project.budget || ''}
-                            onChange={(e) => onUpdate({ ...project, budget: Number(e.target.value) })}
-                          />
-                        </div>
-                      </div>
-                    </section>
-
-                    {/* ステークホルダー情報セクション */}
-                    <section>
-                      <h4 className="text-sm font-medium text-gray-700 mb-3">ステークホルダー情報</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs text-gray-500 mb-1">クライアント</label>
-                          <input
-                            type="text"
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                            value={project.client || ''}
-                            onChange={(e) => onUpdate({ ...project, client: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-500 mb-1">プロジェクトマネージャー</label>
-                          <input
-                            type="text"
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                            value={project.projectManager || ''}
-                            onChange={(e) => onUpdate({ ...project, projectManager: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                    </section>
-
-                    {/* リスク・課題セクション */}
-                    <section>
-                      <h4 className="text-sm font-medium text-gray-700 mb-3">リスク・課題</h4>
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1">主要なリスクと対策</label>
-                        <textarea
-                          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                          rows={3}
-                          value={project.risks || ''}
-                          onChange={(e) => onUpdate({ ...project, risks: e.target.value })}
-                        />
-                      </div>
-                    </section>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className="text-sm font-medium text-gray-700">
+                      {viewMode === 'original' ? 'プロジェクト情報（原文）' : 'プロジェクト情報（要約）'}
+                    </h4>
+                    {viewMode === 'original' && (
+                      <button
+                        type="button"
+                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-1"
+                        onClick={handleFormatText}
+                        disabled={isFormatting}
+                      >
+                        {isFormatting ? (
+                          <>
+                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            要約取り込み中...
+                          </>
+                        ) : (
+                          <>要約取り込み</>
+                        )}
+                      </button>
+                    )}
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <pre className="whitespace-pre-wrap text-sm text-gray-700 font-mono">
-                        {generateProjectText()}
-                      </pre>
-                    </div>
-                    <div className="bg-blue-50 p-3 rounded-lg">
-                      <p className="text-xs text-blue-700">
-                        <span className="font-medium">ヒント:</span> このテキスト表示はAIによる情報入力に活用できます。
-                        テキスト形式のデータをコピーして保存したり、AIに情報を入力してもらう際の参考にしてください。
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <textarea
+                      className="w-full bg-gray-50 text-sm text-gray-700 font-mono border-none focus:ring-0 focus:outline-none"
+                      rows={20}
+                      value={viewMode === 'original' ? originalText : summaryText}
+                      onChange={viewMode === 'original' ? handleOriginalTextChange : handleSummaryTextChange}
+                      placeholder={
+                        viewMode === 'original'
+                          ? "プロジェクト情報を入力してください。ランダムなフォーマットでも、要約取り込みボタンを押すとAIが整形します。"
+                          : "要約されたプロジェクト情報が表示されます。"
+                      }
+                    />
+                  </div>
+                  {formatError && (
+                    <div className="bg-red-50 p-3 rounded-lg">
+                      <p className="text-xs text-red-700">
+                        <span className="font-medium">エラー:</span> {formatError}
                       </p>
                     </div>
+                  )}
+                  <div className="bg-blue-50 p-3 rounded-lg">
+                    <p className="text-xs text-blue-700">
+                      <span className="font-medium">ヒント:</span> 
+                      {viewMode === 'original'
+                        ? "ランダムなフォーマットのテキストを入力し、「要約取り込み」ボタンをクリックするとAIが整形します。"
+                        : "要約されたテキストを確認・編集できます。必要に応じて修正してください。"
+                      }
+                    </p>
                   </div>
-                )}
+                </div>
 
                 <div className="mt-6 flex justify-end gap-3">
                   <button
@@ -320,13 +266,6 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
                     onClick={onClose}
                   >
                     閉じる
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-                    onClick={onClose}
-                  >
-                    保存
                   </button>
                 </div>
               </Dialog.Panel>
