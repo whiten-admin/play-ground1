@@ -11,6 +11,11 @@ interface ProjectDetailModalProps {
   onUpdate: (updatedProject: Project) => void
 }
 
+interface CompletionItem {
+  name: string;
+  isComplete: boolean;
+}
+
 export default function ProjectDetailModal({
   isOpen,
   onClose,
@@ -139,11 +144,31 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
     setViewMode(mode)
   }
 
-  // プロジェクト情報を更新して閉じる
-  const handleSave = () => {
-    // ここでプロジェクト情報を更新する処理を追加
-    onClose()
+  // プロジェクト情報の入力度を計算
+  const calculateCompletionRate = (): { rate: number; items: CompletionItem[] } => {
+    const items: CompletionItem[] = [
+      { name: 'プロジェクト名', isComplete: !!project.title },
+      { name: 'プロジェクトコード', isComplete: !!project.code },
+      { name: '開始日', isComplete: !!project.startDate },
+      { name: '終了日', isComplete: !!project.endDate },
+      { name: '概要', isComplete: !!project.description && project.description.length > 10 },
+      { name: '目的', isComplete: !!project.purpose && project.purpose.length > 10 },
+      { name: '開発手法', isComplete: !!project.methodology },
+      { name: '開発フェーズ', isComplete: !!project.phase },
+      { name: '開発規模', isComplete: !!project.scale },
+      { name: '予算', isComplete: !!project.budget },
+      { name: 'クライアント', isComplete: !!project.client },
+      { name: 'プロジェクトマネージャー', isComplete: !!project.projectManager },
+      { name: 'リスク・課題', isComplete: !!project.risks && project.risks.length > 10 }
+    ]
+
+    const completedCount = items.filter(item => item.isComplete).length
+    const rate = Math.round((completedCount / items.length) * 100)
+
+    return { rate, items }
   }
+
+  const { rate: completionRate, items: completionItems } = calculateCompletionRate()
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -246,6 +271,40 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
                       <p className="text-xs text-red-700">
                         <span className="font-medium">エラー:</span> {formatError}
                       </p>
+                    </div>
+                  )}
+                  {viewMode === 'summary' && (
+                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                      <div className="mb-3">
+                        <div className="flex justify-between items-center mb-1">
+                          <h5 className="text-sm font-medium text-gray-700">情報入力度</h5>
+                          <span className={`text-sm font-medium ${
+                            completionRate < 50 ? 'text-red-600' : 
+                            completionRate < 80 ? 'text-yellow-600' : 'text-green-600'
+                          }`}>
+                            {completionRate}%
+                          </span>
+                        </div>
+                        <div className="w-full h-2 bg-gray-200 rounded-full">
+                          <div 
+                            className={`h-full rounded-full ${
+                              completionRate < 50 ? 'bg-red-500' : 
+                              completionRate < 80 ? 'bg-yellow-500' : 'bg-green-500'
+                            }`} 
+                            style={{ width: `${completionRate}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {completionItems.map((item, index) => (
+                          <div key={index} className="flex items-center gap-1.5">
+                            <span className={`w-1.5 h-1.5 rounded-full ${item.isComplete ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                            <span className={`text-xs ${item.isComplete ? 'text-gray-600' : 'text-red-600 font-medium'}`}>
+                              {item.name}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                   <div className="bg-blue-50 p-3 rounded-lg">
