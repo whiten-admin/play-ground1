@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
 import { Project } from '@/types/project'
-import { formatProjectInfo } from '@/utils/openai'
+import { formatProjectInfo, extractProjectInfoFromFile } from '@/utils/openai'
+import { extractTextFromFile } from '@/utils/fileParser'
 
 interface ProjectDetailModalProps {
   isOpen: boolean
@@ -28,6 +29,9 @@ export default function ProjectDetailModal({
   const [isFormatting, setIsFormatting] = useState(false)
   const [formatError, setFormatError] = useState<string | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // モーダルが開かれたときに初期化
   useEffect(() => {
@@ -170,6 +174,36 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
 
   const { rate: completionRate, items: completionItems } = calculateCompletionRate()
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setUploadError(null);
+
+    try {
+      // ファイルからテキストを抽出
+      const fileContent = await extractTextFromFile(file);
+      
+      // ChatGPTを使用してプロジェクト情報を抽出
+      const formattedInfo = await extractProjectInfoFromFile(fileContent, file.name);
+      
+      // 抽出された情報を設定
+      setOriginalText(fileContent);
+      setSummaryText(formattedInfo);
+      
+      // サマリービューに切り替え
+      setViewMode('summary');
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : '不明なエラーが発生しました。');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
@@ -202,6 +236,47 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
                     プロジェクト詳細
                   </Dialog.Title>
                   <div className="flex space-x-2">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      accept=".txt,.pdf,.doc,.docx,.md"
+                      className="hidden"
+                    />
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-1 group"
+                      >
+                        {isUploading ? (
+                          <>
+                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            インポート中...
+                          </>
+                        ) : (
+                          <>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            ファイルインポート
+                          </>
+                        )}
+                      </button>
+                      <div className="hidden group-hover:block absolute top-full left-0 mt-1 w-64 p-2 bg-gray-800 text-xs text-white rounded shadow-lg z-10">
+                        <p className="font-medium mb-1">サポートされるファイル形式:</p>
+                        <ul className="list-disc list-inside space-y-0.5">
+                          <li>テキストファイル (.txt)</li>
+                          <li>PDFファイル (.pdf)</li>
+                          <li>Wordファイル (.doc, .docx)</li>
+                          <li>Markdownファイル (.md)</li>
+                        </ul>
+                      </div>
+                    </div>
                     <button
                       type="button"
                       className={`px-3 py-1.5 text-xs font-medium rounded-md ${
@@ -226,6 +301,14 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
                     </button>
                   </div>
                 </div>
+
+                {uploadError && (
+                  <div className="mb-4 bg-red-50 p-3 rounded-lg">
+                    <p className="text-xs text-red-700">
+                      <span className="font-medium">エラー:</span> {uploadError}
+                    </p>
+                  </div>
+                )}
 
                 <div className="space-y-4">
                   <div className="flex justify-between items-center mb-2">
