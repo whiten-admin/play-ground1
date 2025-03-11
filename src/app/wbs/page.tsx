@@ -23,7 +23,7 @@ export default function WBSPage() {
   })
 
   if (!isAuthenticated) {
-    return <Auth onLogin={login} />
+    return <Auth onLogin={login} />;
   }
 
   return (
@@ -34,14 +34,14 @@ export default function WBSPage() {
         <main className="flex-1 overflow-y-auto p-6">
           <div className="bg-white rounded-lg shadow">
             <div className="p-6 border-b">
-              <h1 className="text-2xl font-bold">WBS（Work Breakdown Structure）</h1>
+              <h1 className="text-2xl font-bold">
+                WBS（Work Breakdown Structure）
+              </h1>
             </div>
-            <div className="p-6">
-              <WBSView />
-            </div>
+            <WBSView />
           </div>
         </main>
       </div>
     </div>
-  )
-} 
+  );
+}

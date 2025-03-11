@@ -124,10 +124,15 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
   // 新しいTODOの追加
   const handleAddTodo = () => {
     if (editedTask && newTodoText.trim()) {
+      const today = new Date()
+      const formattedDate = today.toISOString().split('T')[0] // YYYY-MM-DD形式
+      
       const newTodo: Todo = {
         id: `todo-${Date.now()}`,
         text: newTodoText.trim(),
         completed: false,
+        startDate: formattedDate,
+        endDate: formattedDate,
         dueDate: new Date(),
         estimatedHours: 0 // デフォルトの見積もり工数を0時間に設定
       }
@@ -251,10 +256,15 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
 
     const taskToUpdate = editedTask || selectedTask
     if (taskToUpdate) {
+      const today = new Date()
+      const formattedDate = today.toISOString().split('T')[0] // YYYY-MM-DD形式
+      
       const newTodo: Todo = {
         id: `todo-${Date.now()}`,
         text: suggestion.text,
         completed: false,
+        startDate: formattedDate,
+        endDate: formattedDate,
         dueDate: new Date(),
         estimatedHours: suggestion.estimatedHours
       }

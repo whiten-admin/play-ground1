@@ -1,75 +1,84 @@
-'use client'
+'use client';
 
-import React from 'react'
-import { format, isBefore, isToday, addDays, startOfDay, endOfDay, parseISO } from 'date-fns'
-import { ja } from 'date-fns/locale'
-import { Task, Todo } from '@/types/task'
+import React from 'react';
+import {
+  format,
+  isBefore,
+  isToday,
+  addDays,
+  startOfDay,
+  endOfDay,
+  parseISO,
+} from 'date-fns';
+import { ja } from 'date-fns/locale';
+import { Task, Todo } from '@/types/task';
 
 interface TodayTodoProps {
-  tasks: Task[]
-  selectedTaskId: string | null
-  onTaskSelect: (taskId: string) => void
-  onTodoStatusChange: (taskId: string, todoId: string) => void
+  tasks: Task[];
+  selectedTaskId: string | null;
+  onTaskSelect: (taskId: string) => void;
+  onTodoStatusChange: (taskId: string, todoId: string) => void;
 }
 
 export default function TodayTodo({
   tasks,
   selectedTaskId,
   onTaskSelect,
-  onTodoStatusChange
+  onTodoStatusChange,
 }: TodayTodoProps) {
   // 全タスクからTODOを抽出し、親タスク情報と一緒にフラット化
-  const allTodos = tasks.flatMap(task => 
-    task.todos.map(todo => ({
+  const allTodos = tasks.flatMap((task) =>
+    task.todos.map((todo) => ({
       ...todo,
       taskId: task.id,
       taskTitle: task.title,
-      isNew: task.isNew
+      isNew: task.isNew,
     }))
-  )
+  );
 
   // 期日が過ぎているか今日が期日、または3日以内に期日が来るTODOをフィルタリング
-  const filteredTodos = allTodos.filter(todo => {
-    const today = startOfDay(new Date())
-    const threeDaysFromNow = endOfDay(addDays(today, 2)) // 2日後の終わりまで（今日を0日目とカウント）
-    const todoDueDate = todo.dueDate instanceof Date ? todo.dueDate : new Date(todo.dueDate)
-    
-    console.log('Todo:', todo.text, 'Due date:', todoDueDate, 'Is before today:', isBefore(todoDueDate, today), 'Is today:', isToday(todoDueDate), 'Is within 3 days:', isBefore(todoDueDate, threeDaysFromNow))
-    
+  const filteredTodos = allTodos.filter((todo) => {
+    const today = startOfDay(new Date());
+    const threeDaysFromNow = endOfDay(addDays(today, 2)); // 2日後の終わりまで（今日を0日目とカウント）
+    const todoDueDate =
+      todo.dueDate instanceof Date ? todo.dueDate : new Date(todo.dueDate);
+
     return (
       isBefore(todoDueDate, today) || // 期日超過
       isToday(todoDueDate) || // 今日が期日
       (isBefore(today, todoDueDate) && isBefore(todoDueDate, threeDaysFromNow)) // 3日以内
-    )
-  })
+    );
+  });
 
   // 期日でソート（期日超過 → 今日が期日 → 期日が近い順）
   const sortedTodos = [...filteredTodos].sort((a, b) => {
-    const today = startOfDay(new Date())
-    const aDueDate = a.dueDate instanceof Date ? a.dueDate : new Date(a.dueDate)
-    const bDueDate = b.dueDate instanceof Date ? b.dueDate : new Date(b.dueDate)
-    const aIsOverdue = isBefore(aDueDate, today)
-    const bIsOverdue = isBefore(bDueDate, today)
-    const aIsToday = isToday(aDueDate)
-    const bIsToday = isToday(bDueDate)
+    const today = startOfDay(new Date());
+    const aDueDate =
+      a.dueDate instanceof Date ? a.dueDate : new Date(a.dueDate);
+    const bDueDate =
+      b.dueDate instanceof Date ? b.dueDate : new Date(b.dueDate);
+    const aIsOverdue = isBefore(aDueDate, today);
+    const bIsOverdue = isBefore(bDueDate, today);
+    const aIsToday = isToday(aDueDate);
+    const bIsToday = isToday(bDueDate);
 
-    if (aIsOverdue !== bIsOverdue) return aIsOverdue ? -1 : 1
-    if (aIsToday !== bIsToday) return aIsToday ? -1 : 1
-    return aDueDate.getTime() - bDueDate.getTime()
-  })
+    if (aIsOverdue !== bIsOverdue) return aIsOverdue ? -1 : 1;
+    if (aIsToday !== bIsToday) return aIsToday ? -1 : 1;
+    return aDueDate.getTime() - bDueDate.getTime();
+  });
 
   // 期日の状態に応じたスタイルを返す関数
   const getDueDateStyle = (dueDate: Date | string) => {
-    const today = startOfDay(new Date())
-    const dueDateObj = dueDate instanceof Date ? dueDate : new Date(dueDate)
+    const today = startOfDay(new Date());
+    const dueDateObj = dueDate instanceof Date ? dueDate : new Date(dueDate);
     if (isBefore(dueDateObj, today)) {
-      return 'text-red-500' // 期日超過
+      return 'text-red-500'; // 期日超過
     }
     if (isToday(dueDateObj)) {
-      return 'text-orange-500' // 今日が期日
+      return 'text-orange-500'; // 今日が期日
     }
-    return 'text-blue-500' // 期日が近い
-  }
+    return 'text-blue-500'; // 期日が近い
+  };
 
   return (
     <div className="bg-white rounded-lg shadow p-3">
@@ -91,12 +100,16 @@ export default function TodayTodo({
                   type="checkbox"
                   checked={todo.completed}
                   onChange={(e) => {
-                    e.stopPropagation()
-                    onTodoStatusChange(todo.taskId, todo.id)
+                    e.stopPropagation();
+                    onTodoStatusChange(todo.taskId, todo.id);
                   }}
                   className="w-4 h-4"
                 />
-                <span className={`text-sm ${todo.completed ? 'line-through text-gray-500' : ''}`}>
+                <span
+                  className={`text-sm ${
+                    todo.completed ? 'line-through text-gray-500' : ''
+                  }`}
+                >
                   {todo.text}
                 </span>
               </div>
@@ -111,9 +124,7 @@ export default function TodayTodo({
                 )}
               </div>
             </div>
-            <div className="ml-6 text-xs text-gray-500">
-              {todo.taskTitle}
-            </div>
+            <div className="ml-6 text-xs text-gray-500">{todo.taskTitle}</div>
           </div>
         ))}
       </div>
@@ -123,5 +134,5 @@ export default function TodayTodo({
         </a>
       </div>
     </div>
-  )
-} 
+  );
+}

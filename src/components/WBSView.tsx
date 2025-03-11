@@ -1,93 +1,20 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-
-interface Task {
-  id: string
-  title: string
-  startDate: string
-  endDate: string
-  progress: number
-  subtasks?: Task[]
-}
+import { useTaskContext } from '@/contexts/TaskContext';
 
 export default function WBSView() {
-  const [tasks] = useState<Task[]>([
-    {
-      id: '1',
-      title: '要件定義',
-      startDate: '2024-03-01',
-      endDate: '2024-03-15',
-      progress: 60,
-      subtasks: [
-        {
-          id: '1-1',
-          title: '基本要件の洗い出し',
-          startDate: '2024-03-01',
-          endDate: '2024-03-05',
-          progress: 100,
-        },
-        {
-          id: '1-2',
-          title: 'ユーザーストーリーの作成',
-          startDate: '2024-03-06',
-          endDate: '2024-03-10',
-          progress: 30,
-        },
-        {
-          id: '1-3',
-          title: '要件定義書のレビュー',
-          startDate: '2024-03-11',
-          endDate: '2024-03-15',
-          progress: 0,
-        },
-      ],
-    },
-    {
-      id: '2',
-      title: '設計',
-      startDate: '2024-03-16',
-      endDate: '2024-03-30',
-      progress: 0,
-      subtasks: [
-        {
-          id: '2-1',
-          title: 'システム構成図の作成',
-          startDate: '2024-03-16',
-          endDate: '2024-03-20',
-          progress: 0,
-        },
-        {
-          id: '2-2',
-          title: 'データベース設計',
-          startDate: '2024-03-21',
-          endDate: '2024-03-25',
-          progress: 0,
-        },
-        {
-          id: '2-3',
-          title: 'API設計',
-          startDate: '2024-03-26',
-          endDate: '2024-03-30',
-          progress: 0,
-        },
-      ],
-    },
-  ])
+  const { tasks } = useTaskContext();
 
-  const getDaysBetween = (startDate: string, endDate: string) => {
-    const start = new Date(startDate)
-    const end = new Date(endDate)
-    const diffTime = Math.abs(end.getTime() - start.getTime())
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-  }
+  const getDaysBetween = (startDate: Date, endDate: Date) => {
+    return Math.ceil(
+      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+  };
 
-  const getDatePosition = (date: string) => {
-    const startDate = new Date('2024-03-01')
-    const currentDate = new Date(date)
-    const diffTime = currentDate.getTime() - startDate.getTime()
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-  }
+  const getDatePosition = (date: Date) => {
+    const startDate = new Date('2025-03-01'); // 基準日
+    return getDaysBetween(startDate, date);
+  };
 
   return (
     <div className="overflow-x-auto">
@@ -95,7 +22,7 @@ export default function WBSView() {
         {/* ヘッダー */}
         <div className="flex border-b">
           <div className="w-64 p-4 font-bold">タスク</div>
-          <div className="flex-1 grid grid-cols-[repeat(30,1fr)]">
+          <div className="flex-1 grid grid-cols-[repeat(30,1fr)] border-l">
             {Array.from({ length: 30 }, (_, i) => (
               <div key={i} className="p-2 text-center text-sm border-r">
                 {i + 1}日
@@ -104,51 +31,104 @@ export default function WBSView() {
           </div>
         </div>
 
-        {/* タスク行 */}
-        {tasks.map((task) => (
-          <div key={task.id}>
-            {/* 親タスク */}
-            <div className="flex border-b">
-              <div className="w-64 p-4 font-medium">{task.title}</div>
-              <div className="flex-1 relative">
-                <div
-                  className="absolute h-6 bg-blue-100 rounded"
-                  style={{
-                    left: `${(getDatePosition(task.startDate) - 1) * (100 / 30)}%`,
-                    width: `${(getDaysBetween(task.startDate, task.endDate) + 1) * (100 / 30)}%`,
-                  }}
-                >
-                  <div
-                    className="h-full bg-blue-500 rounded"
-                    style={{ width: `${task.progress}%` }}
-                  />
-                </div>
-              </div>
-            </div>
+        {/* タスク一覧 */}
+        {tasks.map((task) => {
+          // 小タスクの開始日・終了日
+          const taskStartDate = new Date(
+            Math.min(
+              ...task.todos.map((todo) => new Date(todo.startDate).getTime())
+            )
+          );
+          const taskEndDate = new Date(
+            Math.max(
+              ...task.todos.map((todo) => new Date(todo.endDate).getTime())
+            )
+          );
 
-            {/* サブタスク */}
-            {task.subtasks?.map((subtask) => (
-              <div key={subtask.id} className="flex border-b">
-                <div className="w-64 p-4 pl-8 text-gray-600">{subtask.title}</div>
+          // 親タスクのガントバー位置と幅
+          const taskStartPos = getDatePosition(taskStartDate);
+          const taskEndPos = getDatePosition(taskEndDate);
+          const taskWidth = (taskEndPos - taskStartPos + 1) * (100 / 30);
+
+          // 親タスクの進捗率を計算
+          const totalEstimatedHours = task.todos.reduce(
+            (sum, todo) => sum + todo.estimatedHours,
+            0
+          );
+          const completedHours = task.todos.reduce(
+            (sum, todo) => sum + (todo.completed ? todo.estimatedHours : 0),
+            0
+          );
+          const progress =
+            totalEstimatedHours > 0
+              ? (completedHours / totalEstimatedHours) * 100
+              : 0;
+
+          return (
+            <div key={task.id} className="border-b">
+              {/* 親タスク */}
+              <div className="flex bg-gray-100 border-b">
+                <div className="w-64 p-4 font-medium">
+                  {task.title}
+                  <span className="text-xs text-gray-500 ml-2">
+                    {Math.round(progress)}%
+                  </span>
+                </div>
                 <div className="flex-1 relative">
+                  {/* 親タスクの進捗バー */}
                   <div
-                    className="absolute h-6 bg-green-100 rounded"
+                    className="absolute h-6 bg-gray-300 rounded"
                     style={{
-                      left: `${(getDatePosition(subtask.startDate) - 1) * (100 / 30)}%`,
-                      width: `${(getDaysBetween(subtask.startDate, subtask.endDate) + 1) * (100 / 30)}%`,
+                      left: `${(taskStartPos - 1) * (100 / 30)}%`,
+                      width: `${taskWidth}%`,
                     }}
                   >
                     <div
                       className="h-full bg-green-500 rounded"
-                      style={{ width: `${subtask.progress}%` }}
+                      style={{ width: `${progress}%` }}
                     />
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        ))}
+
+              {/* 小タスク（todo） */}
+              {task.todos.map((todo) => {
+                const startDate = new Date(todo.startDate);
+                const endDate = new Date(todo.endDate);
+
+                const startPos = getDatePosition(startDate);
+                const endPos = getDatePosition(endDate);
+                const todoWidth = (endPos - startPos + 1) * (100 / 30);
+
+                return (
+                  <div key={todo.id} className="flex border-b">
+                    {/* 小タスク名 */}
+                    <div className="w-64 p-4 text-sm">{todo.text}</div>
+
+                    {/* 小タスクの進捗バー */}
+                    <div className="flex-1 relative">
+                      <div
+                        className="absolute h-6 bg-blue-100 rounded"
+                        style={{
+                          left: `${(startPos - 1) * (100 / 30)}%`,
+                          width: `${todoWidth}%`,
+                        }}
+                      >
+                        <div
+                          className="h-full bg-blue-500 rounded"
+                          style={{
+                            width: `${todo.completed ? 100 : 0}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
       </div>
     </div>
-  )
-} 
+  );
+}
