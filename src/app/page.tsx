@@ -11,6 +11,7 @@ import WeeklySchedule from '@/components/WeeklySchedule'
 import Auth from '@/components/Auth'
 import { useAuth } from '@/hooks/useAuth'
 import { Task } from '@/types/task'
+import { Project } from '@/types/project'
 
 export default function Home() {
   const { isAuthenticated, login, logout } = useAuth()
@@ -50,6 +51,16 @@ export default function Home() {
       ]
     }
   ])
+  const [project, setProject] = useState<Project>({
+    id: '1',
+    title: 'プロジェクトA',
+    description: 'プロジェクトの説明文がここに入ります。',
+    startDate: '2025-03-01',
+    endDate: '2025-12-31',
+    phase: 'development',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  })
 
   // WeeklyScheduleのイベントをTaskDetailで表示するための関数
   const handleTaskSelect = (taskId: string) => {
@@ -113,6 +124,10 @@ export default function Home() {
     })
   }
 
+  const handleProjectUpdate = (updatedProject: Project) => {
+    setProject(updatedProject)
+  }
+
   if (!isAuthenticated) {
     return <Auth onLogin={login} />
   }
@@ -127,11 +142,14 @@ export default function Home() {
       <div className="w-36 flex-shrink-0 flex flex-col">
         <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
         <div className="p-2">
-          <ProjectDetail />
+          <ProjectDetail 
+            project={project} 
+            onUpdate={handleProjectUpdate} 
+          />
         </div>
       </div>
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header onLogout={logout} />
+        <Header onLogout={logout} project={project} />
         <main className="flex-1 overflow-y-auto p-3">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-3">
