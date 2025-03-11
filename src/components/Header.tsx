@@ -5,7 +5,7 @@ import { Project } from '@/types/project'
 
 interface HeaderProps {
   onLogout?: () => void
-  project: Project
+  project?: Project
 }
 
 export default function Header({ onLogout, project }: HeaderProps) {
@@ -30,15 +30,15 @@ export default function Header({ onLogout, project }: HeaderProps) {
     return diffDays
   }
 
-  const remainingDays = calculateRemainingDays(project.endDate)
+  const remainingDays = project?.endDate ? calculateRemainingDays(project.endDate) : null
 
   return (
     <header className="bg-white border-b border-gray-200 py-2 px-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <h1 className="text-lg font-bold text-gray-800">{project.title}</h1>
+          <h1 className="text-lg font-bold text-gray-800">{project?.title || 'プロジェクト'}</h1>
           <div className="flex items-center gap-2 text-sm text-gray-600">
-            <span>{formatDate(project.startDate)} - {formatDate(project.endDate)}</span>
+            <span>{formatDate(project?.startDate)} - {formatDate(project?.endDate)}</span>
             {remainingDays !== null && (
               <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded">
                 残り{remainingDays}日
