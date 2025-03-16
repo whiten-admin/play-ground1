@@ -16,5 +16,5 @@ export interface Task {
   endDate: string;
   todos: Todo[];
   isNew?: boolean;
-  priority: number;  // 0: 低, 1: 中, 2: 高
+  priority?: number;  // 0: 低, 1: 中, 2: 高
 }

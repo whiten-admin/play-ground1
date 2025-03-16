@@ -248,8 +248,8 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
         const bDate = Math.min(...b.todos.map(todo => todo.dueDate.getTime()));
         return sortState.order === 'asc' ? aDate - bDate : bDate - aDate;
       } else {
-        const aPriority = a.priority || 0;
-        const bPriority = b.priority || 0;
+        const aPriority = a.priority ?? 0;  // デフォルト値を0に設定
+        const bPriority = b.priority ?? 0;  // デフォルト値を0に設定
         return sortState.order === 'asc' ? aPriority - bPriority : bPriority - aPriority;
       }
     });
