@@ -224,7 +224,7 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
   // タスク一覧表示のレンダリング
   const renderTaskList = () => {
     return (
-      <div className="bg-white rounded-lg shadow p-6 h-full">
+      <div className="bg-white rounded-lg shadow p-6 h-[90vh] flex flex-col">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-gray-800">タスク一覧</h2>
           <DragDropContext onDragEnd={handleDragEnd}>
@@ -271,44 +271,46 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
           </DragDropContext>
         </div>
 
-        {viewMode === 'list' && (
-          <div className="space-y-4">
-            {tasks.map((task) => (
-              <div
-                key={task.id}
-                onClick={() => onTaskSelect(task.id)}
-                className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-semibold text-gray-800">{task.title}</h3>
-                </div>
-                <p className="text-sm text-gray-600 mb-3 line-clamp-2">{task.description}</p>
-                <div className="flex items-center gap-2">
-                  <div className="text-sm text-gray-500">
-                    進捗率: {calculateProgress(task.todos)}%
+        <div className="flex-1 overflow-y-auto">
+          {viewMode === 'list' && (
+            <div className="space-y-4 pr-2">
+              {tasks.map((task) => (
+                <div
+                  key={task.id}
+                  onClick={() => onTaskSelect(task.id)}
+                  className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-lg font-semibold text-gray-800">{task.title}</h3>
                   </div>
-                  <div className="flex-1 h-2 bg-gray-200 rounded-full">
-                    <div
-                      className="h-full bg-blue-500 rounded-full"
-                      style={{ width: `${calculateProgress(task.todos)}%` }}
-                    />
+                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">{task.description}</p>
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm text-gray-500">
+                      進捗率: {calculateProgress(task.todos)}%
+                    </div>
+                    <div className="flex-1 h-2 bg-gray-200 rounded-full">
+                      <div
+                        className="h-full bg-blue-500 rounded-full"
+                        style={{ width: `${calculateProgress(task.todos)}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-2 text-sm text-gray-500">
+                    TODO: {task.todos.length}件
                   </div>
                 </div>
-                <div className="mt-2 text-sm text-gray-500">
-                  TODO: {task.todos.length}件
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
 
-        {viewMode === 'kanban' && (
-          <KanbanView tasks={tasks} onTaskSelect={onTaskSelect} />
-        )}
+          {viewMode === 'kanban' && (
+            <KanbanView tasks={tasks} onTaskSelect={onTaskSelect} />
+          )}
 
-        {viewMode === 'gantt' && (
-          <WBSView />
-        )}
+          {viewMode === 'gantt' && (
+            <WBSView />
+          )}
+        </div>
       </div>
     )
   }
