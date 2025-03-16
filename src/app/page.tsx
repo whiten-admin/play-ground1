@@ -76,6 +76,11 @@ export default function Home() {
     );
   };
 
+  // タスクの作成処理
+  const handleTaskCreate = (newTask: Task) => {
+    setTasks((prevTasks) => [...prevTasks, newTask]);
+  };
+
   // TODOの完了状態を更新
   const handleTodoStatusChange = (taskId: string, todoId: string) => {
     setTasks((prevTasks) =>
@@ -178,6 +183,7 @@ export default function Home() {
                   onTaskUpdate={handleTaskUpdate}
                   tasks={tasks}
                   onTaskSelect={setSelectedTaskId}
+                  onTaskCreate={handleTaskCreate}
                 />
               </div>
               <div className="text-sm">

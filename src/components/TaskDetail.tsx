@@ -17,6 +17,7 @@ interface TaskDetailProps {
   onTaskUpdate?: (updatedTask: Task) => void
   tasks: Task[]
   onTaskSelect: (taskId: string) => void
+  onTaskCreate?: (newTask: Task) => void
 }
 
 interface EditState {
@@ -53,7 +54,7 @@ interface SortState {
   order: SortOrder
 }
 
-export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSelect }: TaskDetailProps) {
+export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSelect, onTaskCreate }: TaskDetailProps) {
   const [editState, setEditState] = useState<EditState>({
     title: false,
     description: false,
@@ -73,6 +74,15 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
   const [sortState, setSortState] = useState<SortState>({
     field: 'dueDate',
     order: 'asc'
+  })
+  const [isCreatingTask, setIsCreatingTask] = useState(false)
+  const [newTask, setNewTask] = useState<Partial<Task>>({
+    title: '',
+    description: '',
+    todos: [],
+    priority: 0,
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0]
   })
 
   // 編集モードの切り替え
@@ -263,6 +273,123 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
     }))
   }
 
+  // 新しいタスクを作成する関数
+  const handleCreateTask = () => {
+    if (!newTask.title) return
+
+    const taskToCreate: Task = {
+      id: `task-${Date.now()}`,
+      title: newTask.title,
+      description: newTask.description || '',
+      todos: [],
+      startDate: newTask.startDate || new Date().toISOString().split('T')[0],
+      endDate: newTask.endDate || new Date().toISOString().split('T')[0],
+      priority: newTask.priority || 0
+    }
+
+    onTaskCreate?.(taskToCreate)
+    setIsCreatingTask(false)
+    setNewTask({
+      title: '',
+      description: '',
+      todos: [],
+      priority: 0,
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date().toISOString().split('T')[0]
+    })
+  }
+
+  // タスク作成フォームをレンダリングする関数
+  const renderTaskCreationForm = () => {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <h2 className="text-xl font-bold mb-4">新しいタスクを作成</h2>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">タイトル</label>
+              <input
+                type="text"
+                value={newTask.title}
+                onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                className="w-full p-2 border rounded-md"
+                placeholder="タスクのタイトルを入力"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">説明</label>
+              <textarea
+                value={newTask.description}
+                onChange={(e) => setNewTask({...newTask, description: e.target.value})}
+                className="w-full p-2 border rounded-md h-24"
+                placeholder="タスクの説明を入力"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">優先度</label>
+              <select
+                value={newTask.priority}
+                onChange={(e) => setNewTask({...newTask, priority: Number(e.target.value)})}
+                className="w-full p-2 border rounded-md"
+              >
+                <option value={0}>低</option>
+                <option value={1}>中</option>
+                <option value={2}>高</option>
+              </select>
+            </div>
+          </div>
+          
+          <div className="flex justify-end gap-2 mt-6">
+            <button
+              onClick={() => setIsCreatingTask(false)}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800"
+            >
+              キャンセル
+            </button>
+            <button
+              onClick={handleCreateTask}
+              disabled={!newTask.title}
+              className={`px-4 py-2 rounded-md ${
+                !newTask.title
+                  ? 'bg-gray-300 cursor-not-allowed'
+                  : 'bg-blue-500 text-white hover:bg-blue-600'
+              }`}
+            >
+              作成
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // カンバン表示のタスク追加ボタン
+  const renderKanbanAddButton = () => {
+    return (
+      <button
+        onClick={() => setIsCreatingTask(true)}
+        className="fixed bottom-6 right-6 w-14 h-14 bg-blue-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-600 transition-colors"
+      >
+        <IoAdd className="w-8 h-8" />
+      </button>
+    )
+  }
+
+  // ガントチャート表示のタスク追加ボタン
+  const renderGanttAddButton = () => {
+    return (
+      <button
+        onClick={() => setIsCreatingTask(true)}
+        className="fixed bottom-6 right-6 w-14 h-14 bg-blue-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-600 transition-colors"
+      >
+        <IoAdd className="w-8 h-8" />
+      </button>
+    )
+  }
+
   // タスク一覧表示のレンダリング
   const renderTaskList = () => {
     return (
@@ -316,7 +443,14 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
 
           {viewMode === 'list' && (
             <div className="flex justify-end border-b pb-2">
-              <div className="flex gap-1">
+              <div className="flex gap-1 items-center">
+                <button
+                  onClick={() => setIsCreatingTask(true)}
+                  className="mr-auto px-2 py-0.5 text-xs rounded flex items-center gap-1 bg-blue-500 text-white hover:bg-blue-600"
+                >
+                  <IoAdd className="w-3 h-3" />
+                  タスク追加
+                </button>
                 <button
                   onClick={() => toggleSort('dueDate')}
                   className={`px-2 py-0.5 text-xs rounded flex items-center gap-1 ${
@@ -420,13 +554,24 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
               tasks={sortTasks(tasks)}
               onTaskSelect={onTaskSelect}
               onTaskUpdate={onTaskUpdate}
+              onTaskCreate={onTaskCreate}
             />
           )}
 
           {viewMode === 'gantt' && (
-            <WBSView />
+            <WBSView
+              onTaskSelect={onTaskSelect}
+              onTaskCreate={onTaskCreate}
+            />
           )}
         </div>
+
+        {/* 各ビューモードに応じたタスク追加ボタンを表示 */}
+        {viewMode === 'kanban' && renderKanbanAddButton()}
+        {viewMode === 'gantt' && renderGanttAddButton()}
+        
+        {/* タスク作成フォーム */}
+        {isCreatingTask && renderTaskCreationForm()}
       </div>
     )
   }
@@ -734,6 +879,9 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
           </div>
         )}
       </div>
+
+      {/* タスク作成フォーム */}
+      {isCreatingTask && renderTaskCreationForm()}
     </div>
   )
 } 

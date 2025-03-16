@@ -1,11 +1,27 @@
 'use client';
 
 import { useTaskContext } from '@/contexts/TaskContext';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { IoAdd } from 'react-icons/io5';
+import { Task } from '@/types/task';
 
-export default function WBSView() {
+interface WBSViewProps {
+  onTaskCreate?: (newTask: Task) => void;
+  onTaskSelect: (taskId: string) => void;
+}
+
+export default function WBSView({ onTaskCreate, onTaskSelect }: WBSViewProps) {
   const { tasks } = useTaskContext();
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [newTask, setNewTask] = useState<Partial<Task>>({
+    title: '',
+    description: '',
+    todos: [],
+    priority: 0,
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0] // デフォルトで1週間後
+  });
 
   const getDaysBetween = (startDate: Date, endDate: Date) => {
     return Math.ceil(
@@ -31,12 +47,157 @@ export default function WBSView() {
     }
   }, [todayPosition]);
 
+  // 新しいタスクを作成する関数
+  const handleCreateTask = () => {
+    if (!newTask.title) return;
+
+    const startDate = newTask.startDate || new Date().toISOString().split('T')[0];
+    const endDate = newTask.endDate || new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0];
+
+    const taskToCreate: Task = {
+      id: `task-${Date.now()}`,
+      title: newTask.title,
+      description: newTask.description || '',
+      todos: [
+        {
+          id: `todo-${Date.now()}-1`,
+          text: '開始',
+          completed: false,
+          startDate: startDate,
+          endDate: startDate,
+          dueDate: new Date(startDate),
+          estimatedHours: 1
+        },
+        {
+          id: `todo-${Date.now()}-2`,
+          text: '完了',
+          completed: false,
+          startDate: endDate,
+          endDate: endDate,
+          dueDate: new Date(endDate),
+          estimatedHours: 1
+        }
+      ],
+      startDate: startDate,
+      endDate: endDate,
+      priority: newTask.priority || 0
+    };
+
+    onTaskCreate?.(taskToCreate);
+    setIsCreatingTask(false);
+    setNewTask({
+      title: '',
+      description: '',
+      todos: [],
+      priority: 0,
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0]
+    });
+  };
+
+  // タスク作成フォームをレンダリングする関数
+  const renderTaskCreationForm = () => {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <h2 className="text-xl font-bold mb-4">新しいタスクを作成（ガントチャート）</h2>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">タイトル</label>
+              <input
+                type="text"
+                value={newTask.title}
+                onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                className="w-full p-2 border rounded-md"
+                placeholder="タスクのタイトルを入力"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">説明</label>
+              <textarea
+                value={newTask.description}
+                onChange={(e) => setNewTask({...newTask, description: e.target.value})}
+                className="w-full p-2 border rounded-md h-24"
+                placeholder="タスクの説明を入力"
+              />
+            </div>
+            
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">開始日</label>
+                <input
+                  type="date"
+                  value={newTask.startDate}
+                  onChange={(e) => setNewTask({...newTask, startDate: e.target.value})}
+                  className="w-full p-2 border rounded-md"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">終了日</label>
+                <input
+                  type="date"
+                  value={newTask.endDate}
+                  onChange={(e) => setNewTask({...newTask, endDate: e.target.value})}
+                  className="w-full p-2 border rounded-md"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">優先度</label>
+              <select
+                value={newTask.priority}
+                onChange={(e) => setNewTask({...newTask, priority: Number(e.target.value)})}
+                className="w-full p-2 border rounded-md"
+              >
+                <option value={0}>低</option>
+                <option value={1}>中</option>
+                <option value={2}>高</option>
+              </select>
+            </div>
+          </div>
+          
+          <div className="flex justify-end gap-2 mt-6">
+            <button
+              onClick={() => setIsCreatingTask(false)}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800"
+            >
+              キャンセル
+            </button>
+            <button
+              onClick={handleCreateTask}
+              disabled={!newTask.title}
+              className={`px-4 py-2 rounded-md ${
+                !newTask.title
+                  ? 'bg-gray-300 cursor-not-allowed'
+                  : 'bg-blue-500 text-white hover:bg-blue-600'
+              }`}
+            >
+              作成
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="overflow-x-auto relative" ref={containerRef}>
       <div className="min-w-[1200px]">
         {/* ヘッダー */}
         <div className="flex border-b">
-          <div className="w-60 p-4 font-bold sticky left-0 bg-white z-10">タスク</div>
+          <div className="w-60 p-4 font-bold sticky left-0 bg-white z-10 flex justify-between items-center">
+            <span>タスク</span>
+            <button
+              onClick={() => setIsCreatingTask(true)}
+              className="p-1 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+              title="新しいタスクを追加"
+            >
+              <IoAdd className="w-5 h-5" />
+            </button>
+          </div>
           <div className="flex-1 grid grid-cols-[repeat(30,1fr)] border-l relative">
             {/* 過去の日付のオーバーレイ */}
             <div
@@ -96,7 +257,7 @@ export default function WBSView() {
               : 0;
 
           return (
-            <div key={task.id} className="border-b">
+            <div key={task.id} className="border-b" onClick={() => onTaskSelect(task.id)}>
               {/* 親タスク */}
               <div className="flex bg-gray-100 border-b">
                 <div className="w-60 p-4 font-medium sticky left-0 bg-gray-100 z-10">
@@ -192,6 +353,9 @@ export default function WBSView() {
           );
         })}
       </div>
+      
+      {/* タスク作成フォーム */}
+      {isCreatingTask && renderTaskCreationForm()}
     </div>
   );
 }
