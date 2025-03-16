@@ -1,11 +1,15 @@
 'use client'
 
 import React, { useState } from 'react'
-import { IoAdd, IoTrash, IoPencil, IoSave, IoClose, IoBulb } from 'react-icons/io5'
+import { IoAdd, IoTrash, IoPencil, IoSave, IoClose, IoBulb, IoList, IoGrid, IoBarChart } from 'react-icons/io5'
 import { Task, Todo } from '@/types/task'
 import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { suggestTodos } from '@/utils/openai'
+import KanbanView from './KanbanView'
+import WBSView from './WBSView'
+
+type ViewMode = 'list' | 'kanban' | 'gantt'
 
 interface TaskDetailProps {
   selectedTask: Task | null
@@ -45,6 +49,7 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
   const [isSuggestingTodos, setIsSuggestingTodos] = useState(false)
   const [suggestedTodos, setSuggestedTodos] = useState<{ text: string; estimatedHours: number }[]>([])
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
 
   // 編集モードの切り替え
   const toggleEdit = (field: 'title' | 'description' | string, isEditingTodo: boolean = false) => {
@@ -187,35 +192,83 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
   const renderTaskList = () => {
     return (
       <div className="bg-white rounded-lg shadow p-6 h-full">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">タスク一覧</h2>
-        <div className="space-y-4">
-          {tasks.map((task) => (
-            <div
-              key={task.id}
-              onClick={() => onTaskSelect(task.id)}
-              className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold text-gray-800">タスク一覧</h2>
+          <div className="flex gap-1">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded ${
+                viewMode === 'list'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              title="リスト形式"
             >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-semibold text-gray-800">{task.title}</h3>
-              </div>
-              <p className="text-sm text-gray-600 mb-3 line-clamp-2">{task.description}</p>
-              <div className="flex items-center gap-2">
-                <div className="text-sm text-gray-500">
-                  進捗率: {calculateProgress(task.todos)}%
-                </div>
-                <div className="flex-1 h-2 bg-gray-200 rounded-full">
-                  <div
-                    className="h-full bg-blue-500 rounded-full"
-                    style={{ width: `${calculateProgress(task.todos)}%` }}
-                  />
-                </div>
-              </div>
-              <div className="mt-2 text-sm text-gray-500">
-                TODO: {task.todos.length}件
-              </div>
-            </div>
-          ))}
+              <IoList className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setViewMode('kanban')}
+              className={`p-2 rounded ${
+                viewMode === 'kanban'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              title="カンバン形式"
+            >
+              <IoGrid className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setViewMode('gantt')}
+              className={`p-2 rounded ${
+                viewMode === 'gantt'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              title="ガントチャート形式"
+            >
+              <IoBarChart className="w-5 h-5" />
+            </button>
+          </div>
         </div>
+
+        {viewMode === 'list' && (
+          <div className="space-y-4">
+            {tasks.map((task) => (
+              <div
+                key={task.id}
+                onClick={() => onTaskSelect(task.id)}
+                className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-semibold text-gray-800">{task.title}</h3>
+                </div>
+                <p className="text-sm text-gray-600 mb-3 line-clamp-2">{task.description}</p>
+                <div className="flex items-center gap-2">
+                  <div className="text-sm text-gray-500">
+                    進捗率: {calculateProgress(task.todos)}%
+                  </div>
+                  <div className="flex-1 h-2 bg-gray-200 rounded-full">
+                    <div
+                      className="h-full bg-blue-500 rounded-full"
+                      style={{ width: `${calculateProgress(task.todos)}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="mt-2 text-sm text-gray-500">
+                  TODO: {task.todos.length}件
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {viewMode === 'kanban' && (
+          <KanbanView tasks={tasks} onTaskSelect={onTaskSelect} />
+        )}
+
+        {viewMode === 'gantt' && (
+          <WBSView />
+        )}
       </div>
     )
   }
