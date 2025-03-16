@@ -84,6 +84,10 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0]
   })
+  const [newTaskTodos, setNewTaskTodos] = useState<Todo[]>([])
+  const [newTaskTodoText, setNewTaskTodoText] = useState('')
+  const [isGeneratingTodos, setIsGeneratingTodos] = useState(false)
+  const [newTaskSuggestedTodos, setNewTaskSuggestedTodos] = useState<{ text: string; estimatedHours: number }[]>([])
 
   // 編集モードの切り替え
   const toggleEdit = (field: 'title' | 'description' | string, isEditingTodo: boolean = false) => {
@@ -281,7 +285,7 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
       id: `task-${Date.now()}`,
       title: newTask.title,
       description: newTask.description || '',
-      todos: [],
+      todos: newTaskTodos,
       startDate: newTask.startDate || new Date().toISOString().split('T')[0],
       endDate: newTask.endDate || new Date().toISOString().split('T')[0],
       priority: newTask.priority || 0
@@ -297,13 +301,83 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date().toISOString().split('T')[0]
     })
+    setNewTaskTodos([])
+    setNewTaskTodoText('')
+    setNewTaskSuggestedTodos([])
+  }
+
+  // 新規タスクにTODOを追加
+  const handleAddNewTaskTodo = () => {
+    if (!newTaskTodoText.trim()) return
+
+    const today = new Date()
+    const formattedDate = today.toISOString().split('T')[0] // YYYY-MM-DD形式
+    
+    const newTodo: Todo = {
+      id: `todo-${Date.now()}`,
+      text: newTaskTodoText.trim(),
+      completed: false,
+      startDate: formattedDate,
+      endDate: formattedDate,
+      dueDate: new Date(),
+      estimatedHours: 1 // デフォルトの見積もり工数を1時間に設定
+    }
+
+    setNewTaskTodos([...newTaskTodos, newTodo])
+    setNewTaskTodoText('')
+  }
+
+  // 新規タスクからTODOを削除
+  const handleRemoveNewTaskTodo = (todoId: string) => {
+    setNewTaskTodos(newTaskTodos.filter(todo => todo.id !== todoId))
+  }
+
+  // 新規タスク用のTODO提案を取得
+  const handleSuggestNewTaskTodos = async () => {
+    if (!newTask.title) return
+
+    try {
+      setIsGeneratingTodos(true)
+      const suggestions = await suggestTodos(
+        newTask.title,
+        newTask.description || '',
+        newTaskTodos.map(todo => todo.text)
+      )
+      setNewTaskSuggestedTodos(suggestions)
+    } catch (error) {
+      console.error('Error getting todo suggestions:', error)
+      setErrorMessage(error instanceof Error ? error.message : 'TODOの提案中にエラーが発生しました。')
+    } finally {
+      setIsGeneratingTodos(false)
+    }
+  }
+
+  // 提案されたTODOを新規タスクに追加
+  const handleAddSuggestedNewTaskTodo = (suggestion: { text: string; estimatedHours: number }) => {
+    const today = new Date()
+    const formattedDate = today.toISOString().split('T')[0] // YYYY-MM-DD形式
+    
+    const newTodo: Todo = {
+      id: `todo-${Date.now()}`,
+      text: suggestion.text,
+      completed: false,
+      startDate: formattedDate,
+      endDate: formattedDate,
+      dueDate: new Date(),
+      estimatedHours: suggestion.estimatedHours
+    }
+
+    setNewTaskTodos([...newTaskTodos, newTodo])
+    
+    // 追加したTODOを提案リストから削除
+    setNewTaskSuggestedTodos(prev => prev.filter(todo => todo.text !== suggestion.text))
   }
 
   // タスク作成フォームをレンダリングする関数
   const renderTaskCreationForm = () => {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
           <h2 className="text-xl font-bold mb-4">新しいタスクを作成</h2>
           
           <div className="space-y-4">
@@ -340,11 +414,119 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
                 <option value={2}>高</option>
               </select>
             </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm font-medium text-gray-700">TODOリスト</label>
+                <button
+                  onClick={handleSuggestNewTaskTodos}
+                  disabled={!newTask.title || isGeneratingTodos}
+                  className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${
+                    !newTask.title || isGeneratingTodos
+                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      : 'bg-yellow-500 text-white hover:bg-yellow-600'
+                  }`}
+                  title="AIにTODOを提案してもらう"
+                >
+                  <IoBulb className="w-3 h-3" />
+                  AI提案
+                </button>
+              </div>
+              
+              <div className="space-y-2 mb-2">
+                {newTaskTodos.map((todo) => (
+                  <div key={todo.id} className="flex items-center justify-between bg-gray-50 p-2 rounded border">
+                    <div className="flex-1">
+                      <div className="text-sm text-gray-800">{todo.text}</div>
+                      <div className="text-xs text-gray-500">
+                        見積もり工数: {todo.estimatedHours}時間
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveNewTaskTodo(todo.id)}
+                      className="ml-2 text-red-500 hover:text-red-700"
+                    >
+                      <IoTrash className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="flex items-center">
+                <input
+                  type="text"
+                  value={newTaskTodoText}
+                  onChange={(e) => setNewTaskTodoText(e.target.value)}
+                  placeholder="新しいTODOを追加"
+                  className="flex-1 p-2 border rounded-l-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleAddNewTaskTodo();
+                    }
+                  }}
+                />
+                <button
+                  onClick={handleAddNewTaskTodo}
+                  disabled={!newTaskTodoText.trim()}
+                  className={`p-2 rounded-r-md ${
+                    !newTaskTodoText.trim()
+                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      : 'bg-blue-500 text-white hover:bg-blue-600'
+                  }`}
+                >
+                  <IoAdd className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* AI提案のTODOリスト */}
+            {isGeneratingTodos && (
+              <div className="text-center py-4">
+                <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-yellow-500"></div>
+                <p className="mt-2 text-sm text-gray-600">TODOを生成中...</p>
+              </div>
+            )}
+
+            {newTaskSuggestedTodos.length > 0 && (
+              <div className="p-3 bg-yellow-50 rounded-lg">
+                <h4 className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                  <IoBulb className="w-4 h-4" />
+                  AIからのTODO提案
+                </h4>
+                <div className="space-y-2">
+                  {newTaskSuggestedTodos.map((suggestion, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between bg-white p-2 rounded border border-yellow-200"
+                    >
+                      <div className="flex-1">
+                        <div className="text-sm text-gray-800">{suggestion.text}</div>
+                        <div className="text-xs text-gray-500">
+                          見積もり工数: {suggestion.estimatedHours}時間
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleAddSuggestedNewTaskTodo(suggestion)}
+                        className="ml-2 px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                        title="このTODOを採用"
+                      >
+                        採用
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           
           <div className="flex justify-end gap-2 mt-6">
             <button
-              onClick={() => setIsCreatingTask(false)}
+              onClick={() => {
+                setIsCreatingTask(false);
+                setNewTaskTodos([]);
+                setNewTaskTodoText('');
+                setNewTaskSuggestedTodos([]);
+              }}
               className="px-4 py-2 text-gray-600 hover:text-gray-800"
             >
               キャンセル
@@ -363,30 +545,6 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
           </div>
         </div>
       </div>
-    )
-  }
-
-  // カンバン表示のタスク追加ボタン
-  const renderKanbanAddButton = () => {
-    return (
-      <button
-        onClick={() => setIsCreatingTask(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-blue-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-600 transition-colors"
-      >
-        <IoAdd className="w-8 h-8" />
-      </button>
-    )
-  }
-
-  // ガントチャート表示のタスク追加ボタン
-  const renderGanttAddButton = () => {
-    return (
-      <button
-        onClick={() => setIsCreatingTask(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-blue-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-600 transition-colors"
-      >
-        <IoAdd className="w-8 h-8" />
-      </button>
     )
   }
 
@@ -566,10 +724,6 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
           )}
         </div>
 
-        {/* 各ビューモードに応じたタスク追加ボタンを表示 */}
-        {viewMode === 'kanban' && renderKanbanAddButton()}
-        {viewMode === 'gantt' && renderGanttAddButton()}
-        
         {/* タスク作成フォーム */}
         {isCreatingTask && renderTaskCreationForm()}
       </div>

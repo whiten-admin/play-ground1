@@ -11,6 +11,7 @@ import { Project } from '@/types/project'
 export default function WBSPage() {
   const { isAuthenticated, login, logout } = useAuth()
   const [activeTab, setActiveTab] = useState('wbs')
+  const [selectedTaskId, setSelectedTaskId] = useState<string>('')
   const [project, setProject] = useState<Project>({
     id: '1',
     title: 'プロジェクトA',
@@ -21,6 +22,17 @@ export default function WBSPage() {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   })
+
+  // タスク選択処理
+  const handleTaskSelect = (taskId: string) => {
+    setSelectedTaskId(taskId)
+  }
+
+  // タスク作成処理
+  const handleTaskCreate = (newTask: any) => {
+    // WBSページでのタスク作成処理
+    console.log('新しいタスクが作成されました:', newTask)
+  }
 
   if (!isAuthenticated) {
     return <Auth onLogin={login} />;
@@ -38,7 +50,10 @@ export default function WBSPage() {
                 WBS（Work Breakdown Structure）
               </h1>
             </div>
-            <WBSView />
+            <WBSView 
+              onTaskSelect={handleTaskSelect}
+              onTaskCreate={handleTaskCreate}
+            />
           </div>
         </main>
       </div>
