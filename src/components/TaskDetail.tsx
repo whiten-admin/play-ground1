@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { IoAdd, IoTrash, IoPencil, IoSave, IoClose, IoBulb, IoList, IoGrid, IoBarChart } from 'react-icons/io5'
 import { Task, Todo } from '@/types/task'
 import { format } from 'date-fns'
@@ -8,6 +8,7 @@ import { ja } from 'date-fns/locale'
 import { suggestTodos } from '@/utils/openai'
 import KanbanView from './KanbanView'
 import WBSView from './WBSView'
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 
 type ViewMode = 'list' | 'kanban' | 'gantt'
 
@@ -38,6 +39,12 @@ function getApiUsageCount(): number {
   return usage.count
 }
 
+interface ViewModeButton {
+  id: ViewMode
+  icon: JSX.Element
+  label: string
+}
+
 export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSelect }: TaskDetailProps) {
   const [editState, setEditState] = useState<EditState>({
     title: false,
@@ -50,6 +57,11 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
   const [suggestedTodos, setSuggestedTodos] = useState<{ text: string; estimatedHours: number }[]>([])
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('list')
+  const [viewModeButtons, setViewModeButtons] = useState<ViewModeButton[]>([
+    { id: 'list', icon: <IoList className="w-5 h-5" />, label: 'リスト形式' },
+    { id: 'kanban', icon: <IoGrid className="w-5 h-5" />, label: 'カンバン形式' },
+    { id: 'gantt', icon: <IoBarChart className="w-5 h-5" />, label: 'ガントチャート' }
+  ])
 
   // 編集モードの切り替え
   const toggleEdit = (field: 'title' | 'description' | string, isEditingTodo: boolean = false) => {
@@ -188,47 +200,75 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
     }
   }
 
+  // ドラッグ終了時の処理
+  const handleDragEnd = (result: any) => {
+    if (!result.destination) return
+
+    const items = Array.from(viewModeButtons)
+    const [reorderedItem] = items.splice(result.source.index, 1)
+    items.splice(result.destination.index, 0, reorderedItem)
+
+    setViewModeButtons(items)
+    // 左端のボタンをデフォルトとして localStorage に保存
+    localStorage.setItem('defaultViewMode', items[0].id)
+  }
+
+  // コンポーネントマウント時にデフォルト表示を適用
+  useEffect(() => {
+    const defaultMode = localStorage.getItem('defaultViewMode') as ViewMode
+    if (defaultMode) {
+      setViewMode(defaultMode)
+    }
+  }, [])
+
   // タスク一覧表示のレンダリング
   const renderTaskList = () => {
     return (
       <div className="bg-white rounded-lg shadow p-6 h-full">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-gray-800">タスク一覧</h2>
-          <div className="flex gap-1">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-2 rounded ${
-                viewMode === 'list'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-              title="リスト形式"
-            >
-              <IoList className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setViewMode('kanban')}
-              className={`p-2 rounded ${
-                viewMode === 'kanban'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-              title="カンバン形式"
-            >
-              <IoGrid className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setViewMode('gantt')}
-              className={`p-2 rounded ${
-                viewMode === 'gantt'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-              title="ガントチャート形式"
-            >
-              <IoBarChart className="w-5 h-5" />
-            </button>
-          </div>
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <Droppable droppableId="viewModeButtons" direction="horizontal">
+              {(provided) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className="flex gap-1"
+                >
+                  {viewModeButtons.map((button, index) => (
+                    <Draggable key={button.id} draggableId={button.id} index={index}>
+                      {(provided) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                          className="relative"
+                        >
+                          <button
+                            onClick={() => setViewMode(button.id)}
+                            className={`p-2 rounded ${
+                              viewMode === button.id
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            } ${index === 0 ? 'border-2 border-gray-300' : ''}`}
+                            title={button.label}
+                          >
+                            {button.icon}
+                          </button>
+                          {index === 0 && (
+                            <div className="absolute -top-5 left-1/2 transform -translate-x-1/2">
+                              <span className="text-xs text-gray-500">Default</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
         </div>
 
         {viewMode === 'list' && (
