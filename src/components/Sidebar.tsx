@@ -20,7 +20,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   ]
 
   return (
-    <div className="w-50 bg-white shadow-md p-4">
+    <div className="bg-white shadow-md p-4">
       <div className="space-y-2">
         {tabs.map((tab) => (
           <Link
