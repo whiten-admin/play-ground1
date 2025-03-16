@@ -359,8 +359,11 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
                       <div className="flex items-center gap-2 border-l pl-4">
                         <div className="w-16 h-2 bg-gray-200 rounded-full">
                           <div
-                            className="h-full bg-blue-500 rounded-full"
-                            style={{ width: `${calculateProgress(task.todos)}%` }}
+                            className="h-full rounded-full"
+                            style={{
+                              width: `${calculateProgress(task.todos)}%`,
+                              background: `linear-gradient(to right, rgb(219, 234, 254), rgb(37, 99, 235))`
+                            }}
                           />
                         </div>
                         <span className="text-sm text-gray-500 whitespace-nowrap">
@@ -514,8 +517,11 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
                   </div>
                   <div className="flex-1 h-2 bg-gray-200 rounded-full">
                     <div
-                      className="h-full bg-blue-500 rounded-full"
-                      style={{ width: `${calculateProgress(taskToDisplay.todos)}%` }}
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${calculateProgress(taskToDisplay.todos)}%`,
+                        background: `linear-gradient(to right, rgb(219, 234, 254), rgb(37, 99, 235))`
+                      }}
                     />
                   </div>
                 </div>

@@ -74,8 +74,11 @@ export default function KanbanView({ tasks, onTaskSelect }: KanbanViewProps) {
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-2 bg-gray-200 rounded-full">
                       <div
-                        className="h-full bg-blue-500 rounded-full"
-                        style={{ width: `${calculateProgress(task)}%` }}
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${calculateProgress(task)}%`,
+                          background: `linear-gradient(to right, rgb(219, 234, 254), rgb(37, 99, 235))`
+                        }}
                       />
                     </div>
                     <span className="text-xs text-gray-500">
