@@ -1,9 +1,11 @@
 'use client';
 
 import { useTaskContext } from '@/contexts/TaskContext';
+import { useEffect, useRef } from 'react';
 
 export default function WBSView() {
   const { tasks } = useTaskContext();
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const getDaysBetween = (startDate: Date, endDate: Date) => {
     return Math.ceil(
@@ -16,13 +18,42 @@ export default function WBSView() {
     return getDaysBetween(startDate, date);
   };
 
+  // 今日の日付の位置を計算
+  const today = new Date();
+  const todayPosition = getDatePosition(today);
+
+  // コンポーネントがマウントされた時に、今日の日付が左端に来るようにスクロール
+  useEffect(() => {
+    if (containerRef.current) {
+      const columnWidth = containerRef.current.scrollWidth / 30; // 1日分の幅
+      const scrollPosition = (todayPosition - 4) * columnWidth; // 4日分左に余裕を持たせる
+      containerRef.current.scrollLeft = scrollPosition;
+    }
+  }, [todayPosition]);
+
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto relative" ref={containerRef}>
       <div className="min-w-[1200px]">
         {/* ヘッダー */}
         <div className="flex border-b">
-          <div className="w-64 p-4 font-bold">タスク</div>
-          <div className="flex-1 grid grid-cols-[repeat(30,1fr)] border-l">
+          <div className="w-60 p-4 font-bold sticky left-0 bg-white z-10">タスク</div>
+          <div className="flex-1 grid grid-cols-[repeat(30,1fr)] border-l relative">
+            {/* 過去の日付のオーバーレイ */}
+            <div
+              className="absolute top-0 left-0 h-full bg-gray-100/50"
+              style={{
+                width: `${(todayPosition - 1) * (100 / 30)}%`,
+                zIndex: 1
+              }}
+            />
+            {/* 今日の日付の縦線 */}
+            <div
+              className="absolute top-0 h-full w-px bg-red-500"
+              style={{
+                left: `${(todayPosition - 1) * (100 / 30)}%`,
+                zIndex: 2
+              }}
+            />
             {Array.from({ length: 30 }, (_, i) => (
               <div key={i} className="p-2 text-center text-sm border-r">
                 {i + 1}日
@@ -68,19 +99,36 @@ export default function WBSView() {
             <div key={task.id} className="border-b">
               {/* 親タスク */}
               <div className="flex bg-gray-100 border-b">
-                <div className="w-64 p-4 font-medium">
+                <div className="w-60 p-4 font-medium sticky left-0 bg-gray-100 z-10">
                   {task.title}
                   <span className="text-xs text-gray-500 ml-2">
                     {Math.round(progress)}%
                   </span>
                 </div>
                 <div className="flex-1 relative">
+                  {/* 過去の日付のオーバーレイ */}
+                  <div
+                    className="absolute top-0 left-0 h-full bg-gray-100/50"
+                    style={{
+                      width: `${(todayPosition - 1) * (100 / 30)}%`,
+                      zIndex: 1
+                    }}
+                  />
+                  {/* 今日の日付の縦線 */}
+                  <div
+                    className="absolute top-0 h-full w-px bg-red-500"
+                    style={{
+                      left: `${(todayPosition - 1) * (100 / 30)}%`,
+                      zIndex: 2
+                    }}
+                  />
                   {/* 親タスクの進捗バー */}
                   <div
                     className="absolute h-6 bg-gray-300 rounded"
                     style={{
                       left: `${(taskStartPos - 1) * (100 / 30)}%`,
                       width: `${taskWidth}%`,
+                      zIndex: 0
                     }}
                   >
                     <div
@@ -102,16 +150,31 @@ export default function WBSView() {
 
                 return (
                   <div key={todo.id} className="flex border-b">
-                    {/* 小タスク名 */}
-                    <div className="w-64 p-4 text-sm">{todo.text}</div>
-
-                    {/* 小タスクの進捗バー */}
+                    <div className="w-60 p-4 text-sm sticky left-0 bg-white z-10">{todo.text}</div>
                     <div className="flex-1 relative">
+                      {/* 過去の日付のオーバーレイ */}
+                      <div
+                        className="absolute top-0 left-0 h-full bg-gray-100/50"
+                        style={{
+                          width: `${(todayPosition - 1) * (100 / 30)}%`,
+                          zIndex: 1
+                        }}
+                      />
+                      {/* 今日の日付の縦線 */}
+                      <div
+                        className="absolute top-0 h-full w-px bg-red-500"
+                        style={{
+                          left: `${(todayPosition - 1) * (100 / 30)}%`,
+                          zIndex: 2
+                        }}
+                      />
+                      {/* 小タスクの進捗バー */}
                       <div
                         className="absolute h-6 bg-blue-100 rounded"
                         style={{
                           left: `${(startPos - 1) * (100 / 30)}%`,
                           width: `${todoWidth}%`,
+                          zIndex: 0
                         }}
                       >
                         <div
