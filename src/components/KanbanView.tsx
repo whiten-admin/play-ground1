@@ -60,7 +60,11 @@ export default function KanbanView({ tasks, onTaskSelect }: KanbanViewProps) {
                 <div
                   key={task.id}
                   onClick={() => onTaskSelect(task.id)}
-                  className="bg-white p-4 rounded-lg shadow cursor-pointer hover:shadow-md transition-shadow"
+                  className={`bg-white p-4 rounded-lg shadow cursor-pointer transition-shadow ${
+                    calculateProgress(task) === 100
+                      ? 'opacity-60'
+                      : 'hover:shadow-md'
+                  }`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-gray-800">{task.title}</h4>

@@ -236,16 +236,23 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
   // 並び替え関数
   const sortTasks = (tasksToSort: Task[]) => {
     return [...tasksToSort].sort((a, b) => {
+      // 完了タスクを下部に配置
+      const aProgress = calculateProgress(a.todos);
+      const bProgress = calculateProgress(b.todos);
+      if (aProgress === 100 && bProgress !== 100) return 1;
+      if (aProgress !== 100 && bProgress === 100) return -1;
+
+      // 通常の並び替え
       if (sortState.field === 'dueDate') {
-        const aDate = Math.min(...a.todos.map(todo => todo.dueDate.getTime()))
-        const bDate = Math.min(...b.todos.map(todo => todo.dueDate.getTime()))
-        return sortState.order === 'asc' ? aDate - bDate : bDate - aDate
+        const aDate = Math.min(...a.todos.map(todo => todo.dueDate.getTime()));
+        const bDate = Math.min(...b.todos.map(todo => todo.dueDate.getTime()));
+        return sortState.order === 'asc' ? aDate - bDate : bDate - aDate;
       } else {
-        const aPriority = a.priority || 0
-        const bPriority = b.priority || 0
-        return sortState.order === 'asc' ? aPriority - bPriority : bPriority - aPriority
+        const aPriority = a.priority || 0;
+        const bPriority = b.priority || 0;
+        return sortState.order === 'asc' ? aPriority - bPriority : bPriority - aPriority;
       }
-    })
+    });
   }
 
   // 並び替えの切り替え
@@ -348,7 +355,11 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
                 <div
                   key={task.id}
                   onClick={() => onTaskSelect(task.id)}
-                  className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                    calculateProgress(task.todos) === 100
+                      ? 'bg-gray-50 opacity-60'
+                      : 'hover:bg-gray-50'
+                  }`}
                 >
                   <div className="flex items-center justify-between gap-4">
                     <h3 className="text-lg font-semibold text-gray-800 flex-shrink-0">{task.title}</h3>
