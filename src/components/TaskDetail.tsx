@@ -267,7 +267,7 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
   const renderTaskList = () => {
     return (
       <div className="bg-white rounded-lg shadow p-6 h-[90vh] flex flex-col">
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-bold text-gray-800">タスク一覧</h2>
             <DragDropContext onDragEnd={handleDragEnd}>
@@ -348,7 +348,7 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto mt-4">
+        <div className="flex-1 overflow-y-auto mt-1">
           {viewMode === 'list' && (
             <div className="space-y-4 pr-2">
               {sortTasks(tasks).map((task) => (
@@ -416,7 +416,11 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
           )}
 
           {viewMode === 'kanban' && (
-            <KanbanView tasks={tasks} onTaskSelect={onTaskSelect} />
+            <KanbanView
+              tasks={sortTasks(tasks)}
+              onTaskSelect={onTaskSelect}
+              onTaskUpdate={onTaskUpdate}
+            />
           )}
 
           {viewMode === 'gantt' && (
