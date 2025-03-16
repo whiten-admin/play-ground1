@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { IoAdd, IoTrash, IoPencil, IoSave, IoClose, IoBulb, IoList, IoGrid, IoBarChart } from 'react-icons/io5'
+import { IoAdd, IoTrash, IoPencil, IoSave, IoClose, IoBulb, IoList, IoGrid, IoBarChart, IoCaretDown, IoCaretUp } from 'react-icons/io5'
 import { Task, Todo } from '@/types/task'
 import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
@@ -45,6 +45,14 @@ interface ViewModeButton {
   label: string
 }
 
+type SortField = 'dueDate' | 'priority'
+type SortOrder = 'asc' | 'desc'
+
+interface SortState {
+  field: SortField
+  order: SortOrder
+}
+
 export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSelect }: TaskDetailProps) {
   const [editState, setEditState] = useState<EditState>({
     title: false,
@@ -62,6 +70,10 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
     { id: 'kanban', icon: <IoGrid className="w-5 h-5" />, label: 'カンバン形式' },
     { id: 'gantt', icon: <IoBarChart className="w-5 h-5" />, label: 'ガントチャート' }
   ])
+  const [sortState, setSortState] = useState<SortState>({
+    field: 'dueDate',
+    order: 'asc'
+  })
 
   // 編集モードの切り替え
   const toggleEdit = (field: 'title' | 'description' | string, isEditingTodo: boolean = false) => {
@@ -221,82 +233,168 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
     }
   }, [])
 
+  // 並び替え関数
+  const sortTasks = (tasksToSort: Task[]) => {
+    return [...tasksToSort].sort((a, b) => {
+      if (sortState.field === 'dueDate') {
+        const aDate = Math.min(...a.todos.map(todo => todo.dueDate.getTime()))
+        const bDate = Math.min(...b.todos.map(todo => todo.dueDate.getTime()))
+        return sortState.order === 'asc' ? aDate - bDate : bDate - aDate
+      } else {
+        const aPriority = a.priority || 0
+        const bPriority = b.priority || 0
+        return sortState.order === 'asc' ? aPriority - bPriority : bPriority - aPriority
+      }
+    })
+  }
+
+  // 並び替えの切り替え
+  const toggleSort = (field: SortField) => {
+    setSortState(prev => ({
+      field,
+      order: prev.field === field ? (prev.order === 'asc' ? 'desc' : 'asc') : 'asc'
+    }))
+  }
+
   // タスク一覧表示のレンダリング
   const renderTaskList = () => {
     return (
       <div className="bg-white rounded-lg shadow p-6 h-[90vh] flex flex-col">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-800">タスク一覧</h2>
-          <DragDropContext onDragEnd={handleDragEnd}>
-            <Droppable droppableId="viewModeButtons" direction="horizontal">
-              {(provided) => (
-                <div
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                  className="flex gap-1"
-                >
-                  {viewModeButtons.map((button, index) => (
-                    <Draggable key={button.id} draggableId={button.id} index={index}>
-                      {(provided) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                          className="relative"
-                        >
-                          <button
-                            onClick={() => setViewMode(button.id)}
-                            className={`p-2 rounded ${
-                              viewMode === button.id
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            } ${index === 0 ? 'border-2 border-gray-300' : ''}`}
-                            title={button.label}
+        <div className="flex flex-col gap-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold text-gray-800">タスク一覧</h2>
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <Droppable droppableId="viewModeButtons" direction="horizontal">
+                {(provided) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className="flex gap-1"
+                  >
+                    {viewModeButtons.map((button, index) => (
+                      <Draggable key={button.id} draggableId={button.id} index={index}>
+                        {(provided) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            className="relative"
                           >
-                            {button.icon}
-                          </button>
-                          {index === 0 && (
-                            <div className="absolute -top-5 left-1/2 transform -translate-x-1/2">
-                              <span className="text-xs text-gray-500">Default</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
-          </DragDropContext>
+                            <button
+                              onClick={() => setViewMode(button.id)}
+                              className={`p-2 rounded ${
+                                viewMode === button.id
+                                  ? 'bg-blue-500 text-white'
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              } ${index === 0 ? 'border-2 border-gray-300' : ''}`}
+                              title={button.label}
+                            >
+                              {button.icon}
+                            </button>
+                            {index === 0 && (
+                              <div className="absolute -top-5 left-1/2 transform -translate-x-1/2">
+                                <span className="text-xs text-gray-500">Default</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
+          </div>
+
+          {viewMode === 'list' && (
+            <div className="flex justify-end border-b pb-2">
+              <div className="flex gap-1">
+                <button
+                  onClick={() => toggleSort('dueDate')}
+                  className={`px-2 py-0.5 text-xs rounded flex items-center gap-1 ${
+                    sortState.field === 'dueDate'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  期日
+                  {sortState.field === 'dueDate' && (
+                    sortState.order === 'asc' ? <IoCaretUp className="w-3 h-3" /> : <IoCaretDown className="w-3 h-3" />
+                  )}
+                </button>
+                <button
+                  onClick={() => toggleSort('priority')}
+                  className={`px-2 py-0.5 text-xs rounded flex items-center gap-1 ${
+                    sortState.field === 'priority'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  優先度
+                  {sortState.field === 'priority' && (
+                    sortState.order === 'asc' ? <IoCaretUp className="w-3 h-3" /> : <IoCaretDown className="w-3 h-3" />
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto mt-4">
           {viewMode === 'list' && (
             <div className="space-y-4 pr-2">
-              {tasks.map((task) => (
+              {sortTasks(tasks).map((task) => (
                 <div
                   key={task.id}
                   onClick={() => onTaskSelect(task.id)}
                   className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-lg font-semibold text-gray-800">{task.title}</h3>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">{task.description}</p>
-                  <div className="flex items-center gap-2">
-                    <div className="text-sm text-gray-500">
-                      進捗率: {calculateProgress(task.todos)}%
+                  <div className="flex items-center justify-between gap-4">
+                    <h3 className="text-lg font-semibold text-gray-800 flex-shrink-0">{task.title}</h3>
+                    <div className="flex items-center gap-4 ml-auto">
+                      <div className="text-sm text-gray-500 whitespace-nowrap">
+                        TODO: {task.todos.length}件
+                      </div>
+                      <div className="flex items-center gap-2 border-l pl-4">
+                        <div className="w-16 h-2 bg-gray-200 rounded-full">
+                          <div
+                            className="h-full bg-blue-500 rounded-full"
+                            style={{ width: `${calculateProgress(task.todos)}%` }}
+                          />
+                        </div>
+                        <span className="text-sm text-gray-500 whitespace-nowrap">
+                          {calculateProgress(task.todos)}%
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex-1 h-2 bg-gray-200 rounded-full">
-                      <div
-                        className="h-full bg-blue-500 rounded-full"
-                        style={{ width: `${calculateProgress(task.todos)}%` }}
-                      />
-                    </div>
                   </div>
-                  <div className="mt-2 text-sm text-gray-500">
-                    TODO: {task.todos.length}件
+                  <p className="text-sm text-gray-600 mt-2 line-clamp-2">{task.description}</p>
+                  <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <span>期日:</span>
+                      <span>
+                        {task.todos.length > 0
+                          ? format(
+                              new Date(Math.min(...task.todos.map(todo => todo.dueDate.getTime()))),
+                              'yyyy年M月d日',
+                              { locale: ja }
+                            )
+                          : '未設定'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span>優先度:</span>
+                      <span className={`px-2 py-0.5 rounded ${
+                        task.priority === 2
+                          ? 'bg-red-100 text-red-800'
+                          : task.priority === 1
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {task.priority === 2 ? '高' : task.priority === 1 ? '中' : '低'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}
