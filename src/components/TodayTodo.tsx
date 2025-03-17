@@ -52,6 +52,11 @@ export default function TodayTodo({
 
   // 期日でソート（期日超過 → 今日が期日 → 期日が近い順）
   const sortedTodos = [...filteredTodos].sort((a, b) => {
+    // まず完了状態でソート（未完了が上、完了が下）
+    if (a.completed !== b.completed) {
+      return a.completed ? 1 : -1;
+    }
+    
     const today = startOfDay(new Date());
     const aDueDate =
       a.dueDate instanceof Date ? a.dueDate : new Date(a.dueDate);
@@ -92,6 +97,8 @@ export default function TodayTodo({
               selectedTaskId === todo.taskId
                 ? 'bg-blue-50 border border-blue-200'
                 : 'hover:bg-gray-50'
+            } ${
+              todo.completed ? 'opacity-60 bg-gray-50' : ''
             }`}
           >
             <div className="flex items-center justify-between mb-1">
