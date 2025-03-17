@@ -1,27 +1,34 @@
 'use client';
 
-import { useTaskContext } from '@/contexts/TaskContext';
-import { useEffect, useRef, useState } from 'react';
-import { IoAdd, IoBulb, IoTrash } from 'react-icons/io5';
 import { Task, Todo } from '@/types/task';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { IoAdd, IoBulb, IoTrash } from 'react-icons/io5';
+import { useState } from 'react';
 import { suggestTodos } from '@/utils/openai';
 
-interface WBSViewProps {
-  onTaskCreate?: (newTask: Task) => void;
+interface KanbanViewProps {
+  tasks: Task[];
   onTaskSelect: (taskId: string) => void;
+  onTaskUpdate?: (updatedTask: Task) => void;
+  onTaskCreate?: (newTask: Task) => void;
 }
 
-export default function WBSView({ onTaskCreate, onTaskSelect }: WBSViewProps) {
-  const { tasks } = useTaskContext();
-  const containerRef = useRef<HTMLDivElement>(null);
+type KanbanColumn = {
+  id: string;
+  title: string;
+  tasks: Task[];
+};
+
+export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCreate }: KanbanViewProps) {
   const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [creatingInColumn, setCreatingInColumn] = useState<string | null>(null);
   const [newTask, setNewTask] = useState<Partial<Task>>({
     title: '',
     description: '',
     todos: [],
     priority: 0,
     startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0] // デフォルトで1週間後
+    endDate: new Date().toISOString().split('T')[0]
   });
   const [newTaskTodos, setNewTaskTodos] = useState<Todo[]>([]);
   const [newTaskTodoText, setNewTaskTodoText] = useState('');
@@ -29,84 +36,161 @@ export default function WBSView({ onTaskCreate, onTaskSelect }: WBSViewProps) {
   const [newTaskSuggestedTodos, setNewTaskSuggestedTodos] = useState<{ text: string; estimatedHours: number }[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const getDaysBetween = (startDate: Date, endDate: Date) => {
-    return Math.ceil(
-      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
-    );
+  // 進捗率を計算する関数
+  const calculateProgress = (task: Task) => {
+    if (task.todos.length === 0) return 0;
+    const completedTodos = task.todos.filter(todo => todo.completed).length;
+    return Math.round((completedTodos / task.todos.length) * 100);
   };
 
-  const getDatePosition = (date: Date) => {
-    const startDate = new Date('2025-03-01'); // 基準日
-    return getDaysBetween(startDate, date);
-  };
-
-  // 今日の日付の位置を計算
-  const today = new Date();
-  const todayPosition = getDatePosition(today);
-
-  // コンポーネントがマウントされた時に、今日の日付が左端に来るようにスクロール
-  useEffect(() => {
-    if (containerRef.current) {
-      const columnWidth = containerRef.current.scrollWidth / 30; // 1日分の幅
-      const scrollPosition = (todayPosition - 4) * columnWidth; // 4日分左に余裕を持たせる
-      containerRef.current.scrollLeft = scrollPosition;
+  // タスクを進捗率に基づいて分類
+  const columns: KanbanColumn[] = [
+    {
+      id: 'not-started',
+      title: '未着手',
+      tasks: tasks.filter(task => calculateProgress(task) === 0)
+    },
+    {
+      id: 'in-progress',
+      title: '進行中',
+      tasks: tasks.filter(task => calculateProgress(task) > 0 && calculateProgress(task) < 100)
+    },
+    {
+      id: 'completed',
+      title: '完了',
+      tasks: tasks.filter(task => calculateProgress(task) === 100)
     }
-  }, [todayPosition]);
+  ];
+
+  // ドラッグ終了時の処理
+  const handleDragEnd = (result: any) => {
+    if (!result.destination) return;
+
+    const { source, destination } = result;
+    const task = tasks.find(t => t.id === result.draggableId);
+    if (!task) return;
+
+    // タスクのTODOの状態を更新
+    const updateTaskStatus = (task: Task, newStatus: string) => {
+      const updatedTask = { ...task };
+      
+      switch (newStatus) {
+        case 'not-started':
+          // すべてのTODOを未完了に
+          updatedTask.todos = task.todos.map(todo => ({
+            ...todo,
+            completed: false
+          }));
+          break;
+        case 'in-progress':
+          // 一部のTODOを完了に（まだ完了していない場合）
+          if (calculateProgress(task) === 0) {
+            const firstTodo = task.todos[0];
+            if (firstTodo) {
+              updatedTask.todos = task.todos.map((todo, index) => ({
+                ...todo,
+                completed: index === 0
+              }));
+            }
+          }
+          break;
+        case 'completed':
+          // すべてのTODOを完了に
+          updatedTask.todos = task.todos.map(todo => ({
+            ...todo,
+            completed: true
+          }));
+          break;
+      }
+
+      return updatedTask;
+    };
+
+    // タスクの状態を更新
+    const updatedTask = updateTaskStatus(task, destination.droppableId);
+    onTaskUpdate?.(updatedTask);
+  };
 
   // 新しいタスクを作成する関数
   const handleCreateTask = () => {
-    if (!newTask.title) return;
-
-    const startDate = newTask.startDate || new Date().toISOString().split('T')[0];
-    const endDate = newTask.endDate || new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0];
+    if (!newTask.title || !creatingInColumn) return;
 
     const taskToCreate: Task = {
       id: `task-${Date.now()}`,
       title: newTask.title,
       description: newTask.description || '',
-      todos: newTaskTodos.length > 0 ? newTaskTodos : getDefaultTodos(startDate, endDate),
-      startDate: startDate,
-      endDate: endDate,
+      todos: newTaskTodos.length > 0 ? newTaskTodos : getDefaultTodosForColumn(creatingInColumn),
+      startDate: newTask.startDate || new Date().toISOString().split('T')[0],
+      endDate: newTask.endDate || new Date().toISOString().split('T')[0],
       priority: newTask.priority || 0
     };
 
     onTaskCreate?.(taskToCreate);
     setIsCreatingTask(false);
+    setCreatingInColumn(null);
     setNewTask({
       title: '',
       description: '',
       todos: [],
       priority: 0,
       startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0]
+      endDate: new Date().toISOString().split('T')[0]
     });
     setNewTaskTodos([]);
     setNewTaskTodoText('');
     setNewTaskSuggestedTodos([]);
   };
 
-  // デフォルトのTODOを生成
-  const getDefaultTodos = (startDate: string, endDate: string): Todo[] => {
-    return [
-      {
-        id: `todo-${Date.now()}-1`,
-        text: '開始',
-        completed: false,
-        startDate: startDate,
-        endDate: startDate,
-        dueDate: new Date(startDate),
+  // カラムに応じたデフォルトのTODOを生成
+  const getDefaultTodosForColumn = (columnId: string): Todo[] => {
+    const today = new Date();
+    const formattedDate = today.toISOString().split('T')[0];
+
+    if (columnId === 'completed') {
+      // 完了カラムの場合、ダミーのTODOを1つ追加して完了状態にする
+      return [{
+        id: `todo-${Date.now()}`,
+        text: 'タスク完了',
+        completed: true,
+        startDate: formattedDate,
+        endDate: formattedDate,
+        dueDate: new Date(),
         estimatedHours: 1
-      },
-      {
-        id: `todo-${Date.now()}-2`,
-        text: '完了',
+      }];
+    } else if (columnId === 'in-progress') {
+      // 進行中カラムの場合、ダミーのTODOを2つ追加して1つを完了状態にする
+      return [
+        {
+          id: `todo-${Date.now()}-1`,
+          text: 'ステップ1',
+          completed: true,
+          startDate: formattedDate,
+          endDate: formattedDate,
+          dueDate: new Date(),
+          estimatedHours: 1
+        },
+        {
+          id: `todo-${Date.now()}-2`,
+          text: 'ステップ2',
+          completed: false,
+          startDate: formattedDate,
+          endDate: formattedDate,
+          dueDate: new Date(),
+          estimatedHours: 1
+        }
+      ];
+    } else {
+      // 未着手カラムの場合、ダミーのTODOを1つ追加して未完了状態にする
+      return [{
+        id: `todo-${Date.now()}`,
+        text: 'タスク開始',
         completed: false,
-        startDate: endDate,
-        endDate: endDate,
-        dueDate: new Date(endDate),
+        startDate: formattedDate,
+        endDate: formattedDate,
+        dueDate: new Date(),
         estimatedHours: 1
-      }
-    ];
+      }];
+    }
   };
 
   // 新規タスクにTODOを追加
@@ -181,7 +265,12 @@ export default function WBSView({ onTaskCreate, onTaskSelect }: WBSViewProps) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-          <h2 className="text-xl font-bold mb-4">新しいタスクを作成（ガントチャート）</h2>
+          <h2 className="text-xl font-bold mb-4">
+            新しいタスクを作成
+            {creatingInColumn === 'not-started' && ' (未着手)'}
+            {creatingInColumn === 'in-progress' && ' (進行中)'}
+            {creatingInColumn === 'completed' && ' (完了)'}
+          </h2>
           
           <div className="space-y-4">
             <div>
@@ -203,27 +292,6 @@ export default function WBSView({ onTaskCreate, onTaskSelect }: WBSViewProps) {
                 className="w-full p-2 border rounded-md h-24"
                 placeholder="タスクの説明を入力"
               />
-            </div>
-            
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">開始日</label>
-                <input
-                  type="date"
-                  value={newTask.startDate}
-                  onChange={(e) => setNewTask({...newTask, startDate: e.target.value})}
-                  className="w-full p-2 border rounded-md"
-                />
-              </div>
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">終了日</label>
-                <input
-                  type="date"
-                  value={newTask.endDate}
-                  onChange={(e) => setNewTask({...newTask, endDate: e.target.value})}
-                  className="w-full p-2 border rounded-md"
-                />
-              </div>
             </div>
             
             <div>
@@ -347,6 +415,7 @@ export default function WBSView({ onTaskCreate, onTaskSelect }: WBSViewProps) {
             <button
               onClick={() => {
                 setIsCreatingTask(false);
+                setCreatingInColumn(null);
                 setNewTaskTodos([]);
                 setNewTaskTodoText('');
                 setNewTaskSuggestedTodos([]);
@@ -373,181 +442,95 @@ export default function WBSView({ onTaskCreate, onTaskSelect }: WBSViewProps) {
   };
 
   return (
-    <div className="overflow-x-auto relative" ref={containerRef}>
-      <div className="flex justify-between items-center mb-2">
-        <h3 className="font-medium text-gray-700">ガントチャート</h3>
-        <button
-          onClick={() => setIsCreatingTask(true)}
-          className="px-2 py-0.5 text-xs rounded flex items-center gap-1 bg-blue-500 text-white hover:bg-blue-600"
-        >
-          <IoAdd className="w-3 h-3" />
-          タスク追加
-        </button>
-      </div>
-      <div className="min-w-[1200px]">
-        {/* ヘッダー */}
-        <div className="flex border-b">
-          <div className="w-60 p-4 font-bold sticky left-0 bg-white z-10 flex justify-between items-center">
-            <span>タスク</span>
-          </div>
-          <div className="flex-1 grid grid-cols-[repeat(30,1fr)] border-l relative">
-            {/* 過去の日付のオーバーレイ */}
+    <div className="h-full overflow-x-auto">
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <div className="flex gap-4 min-w-max h-full p-4">
+          {columns.map(column => (
             <div
-              className="absolute top-0 left-0 h-full bg-gray-100/50"
-              style={{
-                width: `${(todayPosition - 1) * (100 / 30)}%`,
-                zIndex: 1
-              }}
-            />
-            {/* 今日の日付の縦線 */}
-            <div
-              className="absolute top-0 h-full w-px bg-red-500"
-              style={{
-                left: `${(todayPosition - 1) * (100 / 30)}%`,
-                zIndex: 2
-              }}
-            />
-            {Array.from({ length: 30 }, (_, i) => (
-              <div key={i} className="p-2 text-center text-sm border-r">
-                {i + 1}日
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* タスク一覧 */}
-        {tasks.map((task) => {
-          // 小タスクの開始日・終了日
-          const taskStartDate = new Date(
-            Math.min(
-              ...task.todos.map((todo) => new Date(todo.startDate).getTime())
-            )
-          );
-          const taskEndDate = new Date(
-            Math.max(
-              ...task.todos.map((todo) => new Date(todo.endDate).getTime())
-            )
-          );
-
-          // 親タスクのガントバー位置と幅
-          const taskStartPos = getDatePosition(taskStartDate);
-          const taskEndPos = getDatePosition(taskEndDate);
-          const taskWidth = (taskEndPos - taskStartPos + 1) * (100 / 30);
-
-          // 親タスクの進捗率を計算
-          const totalEstimatedHours = task.todos.reduce(
-            (sum, todo) => sum + todo.estimatedHours,
-            0
-          );
-          const completedHours = task.todos.reduce(
-            (sum, todo) => sum + (todo.completed ? todo.estimatedHours : 0),
-            0
-          );
-          const progress =
-            totalEstimatedHours > 0
-              ? (completedHours / totalEstimatedHours) * 100
-              : 0;
-
-          return (
-            <div key={task.id} className="border-b" onClick={() => onTaskSelect(task.id)}>
-              {/* 親タスク */}
-              <div className="flex bg-gray-100 border-b">
-                <div className="w-60 p-4 font-medium sticky left-0 bg-gray-100 z-10">
-                  {task.title}
-                  <span className="text-xs text-gray-500 ml-2">
-                    {Math.round(progress)}%
-                  </span>
-                </div>
-                <div className="flex-1 relative">
-                  {/* 過去の日付のオーバーレイ */}
+              key={column.id}
+              className="w-40 flex flex-col bg-gray-100 rounded-lg"
+            >
+              <h3 className="font-medium text-gray-700 p-3 pb-2 flex items-center justify-between">
+                {column.title}
+                <span className="text-sm text-gray-500">
+                  {column.tasks.length}件
+                </span>
+              </h3>
+              <Droppable droppableId={column.id}>
+                {(provided) => (
                   <div
-                    className="absolute top-0 left-0 h-full bg-gray-100/50"
-                    style={{
-                      width: `${(todayPosition - 1) * (100 / 30)}%`,
-                      zIndex: 1
-                    }}
-                  />
-                  {/* 今日の日付の縦線 */}
-                  <div
-                    className="absolute top-0 h-full w-px bg-red-500"
-                    style={{
-                      left: `${(todayPosition - 1) * (100 / 30)}%`,
-                      zIndex: 2
-                    }}
-                  />
-                  {/* 親タスクの進捗バー */}
-                  <div
-                    className="absolute h-6 bg-gray-300 rounded"
-                    style={{
-                      left: `${(taskStartPos - 1) * (100 / 30)}%`,
-                      width: `${taskWidth}%`,
-                      zIndex: 0
-                    }}
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className="flex-1 p-2 space-y-2 overflow-y-auto"
                   >
-                    <div
-                      className="h-full bg-green-500 rounded"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* 小タスク（todo） */}
-              {task.todos.map((todo) => {
-                const startDate = new Date(todo.startDate);
-                const endDate = new Date(todo.endDate);
-
-                const startPos = getDatePosition(startDate);
-                const endPos = getDatePosition(endDate);
-                const todoWidth = (endPos - startPos + 1) * (100 / 30);
-
-                return (
-                  <div key={todo.id} className="flex border-b">
-                    <div className="w-60 p-4 text-sm sticky left-0 bg-white z-10">{todo.text}</div>
-                    <div className="flex-1 relative">
-                      {/* 過去の日付のオーバーレイ */}
-                      <div
-                        className="absolute top-0 left-0 h-full bg-gray-100/50"
-                        style={{
-                          width: `${(todayPosition - 1) * (100 / 30)}%`,
-                          zIndex: 1
-                        }}
-                      />
-                      {/* 今日の日付の縦線 */}
-                      <div
-                        className="absolute top-0 h-full w-px bg-red-500"
-                        style={{
-                          left: `${(todayPosition - 1) * (100 / 30)}%`,
-                          zIndex: 2
-                        }}
-                      />
-                      {/* 小タスクの進捗バー */}
-                      <div
-                        className="absolute h-6 bg-blue-100 rounded"
-                        style={{
-                          left: `${(startPos - 1) * (100 / 30)}%`,
-                          width: `${todoWidth}%`,
-                          zIndex: 0
-                        }}
+                    {column.tasks.map((task, index) => (
+                      <Draggable
+                        key={task.id}
+                        draggableId={task.id}
+                        index={index}
                       >
-                        <div
-                          className="h-full bg-blue-500 rounded"
-                          style={{
-                            width: `${todo.completed ? 100 : 0}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
+                        {(provided) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            onClick={() => onTaskSelect(task.id)}
+                            className={`bg-white p-3 rounded-lg shadow cursor-pointer transition-shadow ${
+                              calculateProgress(task) === 100
+                                ? 'opacity-60'
+                                : 'hover:shadow-md'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-1.5">
+                              <h4 className="font-medium text-gray-800 text-sm">{task.title}</h4>
+                              <span className="text-xs text-gray-500">
+                                {calculateProgress(task)}%
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-600 line-clamp-2 mb-1.5">
+                              {task.description}
+                            </p>
+                            <div className="flex items-center gap-1.5">
+                              <div className="flex-1 h-1.5 bg-gray-200 rounded-full">
+                                <div
+                                  className="h-full rounded-full"
+                                  style={{
+                                    width: `${calculateProgress(task)}%`,
+                                    background: `linear-gradient(to right, rgb(219, 234, 254), rgb(37, 99, 235))`
+                                  }}
+                                />
+                              </div>
+                              <span className="text-xs text-gray-500">
+                                {task.todos.filter(todo => todo.completed).length}/{task.todos.length}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                    
+                    {/* カラムごとのタスク追加ボタン */}
+                    <button
+                      onClick={() => {
+                        setIsCreatingTask(true);
+                        setCreatingInColumn(column.id);
+                      }}
+                      className="w-full p-2 text-sm text-gray-500 hover:text-gray-700 flex items-center justify-center gap-1 rounded-lg border border-dashed border-gray-300 hover:border-gray-400 transition-colors"
+                    >
+                      <IoAdd className="w-4 h-4" />
+                      タスク追加
+                    </button>
                   </div>
-                );
-              })}
+                )}
+              </Droppable>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      </DragDropContext>
       
       {/* タスク作成フォーム */}
       {isCreatingTask && renderTaskCreationForm()}
     </div>
   );
-}
+} 
