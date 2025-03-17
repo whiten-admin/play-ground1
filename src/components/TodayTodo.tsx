@@ -110,6 +110,9 @@ export default function TodayTodo({
                     e.stopPropagation();
                     onTodoStatusChange(todo.taskId, todo.id);
                   }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
                   className="w-4 h-4"
                 />
                 <span
