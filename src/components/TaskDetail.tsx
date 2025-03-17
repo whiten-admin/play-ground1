@@ -14,9 +14,10 @@ type ViewMode = 'list' | 'kanban' | 'gantt'
 
 interface TaskDetailProps {
   selectedTask: Task | null
+  selectedTodoId: string | null
   onTaskUpdate?: (updatedTask: Task) => void
   tasks: Task[]
-  onTaskSelect: (taskId: string) => void
+  onTaskSelect: (taskId: string, todoId?: string) => void
   onTaskCreate?: (newTask: Task) => void
 }
 
@@ -54,7 +55,7 @@ interface SortState {
   order: SortOrder
 }
 
-export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSelect, onTaskCreate }: TaskDetailProps) {
+export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate, tasks, onTaskSelect, onTaskCreate }: TaskDetailProps) {
   const [editState, setEditState] = useState<EditState>({
     title: false,
     description: false,
@@ -889,7 +890,12 @@ export default function TaskDetail({ selectedTask, onTaskUpdate, tasks, onTaskSe
 
       <div className="space-y-3">
         {taskToDisplay.todos.map((todo) => (
-          <div key={todo.id} className="flex items-center group">
+          <div 
+            key={todo.id} 
+            className={`flex items-center group ${
+              selectedTodoId === todo.id ? 'bg-blue-50 border border-blue-200 rounded-lg p-2 -ml-2' : 'p-2 -ml-2'
+            }`}
+          >
             <input
               type="checkbox"
               checked={todo.completed}

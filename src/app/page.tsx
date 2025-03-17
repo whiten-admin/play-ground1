@@ -18,6 +18,7 @@ export default function Home() {
   const { isAuthenticated, login, logout } = useAuth()
   const [activeTab, setActiveTab] = useState('todo')
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null)
   const { tasks, setTasks } = useTaskContext()
   // const [tasks, setTasks] = useState<Task[]>([
   //   {
@@ -64,9 +65,18 @@ export default function Home() {
     updatedAt: new Date().toISOString(),
   })
 
-  // WeeklyScheduleのイベントをTaskDetailで表示するための関数
-  const handleTaskSelect = (taskId: string) => {
+  // タスク選択ハンドラーを修正
+  const handleTaskSelect = (taskId: string, todoId?: string) => {
     setSelectedTaskId(taskId);
+    if (todoId) {
+      setSelectedTodoId(todoId);
+    }
+  };
+
+  // TODO選択ハンドラーを追加
+  const handleTodoSelect = (taskId: string, todoId: string) => {
+    setSelectedTaskId(taskId);
+    setSelectedTodoId(todoId);
   };
 
   // タスクの更新処理
@@ -164,7 +174,8 @@ export default function Home() {
                 <TodayTodo
                   tasks={tasks}
                   selectedTaskId={selectedTaskId}
-                  onTaskSelect={setSelectedTaskId}
+                  selectedTodoId={selectedTodoId}
+                  onTaskSelect={handleTodoSelect}
                   onTodoStatusChange={handleTodoStatusChange}
                 />
               </div>
@@ -180,9 +191,10 @@ export default function Home() {
               <div className="text-sm">
                 <TaskDetail
                   selectedTask={selectedTask}
+                  selectedTodoId={selectedTodoId}
                   onTaskUpdate={handleTaskUpdate}
                   tasks={tasks}
-                  onTaskSelect={setSelectedTaskId}
+                  onTaskSelect={handleTaskSelect}
                   onTaskCreate={handleTaskCreate}
                 />
               </div>

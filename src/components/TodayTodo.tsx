@@ -16,13 +16,15 @@ import { Task, Todo } from '@/types/task';
 interface TodayTodoProps {
   tasks: Task[];
   selectedTaskId: string | null;
-  onTaskSelect: (taskId: string) => void;
+  selectedTodoId: string | null;
+  onTaskSelect: (taskId: string, todoId: string) => void;
   onTodoStatusChange: (taskId: string, todoId: string) => void;
 }
 
 export default function TodayTodo({
   tasks,
   selectedTaskId,
+  selectedTodoId,
   onTaskSelect,
   onTodoStatusChange,
 }: TodayTodoProps) {
@@ -92,9 +94,9 @@ export default function TodayTodo({
         {sortedTodos.map((todo, index) => (
           <div
             key={todo.id}
-            onClick={() => onTaskSelect(todo.taskId)}
+            onClick={() => onTaskSelect(todo.taskId, todo.id)}
             className={`p-2 rounded-lg cursor-pointer transition-colors ${
-              selectedTaskId === todo.taskId
+              selectedTaskId === todo.taskId && selectedTodoId === todo.id
                 ? 'bg-blue-50 border border-blue-200'
                 : 'hover:bg-gray-50'
             } ${
