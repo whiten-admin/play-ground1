@@ -13,9 +13,9 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const pathname = usePathname()
   
   const tabs = [
-    { id: 'todo', label: 'TODO', icon: '📝', href: '/' },
+    { id: 'todo', label: 'やること', icon: '📝', href: '/' },
     { id: 'wbs', label: 'WBS', icon: '📊', href: '/wbs' },
-    { id: 'analysis', label: '分析', icon: '📈', href: '/analysis' },
+    { id: 'analysis', label: 'PJ分析', icon: '📈', href: '/analysis' },
     { id: 'settings', label: '設定', icon: '⚙️', href: '/settings' },
   ]
 
