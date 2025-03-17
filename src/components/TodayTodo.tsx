@@ -89,7 +89,7 @@ export default function TodayTodo({
     <div className="bg-white rounded-lg shadow p-3">
       <h2 className="text-base font-bold mb-2">今日のTODO</h2>
       <div className="space-y-2">
-        {sortedTodos.map((todo) => (
+        {sortedTodos.map((todo, index) => (
           <div
             key={todo.id}
             onClick={() => onTaskSelect(todo.taskId)}
@@ -99,8 +99,15 @@ export default function TodayTodo({
                 : 'hover:bg-gray-50'
             } ${
               todo.completed ? 'opacity-60 bg-gray-50' : ''
+            } ${
+              index === 0 && !todo.completed ? 'border-l-4 border-l-amber-500 bg-amber-50' : ''
             }`}
           >
+            {index === 0 && !todo.completed && (
+              <div className="mb-1">
+                <span className="text-xs font-semibold bg-amber-100 text-amber-800 px-2 py-0.5 rounded">NEXT TODO</span>
+              </div>
+            )}
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
                 <input
