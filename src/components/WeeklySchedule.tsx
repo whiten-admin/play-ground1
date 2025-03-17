@@ -14,7 +14,7 @@ const DndContext = dynamic(
 
 interface WeeklyScheduleProps {
   tasks: Task[]
-  onTaskSelect: (taskId: string) => void
+  onTaskSelect: (taskId: string, todoId?: string) => void
   onTodoUpdate: (todoId: string, taskId: string, newDate: Date) => void
 }
 

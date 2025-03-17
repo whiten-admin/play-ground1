@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   format,
   isBefore,
@@ -16,16 +16,21 @@ import { Task, Todo } from '@/types/task';
 interface TodayTodoProps {
   tasks: Task[];
   selectedTaskId: string | null;
-  onTaskSelect: (taskId: string) => void;
+  selectedTodoId: string | null;
+  onTaskSelect: (taskId: string, todoId: string) => void;
   onTodoStatusChange: (taskId: string, todoId: string) => void;
 }
 
 export default function TodayTodo({
   tasks,
   selectedTaskId,
+  selectedTodoId,
   onTaskSelect,
   onTodoStatusChange,
 }: TodayTodoProps) {
+  // アコーディオンの開閉状態を管理
+  const [isExpanded, setIsExpanded] = useState(true);
+
   // 全タスクからTODOを抽出し、親タスク情報と一緒にフラット化
   const allTodos = tasks.flatMap((task) =>
     task.todos.map((todo) => ({
@@ -52,6 +57,11 @@ export default function TodayTodo({
 
   // 期日でソート（期日超過 → 今日が期日 → 期日が近い順）
   const sortedTodos = [...filteredTodos].sort((a, b) => {
+    // まず完了状態でソート（未完了が上、完了が下）
+    if (a.completed !== b.completed) {
+      return a.completed ? 1 : -1;
+    }
+    
     const today = startOfDay(new Date());
     const aDueDate =
       a.dueDate instanceof Date ? a.dueDate : new Date(a.dueDate);
@@ -81,58 +91,90 @@ export default function TodayTodo({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-3">
-      <h2 className="text-base font-bold mb-2">今日のTODO</h2>
-      <div className="space-y-2">
-        {sortedTodos.map((todo) => (
-          <div
-            key={todo.id}
-            onClick={() => onTaskSelect(todo.taskId)}
-            className={`p-2 rounded-lg cursor-pointer transition-colors ${
-              selectedTaskId === todo.taskId
-                ? 'bg-blue-50 border border-blue-200'
-                : 'hover:bg-gray-50'
-            }`}
-          >
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={todo.completed}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    onTodoStatusChange(todo.taskId, todo.id);
-                  }}
-                  className="w-4 h-4"
-                />
-                <span
-                  className={`text-sm ${
-                    todo.completed ? 'line-through text-gray-500' : ''
-                  }`}
-                >
-                  {todo.text}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`text-xs ${getDueDateStyle(todo.dueDate)}`}>
-                  期日: {format(todo.dueDate, 'M/d', { locale: ja })}
-                </span>
-                {todo.isNew && (
-                  <span className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
-                    NEW
+    <div className="bg-white rounded-lg shadow p-2">
+      <div className="flex justify-between items-center mb-1">
+        <h2 className="text-base font-bold">今日のTODO</h2>
+        <button 
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="text-xs text-gray-500 hover:text-gray-700 flex items-center"
+        >
+          {isExpanded ? '折りたたむ' : '展開する'}
+          <span className="ml-1">{isExpanded ? '▲' : '▼'}</span>
+        </button>
+      </div>
+      <div className="space-y-1">
+        {sortedTodos.map((todo, index) => {
+          // NEXT TODOか、展開されている場合に表示
+          const shouldShow = (index === 0 && !todo.completed) || isExpanded;
+          if (!shouldShow) return null;
+          
+          return (
+            <div
+              key={todo.id}
+              onClick={() => onTaskSelect(todo.taskId, todo.id)}
+              className={`py-1 px-2 rounded-lg cursor-pointer transition-colors ${
+                selectedTaskId === todo.taskId && selectedTodoId === todo.id
+                  ? 'bg-blue-50 border border-blue-200'
+                  : 'hover:bg-gray-50'
+              } ${
+                todo.completed ? 'opacity-60 bg-gray-50' : ''
+              } ${
+                index === 0 && !todo.completed ? 'border-l-4 border-l-amber-500 bg-amber-50' : ''
+              }`}
+            >
+              {index === 0 && !todo.completed && (
+                <div className="mb-0.5">
+                  <span className="text-xs font-semibold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">NEXT TODO</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between mb-0.5">
+                <div className="flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    checked={todo.completed}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      onTodoStatusChange(todo.taskId, todo.id);
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                    className="w-3.5 h-3.5"
+                  />
+                  <span
+                    className={`text-sm ${
+                      todo.completed ? 'line-through text-gray-500' : ''
+                    }`}
+                  >
+                    {todo.text}
                   </span>
-                )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className={`text-xs ${getDueDateStyle(todo.dueDate)}`}>
+                    期日: {format(todo.dueDate, 'M/d', { locale: ja })}
+                  </span>
+                  {todo.isNew && (
+                    <span className="px-1 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
+                      NEW
+                    </span>
+                  )}
+                </div>
               </div>
+              <div className="ml-4 text-xs text-gray-500">タスク名：{todo.taskTitle}</div>
             </div>
-            <div className="ml-6 text-xs text-gray-500">{todo.taskTitle}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
-      <div className="mt-2 text-right">
-        <a href="#" className="text-blue-500 hover:text-blue-600 text-xs">
-          カレンダーで確認 →
-        </a>
-      </div>
+      {!isExpanded && sortedTodos.length > 1 && (
+        <div className="mt-1 text-center">
+          <button 
+            onClick={() => setIsExpanded(true)}
+            className="text-xs text-blue-500 hover:text-blue-700"
+          >
+            他 {sortedTodos.length - 1} 件のTODOを表示
+          </button>
+        </div>
+      )}
     </div>
   );
 }
