@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { format, addDays, startOfWeek, isSameDay, addHours, isBefore, isToday, parse, startOfMonth, endOfMonth, getDaysInMonth, getDay, addMonths } from 'date-fns'
+import { format, addDays, startOfWeek, isSameDay, addHours, isBefore, isToday, parse, startOfMonth, endOfMonth, getDaysInMonth, getDay, addMonths, startOfDay } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { Task } from '@/types/task'
 import { IoCalendarOutline, IoGrid, IoList, IoChevronBack, IoChevronForward, IoCalendarClearOutline, IoCalendarNumberOutline } from 'react-icons/io5'
@@ -15,7 +15,7 @@ const DndContext = dynamic(
 interface WeeklyScheduleProps {
   tasks: Task[]
   onTaskSelect: (taskId: string, todoId?: string) => void
-  onTodoUpdate: (todoId: string, taskId: string, newDate: Date) => void
+  onTodoUpdate: (todoId: string, taskId: string, newDate: Date, isPlannedDate?: boolean) => void
 }
 
 interface TodoWithMeta {
@@ -25,10 +25,15 @@ interface TodoWithMeta {
     completed: boolean
     dueDate: Date
     estimatedHours: number
+    originalEstimatedHours?: number
     startTime?: number
+    plannedStartDate?: Date
+    plannedEndDate?: Date
   }
   taskId: string
   taskTitle: string
+  priority?: number
+  isNextTodo: boolean
 }
 
 // ビューモードの型定義
@@ -128,55 +133,150 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: We
   const scheduleTodos = () => {
     // 全タスクのTODOを日付でグループ化
     const todosByDate = new Map<string, TodoWithMeta[]>()
-
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const todayDate = startOfDay(new Date());
+    
+    // すべてのTODOを一度に処理し、適切な日付に配置
     tasks.forEach(task => {
       task.todos.forEach(todo => {
-        const dateKey = format(todo.dueDate, 'yyyy-MM-dd')
-        if (!todosByDate.has(dateKey)) {
-          todosByDate.set(dateKey, [])
+        // 該当する日付を決定
+        let dateKey: string;
+        
+        if (todo.plannedStartDate) {
+          // 着手予定日が設定されている場合はそれを使用
+          dateKey = format(todo.plannedStartDate, 'yyyy-MM-dd');
+        } else {
+          // 期日が今日または過去の場合は今日に配置
+          const dueDate = startOfDay(new Date(todo.dueDate));
+          if (isToday(dueDate) || isBefore(dueDate, todayDate)) {
+            dateKey = today;
+          } else {
+            // それ以外は期日に配置
+            dateKey = format(dueDate, 'yyyy-MM-dd');
+          }
         }
+        
+        // 該当日付のリストがなければ作成
+        if (!todosByDate.has(dateKey)) {
+          todosByDate.set(dateKey, []);
+        }
+        
+        // 表示用の見積もり時間を調整（最大8時間とする）
+        const displayEstimatedHours = Math.min(todo.estimatedHours, 8);
+        
+        // TODOを追加
         todosByDate.get(dateKey)?.push({
           todo: {
             ...todo,
-            startTime: 9 // デフォルト値を設定
+            startTime: todo.plannedStartDate ? todo.plannedStartDate.getHours() : 9, // 着手予定日の時間または9時をデフォルト設定
+            // 見積もり工数は最大8時間に制限（9時から17時まで）
+            estimatedHours: displayEstimatedHours,
+            originalEstimatedHours: todo.estimatedHours // 元の見積もり時間を保持
           },
           taskId: task.id,
-          taskTitle: task.title
-        })
-      })
-    })
+          taskTitle: task.title,
+          priority: task.priority || 0, // 優先度を追加（未設定の場合は0）
+          isNextTodo: false // NEXTTODOフラグの初期値
+        });
+      });
+    });
 
-    // 各日付のTODOを時間で並べ替え
+    // 各日付のTODOを優先度で並べ替え（完了状態は考慮しない）
     todosByDate.forEach((todos, dateKey) => {
+      // 優先度のみでソート（完了状態は考慮しない）
       todos.sort((a, b) => {
-        if (isBefore(a.todo.dueDate, b.todo.dueDate)) return -1
-        if (isBefore(b.todo.dueDate, a.todo.dueDate)) return 1
-        return 0
-      })
-
-      // TODOに時間を割り当て
-      let currentTime = 9 // 9:00から開始
-      todos.forEach(({ todo }) => {
-        // 既に過去の時間の場合、現在時刻に更新
-        const now = new Date()
-        if (currentTime < now.getHours()) {
-          currentTime = now.getHours()
+        // 1. 優先度でソート（高い順）
+        if (a.priority !== b.priority) {
+          return (b.priority || 0) - (a.priority || 0);
         }
+        
+        // 2. 期日でソート
+        const today = startOfDay(new Date());
+        const aDueDate = a.todo.dueDate;
+        const bDueDate = b.todo.dueDate;
+        const aIsOverdue = isBefore(aDueDate, today);
+        const bIsOverdue = isBefore(bDueDate, today);
+        const aIsToday = isToday(aDueDate);
+        const bIsToday = isToday(bDueDate);
 
-        // 終了時間が18時を超えないように調整
-        if (currentTime + todo.estimatedHours > 18) {
-          currentTime = 18 - todo.estimatedHours
+        if (aIsOverdue !== bIsOverdue) return aIsOverdue ? -1 : 1;
+        if (aIsToday !== bIsToday) return aIsToday ? -1 : 1;
+        return aDueDate.getTime() - bDueDate.getTime();
+      });
+
+      // 今日の日付かどうかチェック
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      const isTodayDate = dateKey === todayStr;
+
+      // NEXTTODOの設定：今日の未完了TODOの中で最も優先度の高いものをマーク
+      if (isTodayDate) {
+        // 未完了のTODOを探して最初のものをNEXTTODOとしてマーク
+        const incompleteTodos = todos.filter(item => !item.todo.completed);
+        if (incompleteTodos.length > 0) {
+          incompleteTodos[0].isNextTodo = true;
         }
+        
+        // 今日の場合は9:00から詰めて配置（常に9:00から開始、現在時刻に関わらず）
+        let startTime = 9;
+        
+        // すべてのTODOを優先度順に配置
+        todos.forEach(({ todo }) => {
+          todo.startTime = startTime;
+          
+          // 終了時間が17時を超えないように調整
+          if (startTime + todo.estimatedHours > 17) {
+            // 最低でも1時間は確保
+            todo.estimatedHours = Math.max(1, 17 - startTime);
+          }
+          
+          startTime += todo.estimatedHours;
+        });
+      } else {
+        // 今日以外の日付の場合は、plannedStartDateがあればその時間を尊重
+        todos.forEach(({ todo }) => {
+          // 既に着手予定時間が設定されている場合はそれを使用
+          if (todo.plannedStartDate) {
+            const plannedHour = todo.plannedStartDate.getHours();
+            // 営業時間内（9-17時）の場合のみその時間を使用
+            if (plannedHour >= 9 && plannedHour <= 16) {
+              todo.startTime = plannedHour;
+              
+              // 終了時間が17時を超えないように調整
+              if (plannedHour + todo.estimatedHours > 17) {
+                todo.estimatedHours = Math.max(1, 17 - plannedHour);
+              }
+              return;
+            }
+          }
+          
+          // 開始時間のデフォルトは9時
+          todo.startTime = todo.startTime || 9;
+          
+          // 終了時間が17時を超えないように調整
+          if (todo.startTime + todo.estimatedHours > 17) {
+            todo.estimatedHours = Math.max(1, 17 - todo.startTime);
+          }
+        });
+      }
+    });
 
-        todo.startTime = currentTime
-        currentTime += todo.estimatedHours
-      })
-    })
-
-    return todosByDate
+    return todosByDate;
   }
 
   const todoSchedule = scheduleTodos()
+  
+  // デバッグ用：今日のTODOをコンソールに出力
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const todayTodos = todoSchedule.get(todayStr) || [];
+  console.log('今日のTODO一覧:', todayTodos.map(item => ({
+    id: item.todo.id,
+    text: item.todo.text,
+    taskId: item.taskId,
+    taskTitle: item.taskTitle,
+    estimatedHours: item.todo.estimatedHours,
+    originalEstimatedHours: item.todo.originalEstimatedHours,
+    startTime: item.todo.startTime
+  })));
 
   // 日単位ビューのレンダリング
   const renderDayView = () => {
@@ -224,15 +324,45 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: We
             ))}
 
             {/* TODOの表示 */}
-            {todayTodos.map(({ todo, taskId, taskTitle }) => {
+            {todayTodos.map(({ todo, taskId, taskTitle, priority, isNextTodo }) => {
               const hourHeight = 64; // 1時間の高さ（px）
               const top = (todo.startTime || 9) * hourHeight - 9 * hourHeight;
               const height = todo.estimatedHours * hourHeight;
+              
+              // 状態に応じた色分け
+              let borderColor = todo.completed ? 'border-gray-400' : 'border-blue-400';
+              let bgColor = 'bg-white';
+              let textColor = 'text-gray-800';
+              
+              if (todo.completed) {
+                // 完了済みTODO：グレーアウト
+                bgColor = 'bg-gray-100';
+                textColor = 'text-gray-500';
+              } else {
+                // NEXTTODOかどうか判定（今日かつisNextTodoがtrueのTODOのみ黄色にする）
+                const today = format(new Date(), 'yyyy-MM-dd');
+                const isDisplayingToday = today === todayKey;
+                
+                if (isDisplayingToday && isNextTodo) {
+                  // 今日のTODO（NEXTTODO表示対象）：黄色系
+                  bgColor = 'bg-amber-100';
+                  borderColor = 'border-amber-500';
+                }
+                // それ以外のTODOは白（デフォルト）のまま
+              }
+              
+              // ラベル（予定か期日かの区別）
+              let timeLabel = '';
+              if (todo.plannedStartDate) {
+                timeLabel = '予定: ';
+              } else if (isToday(todo.dueDate)) {
+                timeLabel = '期日: ';
+              }
 
               return (
                 <div
                   key={todo.id}
-                  className="absolute left-0 right-0 mx-1 p-1 rounded overflow-hidden border-l-4 border-blue-500 bg-blue-50 text-xs"
+                  className={`absolute left-0 right-0 mx-1 p-1 rounded overflow-hidden border-l-4 ${borderColor} ${bgColor} ${textColor}`}
                   style={{
                     top: `${top}px`,
                     height: `${height}px`,
@@ -241,6 +371,12 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: We
                 >
                   <div className="font-medium truncate">{todo.text}</div>
                   <div className="text-gray-500 truncate">{taskTitle}</div>
+                  <div className="text-gray-500">
+                    {timeLabel}{Math.round((todo.originalEstimatedHours || todo.estimatedHours) * 10) / 10}h
+                    {todo.plannedStartDate && format(todo.plannedStartDate, 'yyyy-MM-dd') !== todayKey && (
+                      <span className="ml-1 text-xs text-gray-400">(予定: {format(todo.plannedStartDate, 'M/d')})</span>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -301,15 +437,42 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: We
                   {format(day, 'd')}
                 </div>
                 <div className="space-y-1">
-                  {dayTodos.slice(0, 3).map(({ todo, taskId }) => (
-                    <div
-                      key={todo.id}
-                      className="text-xs p-1 bg-blue-100 rounded truncate cursor-pointer"
-                      onClick={() => onTaskSelect(taskId, todo.id)}
-                    >
-                      {todo.text}
-                    </div>
-                  ))}
+                  {dayTodos.slice(0, 3).map(({ todo, taskId, priority, isNextTodo }) => {
+                    // 状態に応じた色分け
+                    let bgColor = 'bg-white';
+                    let textColor = 'text-gray-800';
+                    let borderClass = 'border border-gray-200';
+                    
+                    if (todo.completed) {
+                      // 完了済みTODO：グレーアウト
+                      bgColor = 'bg-gray-100';
+                      textColor = 'text-gray-500';
+                      borderClass = 'border border-gray-300';
+                    } else {
+                      // NEXTTODOかどうか判定（今日かつisNextTodoがtrueのTODOのみ黄色にする）
+                      const today = format(new Date(), 'yyyy-MM-dd');
+                      const isDisplayingToday = isToday(day) && format(day, 'yyyy-MM-dd') === today;
+                      
+                      if (isDisplayingToday && isNextTodo) {
+                        // 今日のTODO（NEXTTODO表示対象）：黄色系
+                        bgColor = 'bg-amber-100';
+                        borderClass = 'border border-amber-400';
+                      } else {
+                        // 予定TODO：デフォルト白色
+                        bgColor = 'bg-white';
+                      }
+                    }
+                    
+                    return (
+                      <div
+                        key={todo.id}
+                        className={`text-xs p-1 ${bgColor} rounded truncate cursor-pointer flex items-center ${textColor} ${borderClass}`}
+                        onClick={() => onTaskSelect(taskId, todo.id)}
+                      >
+                        <span className="truncate">{todo.text}</span>
+                      </div>
+                    );
+                  })}
                   {dayTodos.length > 3 && (
                     <div className="text-xs text-gray-500 text-center">
                       + {dayTodos.length - 3} more
@@ -510,15 +673,42 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: We
                       {format(day, 'd')}
                     </div>
                     <div className="space-y-1">
-                      {dayTodos.slice(0, 3).map(({ todo, taskId }) => (
-                        <div
-                          key={todo.id}
-                          className="text-xs p-1 bg-blue-100 rounded truncate cursor-pointer"
-                          onClick={() => onTaskSelect(taskId, todo.id)}
-                        >
-                          {todo.text}
-                        </div>
-                      ))}
+                      {dayTodos.slice(0, 3).map(({ todo, taskId, priority, isNextTodo }) => {
+                        // 状態に応じた色分け
+                        let bgColor = 'bg-white';
+                        let textColor = 'text-gray-800';
+                        let borderClass = 'border border-gray-200';
+                        
+                        if (todo.completed) {
+                          // 完了済みTODO：グレーアウト
+                          bgColor = 'bg-gray-100';
+                          textColor = 'text-gray-500';
+                          borderClass = 'border border-gray-300';
+                        } else {
+                          // NEXTTODOかどうか判定（今日かつisNextTodoがtrueのTODOのみ黄色にする）
+                          const today = format(new Date(), 'yyyy-MM-dd');
+                          const isDisplayingToday = isToday(day) && format(day, 'yyyy-MM-dd') === today;
+                          
+                          if (isDisplayingToday && isNextTodo) {
+                            // 今日のTODO（NEXTTODO表示対象）：黄色系
+                            bgColor = 'bg-amber-100';
+                            borderClass = 'border border-amber-400';
+                          } else {
+                            // 予定TODO：デフォルト白色
+                            bgColor = 'bg-white';
+                          }
+                        }
+                        
+                        return (
+                          <div
+                            key={todo.id}
+                            className={`text-xs p-1 ${bgColor} rounded truncate cursor-pointer flex items-center ${textColor} ${borderClass}`}
+                            onClick={() => onTaskSelect(taskId, todo.id)}
+                          >
+                            <span className="truncate">{todo.text}</span>
+                          </div>
+                        );
+                      })}
                       {dayTodos.length > 3 && (
                         <div className="text-xs text-gray-500 text-center">
                           + {dayTodos.length - 3} more

@@ -6,6 +6,10 @@ export interface Todo {
   endDate: string;
   dueDate: Date;
   estimatedHours: number; // 見積もり工数（時間単位）
+  
+  // 新たに追加するフィールド
+  plannedStartDate?: Date; // 着手予定日時
+  plannedEndDate?: Date;   // 完了予定日時
 }
 
 export interface Task {
