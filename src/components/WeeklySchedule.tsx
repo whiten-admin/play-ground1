@@ -320,7 +320,7 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
               const overflowTodo: TodoWithMeta = {
                 todo: {
                   ...todo,
-                  id: `${todo.id}-overflow-${Date.now()}`, // 一意のIDを生成
+                  id: `${todo.id}-overflow`, // 一意だが安定したIDを生成
                   estimatedHours: overflowHours,
                   originalEstimatedHours: todo.originalEstimatedHours
                 },
@@ -345,12 +345,38 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
           
           // 次の開始時間が休憩時間にかかる場合
           if (startTime < BUSINESS_HOURS.BREAK_START && nextStartTime > BUSINESS_HOURS.BREAK_START) {
-            // 休憩時間終了後から再開するように調整
-            if (nextStartTime <= BUSINESS_HOURS.BREAK_END) {
-              // 休憩時間内で終わる場合は問題なし
-              nextStartTime = BUSINESS_HOURS.BREAK_END;
-            } else {
-              // 休憩時間をまたぐ場合は休憩時間分をスキップ
+            // 休憩時間をまたぐTODOを分割
+            const beforeBreakHours = BUSINESS_HOURS.BREAK_START - startTime;
+            const afterBreakHours = todo.estimatedHours - beforeBreakHours;
+            
+            // 元のTODOを休憩前の部分に調整
+            todo.estimatedHours = beforeBreakHours;
+            
+            // 休憩後の部分を別のTODOとして作成し、日付のTODOリストに追加
+            if (afterBreakHours > 0) {
+              const afterBreakTodo: TodoWithMeta = {
+                todo: {
+                  ...todo,
+                  id: `${todo.id}-after-break`, // 一意だが安定したIDを生成
+                  startTime: BUSINESS_HOURS.BREAK_END,
+                  estimatedHours: afterBreakHours,
+                  originalEstimatedHours: todo.originalEstimatedHours
+                },
+                taskId: todoWithMeta.taskId,
+                taskTitle: todoWithMeta.taskTitle,
+                priority: todoWithMeta.priority,
+                isNextTodo: false
+              };
+              
+              // 日付のTODOリストに追加
+              todos.push(afterBreakTodo);
+            }
+          } else if (nextStartTime <= BUSINESS_HOURS.BREAK_END && nextStartTime > BUSINESS_HOURS.BREAK_START) {
+            // 休憩時間内で終わる場合は問題なし
+            nextStartTime = BUSINESS_HOURS.BREAK_END;
+          } else if (nextStartTime > BUSINESS_HOURS.BREAK_END) {
+            // 休憩時間をまたぐ場合は休憩時間分をスキップ
+            if (startTime < BUSINESS_HOURS.BREAK_START) {
               nextStartTime += (BUSINESS_HOURS.BREAK_END - BUSINESS_HOURS.BREAK_START);
             }
           }
@@ -402,7 +428,8 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
       const isTodayDate = dateKey === todayStr;
       
       if (!isTodayDate) {
-        todos.forEach(({ todo }) => {
+        todos.forEach((todoWithMeta) => {
+          const { todo } = todoWithMeta;
           // 既に着手予定時間が設定されている場合はそれを使用
           if (todo.plannedStartDate) {
             const plannedHour = todo.plannedStartDate.getHours();
@@ -414,11 +441,32 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
               // 終了予定時間が休憩時間にかかる場合は調整
               const estimatedEndHour = plannedHour + todo.estimatedHours;
               if (plannedHour < BUSINESS_HOURS.BREAK_START && estimatedEndHour > BUSINESS_HOURS.BREAK_START) {
-                // 休憩時間分を考慮して見積もり時間を調整
-                todo.estimatedHours = Math.min(
-                  BUSINESS_HOURS.BREAK_START - plannedHour,  // 休憩開始までの時間
-                  todo.estimatedHours  // 元の見積もり時間
-                );
+                // 休憩時間前までの分割部分
+                const beforeBreakHours = BUSINESS_HOURS.BREAK_START - plannedHour;
+                const afterBreakHours = todo.estimatedHours - beforeBreakHours;
+                
+                // 休憩前の部分に調整
+                todo.estimatedHours = beforeBreakHours;
+                
+                // 休憩後の部分を別のTODOとして作成し、日付のTODOリストに追加
+                if (afterBreakHours > 0) {
+                  const afterBreakTodo: TodoWithMeta = {
+                    todo: {
+                      ...todo,
+                      id: `${todo.id}-after-break`, // 一意だが安定したIDを生成
+                      startTime: BUSINESS_HOURS.BREAK_END,
+                      estimatedHours: afterBreakHours,
+                      originalEstimatedHours: todo.originalEstimatedHours
+                    },
+                    taskId: todoWithMeta.taskId,
+                    taskTitle: todoWithMeta.taskTitle,
+                    priority: todoWithMeta.priority,
+                    isNextTodo: false
+                  };
+                  
+                  // 日付のTODOリストに追加
+                  todos.push(afterBreakTodo);
+                }
               }
               
               // 終了時間が営業終了時間を超えないように調整
@@ -582,6 +630,7 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
                 >
                   <div className={`font-medium truncate ${selectedTodoId === todo.id ? 'text-blue-700 font-bold' : ''}`}>
                     {todo.text}
+                    {todo.id.includes('-after-break-') && <span className="text-xs ml-1 text-amber-600">（休憩後）</span>}
                   </div>
                   <div className="text-gray-500 truncate">{taskTitle}</div>
                   <div className="text-gray-500">
