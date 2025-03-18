@@ -29,7 +29,7 @@ export default function TodayTodo({
   onTodoStatusChange,
 }: TodayTodoProps) {
   // アコーディオンの開閉状態を管理
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // 全タスクからTODOを抽出し、親タスク情報と一緒にフラット化
   const allTodos = tasks.flatMap((task) =>
