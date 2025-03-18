@@ -6,6 +6,7 @@ import { ja } from 'date-fns/locale'
 import { Task } from '@/types/task'
 import { IoCalendarOutline, IoGrid, IoList, IoChevronBack, IoChevronForward, IoCalendarClearOutline, IoCalendarNumberOutline } from 'react-icons/io5'
 import dynamic from 'next/dynamic'
+import { BUSINESS_HOURS, generateTimeSlots } from '@/utils/constants'
 
 const DndContext = dynamic(
   () => import('./WeeklyScheduleDnd').then(mod => mod.default),
@@ -99,8 +100,8 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: We
   
   const monthCalendarDays = generateMonthCalendarDays()
 
-  // 時間帯の設定（9:00-18:00）
-  const timeSlots = Array.from({ length: 10 }, (_, i) => i + 9)
+  // 時間帯の設定
+  const timeSlots = generateTimeSlots()
 
   // 前へ移動
   const movePrevious = () => {
@@ -162,14 +163,14 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: We
         }
         
         // 表示用の見積もり時間を調整（最大8時間とする）
-        const displayEstimatedHours = Math.min(todo.estimatedHours, 8);
+        const displayEstimatedHours = Math.min(todo.estimatedHours, BUSINESS_HOURS.MAX_HOURS);
         
         // TODOを追加
         todosByDate.get(dateKey)?.push({
           todo: {
             ...todo,
-            startTime: todo.plannedStartDate ? todo.plannedStartDate.getHours() : 9, // 着手予定日の時間または9時をデフォルト設定
-            // 見積もり工数は最大8時間に制限（9時から17時まで）
+            startTime: todo.plannedStartDate ? todo.plannedStartDate.getHours() : BUSINESS_HOURS.START_HOUR, // 着手予定日の時間または9時をデフォルト設定
+            // 見積もり工数は最大8時間に制限
             estimatedHours: displayEstimatedHours,
             originalEstimatedHours: todo.estimatedHours // 元の見積もり時間を保持
           },
@@ -216,17 +217,17 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: We
           incompleteTodos[0].isNextTodo = true;
         }
         
-        // 今日の場合は9:00から詰めて配置（常に9:00から開始、現在時刻に関わらず）
-        let startTime = 9;
+        // 今日の場合は開始時間から詰めて配置（常に開始時間から開始、現在時刻に関わらず）
+        let startTime = BUSINESS_HOURS.START_HOUR;
         
         // すべてのTODOを優先度順に配置
         todos.forEach(({ todo }) => {
           todo.startTime = startTime;
           
-          // 終了時間が17時を超えないように調整
-          if (startTime + todo.estimatedHours > 17) {
+          // 終了時間が営業終了時間を超えないように調整
+          if (startTime + todo.estimatedHours > BUSINESS_HOURS.END_HOUR) {
             // 最低でも1時間は確保
-            todo.estimatedHours = Math.max(1, 17 - startTime);
+            todo.estimatedHours = Math.max(1, BUSINESS_HOURS.END_HOUR - startTime);
           }
           
           startTime += todo.estimatedHours;
@@ -237,24 +238,24 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: We
           // 既に着手予定時間が設定されている場合はそれを使用
           if (todo.plannedStartDate) {
             const plannedHour = todo.plannedStartDate.getHours();
-            // 営業時間内（9-17時）の場合のみその時間を使用
-            if (plannedHour >= 9 && plannedHour <= 16) {
+            // 営業時間内の場合のみその時間を使用
+            if (plannedHour >= BUSINESS_HOURS.START_HOUR && plannedHour <= BUSINESS_HOURS.END_HOUR - 1) {
               todo.startTime = plannedHour;
               
-              // 終了時間が17時を超えないように調整
-              if (plannedHour + todo.estimatedHours > 17) {
-                todo.estimatedHours = Math.max(1, 17 - plannedHour);
+              // 終了時間が営業終了時間を超えないように調整
+              if (plannedHour + todo.estimatedHours > BUSINESS_HOURS.END_HOUR) {
+                todo.estimatedHours = Math.max(1, BUSINESS_HOURS.END_HOUR - plannedHour);
               }
               return;
             }
           }
           
-          // 開始時間のデフォルトは9時
-          todo.startTime = todo.startTime || 9;
+          // 開始時間のデフォルトは営業開始時間
+          todo.startTime = todo.startTime || BUSINESS_HOURS.START_HOUR;
           
-          // 終了時間が17時を超えないように調整
-          if (todo.startTime + todo.estimatedHours > 17) {
-            todo.estimatedHours = Math.max(1, 17 - todo.startTime);
+          // 終了時間が営業終了時間を超えないように調整
+          if (todo.startTime + todo.estimatedHours > BUSINESS_HOURS.END_HOUR) {
+            todo.estimatedHours = Math.max(1, BUSINESS_HOURS.END_HOUR - todo.startTime);
           }
         });
       }
@@ -326,7 +327,7 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: We
             {/* TODOの表示 */}
             {todayTodos.map(({ todo, taskId, taskTitle, priority, isNextTodo }) => {
               const hourHeight = 64; // 1時間の高さ（px）
-              const top = (todo.startTime || 9) * hourHeight - 9 * hourHeight;
+              const top = (todo.startTime || BUSINESS_HOURS.START_HOUR) * hourHeight - BUSINESS_HOURS.START_HOUR * hourHeight;
               const height = todo.estimatedHours * hourHeight;
               
               // 状態に応じた色分け

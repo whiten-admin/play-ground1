@@ -3,12 +3,14 @@
 import React, { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { Task } from '@/types/task'
+import { BUSINESS_HOURS } from '@/utils/constants'
 
 interface WeeklyScheduleDndProps {
   weekDays: Date[]
   timeSlots: number[]
   tasks: Task[]
   onTaskSelect: (taskId: string) => void
+  onTodoUpdate?: (todoId: string, taskId: string, newDate: Date, isPlannedDate?: boolean) => void
 }
 
 interface TodoWithMeta {
@@ -34,6 +36,7 @@ export default function WeeklyScheduleDnd({
   timeSlots,
   tasks,
   onTaskSelect,
+  onTodoUpdate,
 }: WeeklyScheduleDndProps) {
   const [mounted, setMounted] = useState(false)
   const [todos, setTodos] = useState<Map<string, TodoWithMeta[]>>(new Map())
@@ -86,11 +89,11 @@ export default function WeeklyScheduleDnd({
           todosByDate.set(dateKey, [])
         }
         
-        // デフォルトの開始時間は9時
-        const defaultStartTime = 9;
+        // デフォルトの開始時間は営業開始時間
+        const defaultStartTime = BUSINESS_HOURS.START_HOUR;
         
-        // 表示用の見積もり時間を調整（最大8時間とする）
-        const displayEstimatedHours = Math.min(todo.estimatedHours, 8);
+        // 表示用の見積もり時間を調整（最大時間に制限）
+        const displayEstimatedHours = Math.min(todo.estimatedHours, BUSINESS_HOURS.MAX_HOURS);
         
         // 開始時間の決定
         let startTime = defaultStartTime;
@@ -98,8 +101,8 @@ export default function WeeklyScheduleDnd({
         // plannedStartDateが設定されている場合はその時間を使用
         if (todo.plannedStartDate) {
           const plannedHour = todo.plannedStartDate.getHours();
-          // 営業時間内（9-17時）の場合のみその時間を使用
-          if (plannedHour >= 9 && plannedHour <= 16) {
+          // 営業時間内の場合のみその時間を使用
+          if (plannedHour >= BUSINESS_HOURS.START_HOUR && plannedHour <= BUSINESS_HOURS.END_HOUR - 1) {
             startTime = plannedHour;
           }
         }
@@ -157,17 +160,17 @@ export default function WeeklyScheduleDnd({
         }
       }
       
-      // 今日のTODOの場合は9時から詰めて配置する
+      // 今日のTODOの場合は営業開始時間から詰めて配置する
       if (isTodayDate) {
-        let currentHour = 9;
+        let currentHour = BUSINESS_HOURS.START_HOUR;
         todos.forEach((todoWithMeta) => {
           const { todo } = todoWithMeta;
           
           // 開始時間を割り当て
           todo.startTime = currentHour;
           
-          // 次のTODOの開始時間を計算（最大17時まで）
-          currentHour = Math.min(17, currentHour + todo.estimatedHours);
+          // 次のTODOの開始時間を計算（最大営業終了時間まで）
+          currentHour = Math.min(BUSINESS_HOURS.END_HOUR, currentHour + todo.estimatedHours);
         });
       }
     });
