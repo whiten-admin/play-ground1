@@ -132,14 +132,14 @@ export default function WeeklyScheduleDnd({
       const todayStr = format(new Date(), 'yyyy-MM-dd');
       const isTodayDate = dateKey === todayStr;
       
-      // TODOをソート（優先度、完了状態）
+      // TODOをソート（優先度のみ、完了状態は考慮しない）
       todos.sort((a, b) => {
-        // 1. 完了状態でソート（未完了が上、完了が下）
-        if (a.todo.completed !== b.todo.completed) {
-          return a.todo.completed ? 1 : -1;
+        // 1. 優先度でソート（高い順）
+        if (a.priority !== b.priority) {
+          return (b.priority || 0) - (a.priority || 0);
         }
         
-        // 2. 期日でソート（TodayTodo.tsxと同じ並び順にする）
+        // 2. 期日でソート
         const today = new Date();
         today.setHours(0, 0, 0, 0);  // startOfDay相当の処理
         
@@ -311,11 +311,11 @@ export default function WeeklyScheduleDnd({
       const todos = todosByDate.get(dateKey) || [];
       if (todos.length === 0) return;
       
-      // 最新の状態でソート
+      // 最新の状態でソート（優先度のみ、完了状態は考慮しない）
       todos.sort((a, b) => {
-        // 1. 完了状態でソート（未完了が上、完了が下）
-        if (a.todo.completed !== b.todo.completed) {
-          return a.todo.completed ? 1 : -1;
+        // 1. 優先度でソート（高い順）
+        if (a.priority !== b.priority) {
+          return (b.priority || 0) - (a.priority || 0);
         }
         
         // 2. 期日でソート
