@@ -9,8 +9,9 @@ interface WeeklyScheduleDndProps {
   weekDays: Date[]
   timeSlots: number[]
   tasks: Task[]
-  onTaskSelect: (taskId: string) => void
+  onTaskSelect: (taskId: string, todoId?: string) => void
   onTodoUpdate?: (todoId: string, taskId: string, newDate: Date, isPlannedDate?: boolean) => void
+  selectedTodoId?: string | null
 }
 
 interface TodoWithMeta {
@@ -36,6 +37,7 @@ export default function WeeklyScheduleDnd({
   tasks,
   onTaskSelect,
   onTodoUpdate,
+  selectedTodoId,
 }: WeeklyScheduleDndProps) {
   const [mounted, setMounted] = useState(false)
   const [todos, setTodos] = useState<Map<string, TodoWithMeta[]>>(new Map())
@@ -45,6 +47,13 @@ export default function WeeklyScheduleDnd({
     const initialTodos = scheduleTodos()
     setTodos(initialTodos)
   }, [tasks])
+
+  // selectedTodoIdが変更されたときにコンソールログに出力
+  useEffect(() => {
+    if (selectedTodoId) {
+      console.log('WeeklyScheduleDnd - 選択されたTODO:', selectedTodoId)
+    }
+  }, [selectedTodoId])
 
   // マウント状態の管理
   useEffect(() => {
@@ -410,36 +419,62 @@ export default function WeeklyScheduleDnd({
                     休憩
                   </div>
                 )}
-                {todosForHour.map(({ todo, taskId, taskTitle, priority, isNextTodo }) => (
-                  <div
-                    key={`${todo.id}-${taskId}`}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onTaskSelect(taskId)
-                    }}
-                    style={{
-                      height: `${todo.estimatedHours * 48}px`,
-                      width: 'calc(100% - 2px)',
-                      position: 'absolute',
-                      top: 0,
-                      left: 1,
-                    }}
-                    className={`${
-                      todo.completed ? 'bg-gray-100' : 
-                      (format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') && 
-                       isNextTodo) ? 'bg-amber-100' :
-                      priority === 2 ? 'bg-red-100' : 
-                      priority === 1 ? 'bg-orange-100' : 'bg-blue-100'
-                    } rounded p-1 cursor-pointer hover:shadow-md transition-shadow overflow-hidden`}
-                  >
-                    <div className="text-xs font-medium truncate">{todo.text}</div>
-                    <div className="text-xs text-gray-500 truncate">{taskTitle}</div>
-                    <div className="text-xs text-gray-500">{Math.round((todo.originalEstimatedHours || todo.estimatedHours) * 10) / 10}h</div>
-                    {priority === 2 && !todo.completed && (
-                      <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" title="高優先度" />
-                    )}
-                  </div>
-                ))}
+                {todosForHour.map(({ todo, taskId, taskTitle, priority, isNextTodo }) => {
+                  // 選択されているかどうかをチェック
+                  const isSelected = selectedTodoId === todo.id;
+                  
+                  // デバッグ用：選択状態を出力
+                  if (isSelected) {
+                    console.log('選択されたTODOを表示:', todo.id, todo.text);
+                  }
+
+                  return (
+                    <div
+                      key={`${todo.id}-${taskId}`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        console.log('TODO選択:', todo.id, taskId);
+                        onTaskSelect(taskId, todo.id)
+                      }}
+                      style={{
+                        height: `${todo.estimatedHours * 48}px`,
+                        width: 'calc(100% - 2px)',
+                        position: 'absolute',
+                        top: 0,
+                        left: 1,
+                        // 選択されている場合は前面に表示
+                        zIndex: isSelected ? 10 : 1,
+                        // 選択されている場合は境界線を追加
+                        border: isSelected ? '2px solid #3b82f6' : undefined,
+                        // 選択されている場合は影を強調
+                        boxShadow: isSelected ? '0 4px 12px rgba(59, 130, 246, 0.5)' : undefined,
+                        // 選択されている場合は背景色を強調
+                        backgroundColor: isSelected ? 
+                          (todo.completed ? '#e5e7eb' : 
+                           (format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') && isNextTodo) ? '#fef3c7' : 
+                           priority === 2 ? '#fee2e2' : 
+                           priority === 1 ? '#ffedd5' : '#dbeafe') : undefined
+                      }}
+                      className={`${
+                        todo.completed ? 'bg-gray-100' : 
+                        (format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') && 
+                         isNextTodo) ? 'bg-amber-100' :
+                        priority === 2 ? 'bg-red-100' : 
+                        priority === 1 ? 'bg-orange-100' : 'bg-blue-100'
+                      } rounded p-1 cursor-pointer hover:shadow-md transition-shadow overflow-hidden
+                        ${isSelected ? 'ring-4 ring-blue-500 shadow-md' : ''}`}
+                    >
+                      <div className={`text-xs font-medium truncate ${isSelected ? 'text-blue-700 font-bold' : ''}`}>
+                        {todo.text}
+                      </div>
+                      <div className="text-xs text-gray-500 truncate">{taskTitle}</div>
+                      <div className="text-xs text-gray-500">{Math.round((todo.originalEstimatedHours || todo.estimatedHours) * 10) / 10}h</div>
+                      {priority === 2 && !todo.completed && (
+                        <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" title="高優先度" />
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )
           })}

@@ -17,6 +17,7 @@ interface WeeklyScheduleProps {
   tasks: Task[]
   onTaskSelect: (taskId: string, todoId?: string) => void
   onTodoUpdate: (todoId: string, taskId: string, newDate: Date, isPlannedDate?: boolean) => void
+  selectedTodoId?: string | null
 }
 
 interface TodoWithMeta {
@@ -46,7 +47,7 @@ interface ViewModeButton {
   label: string
 }
 
-export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: WeeklyScheduleProps) {
+export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, selectedTodoId }: WeeklyScheduleProps) {
   const [isClient, setIsClient] = useState(false)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [showWeekend, setShowWeekend] = useState(false)
@@ -56,6 +57,13 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: We
     { id: 'week', icon: <IoCalendarOutline className="w-5 h-5" />, label: '週' },
     { id: 'month', icon: <IoCalendarNumberOutline className="w-5 h-5" />, label: '月' }
   ])
+  
+  // 選択状態の変更を検知するuseEffect
+  useEffect(() => {
+    if (selectedTodoId) {
+      console.log('WeeklySchedule - selectedTodoId変更:', selectedTodoId)
+    }
+  }, [selectedTodoId])
 
   useEffect(() => {
     setIsClient(true)
@@ -460,6 +468,13 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: We
     startTime: item.todo.startTime
   })));
 
+  // 親コンポーネントのonTaskSelectに通知
+  const handleTaskSelect = (taskId: string, todoId?: string) => {
+    console.log('WeeklySchedule - handleTaskSelect:', { taskId, todoId })
+    // 親コンポーネントに通知するだけ
+    onTaskSelect(taskId, todoId)
+  }
+
   // 日単位ビューのレンダリング
   const renderDayView = () => {
     const todayKey = format(currentDate, 'yyyy-MM-dd')
@@ -552,14 +567,22 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: We
               return (
                 <div
                   key={todo.id}
-                  className={`absolute left-0 right-0 mx-1 p-1 rounded overflow-hidden border-l-4 ${borderColor} ${bgColor} ${textColor}`}
+                  className={`absolute left-0 right-0 mx-1 p-1 rounded overflow-hidden border-l-4 ${borderColor} ${bgColor} ${textColor} ${selectedTodoId === todo.id ? 'ring-4 ring-blue-500 shadow-md' : ''}`}
                   style={{
                     top: `${top}px`,
                     height: `${height}px`,
+                    // 選択されている場合は前面に表示
+                    zIndex: selectedTodoId === todo.id ? 10 : 1,
+                    // 選択されている場合は境界線を追加
+                    boxShadow: selectedTodoId === todo.id ? '0 4px 12px rgba(59, 130, 246, 0.5)' : undefined,
+                    // 選択時の背景色を追加
+                    backgroundColor: selectedTodoId === todo.id ? (todo.completed ? '#e5e7eb' : '#dbeafe') : undefined
                   }}
-                  onClick={() => onTaskSelect(taskId, todo.id)}
+                  onClick={() => handleTaskSelect(taskId, todo.id)}
                 >
-                  <div className="font-medium truncate">{todo.text}</div>
+                  <div className={`font-medium truncate ${selectedTodoId === todo.id ? 'text-blue-700 font-bold' : ''}`}>
+                    {todo.text}
+                  </div>
                   <div className="text-gray-500 truncate">{taskTitle}</div>
                   <div className="text-gray-500">
                     {timeLabel}{Math.round((todo.originalEstimatedHours || todo.estimatedHours) * 10) / 10}h
@@ -653,13 +676,27 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: We
                       }
                     }
                     
+                    // 選択されたTODOの場合、スタイルを強調
+                    if (selectedTodoId === todo.id) {
+                      bgColor = todo.completed ? 'bg-gray-200' : 'bg-blue-100';
+                      borderClass = 'border-2 border-blue-600';
+                      textColor = 'text-blue-800 font-bold';
+                    }
+
                     return (
                       <div
                         key={todo.id}
-                        className={`text-xs p-1 ${bgColor} rounded truncate cursor-pointer flex items-center ${textColor} ${borderClass}`}
-                        onClick={() => onTaskSelect(taskId, todo.id)}
+                        className={`text-xs p-1 ${bgColor} rounded truncate cursor-pointer flex items-center ${textColor} ${borderClass} ${selectedTodoId === todo.id ? 'ring-4 ring-blue-500 shadow-md' : ''}`}
+                        style={{
+                          boxShadow: selectedTodoId === todo.id ? '0 4px 8px rgba(59, 130, 246, 0.5)' : undefined,
+                          zIndex: selectedTodoId === todo.id ? 10 : 1,
+                          position: 'relative'
+                        }}
+                        onClick={() => handleTaskSelect(taskId, todo.id)}
                       >
-                        <span className="truncate">{todo.text}</span>
+                        <span className="truncate">
+                          {todo.text}
+                        </span>
                       </div>
                     );
                   })}
@@ -809,8 +846,9 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: We
               weekDays={displayDays}
               timeSlots={timeSlots}
               tasks={tasks}
-              onTaskSelect={onTaskSelect}
+              onTaskSelect={handleTaskSelect}
               onTodoUpdate={onTodoUpdate}
+              selectedTodoId={selectedTodoId}
             />
           </div>
         )}
@@ -889,13 +927,27 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: We
                           }
                         }
                         
+                        // 選択されたTODOの場合、スタイルを強調
+                        if (selectedTodoId === todo.id) {
+                          bgColor = todo.completed ? 'bg-gray-200' : 'bg-blue-100';
+                          borderClass = 'border-2 border-blue-600';
+                          textColor = 'text-blue-800 font-bold';
+                        }
+
                         return (
                           <div
                             key={todo.id}
-                            className={`text-xs p-1 ${bgColor} rounded truncate cursor-pointer flex items-center ${textColor} ${borderClass}`}
-                            onClick={() => onTaskSelect(taskId, todo.id)}
+                            className={`text-xs p-1 ${bgColor} rounded truncate cursor-pointer flex items-center ${textColor} ${borderClass} ${selectedTodoId === todo.id ? 'ring-4 ring-blue-500 shadow-md' : ''}`}
+                            style={{
+                              boxShadow: selectedTodoId === todo.id ? '0 4px 8px rgba(59, 130, 246, 0.5)' : undefined,
+                              zIndex: selectedTodoId === todo.id ? 10 : 1,
+                              position: 'relative'
+                            }}
+                            onClick={() => handleTaskSelect(taskId, todo.id)}
                           >
-                            <span className="truncate">{todo.text}</span>
+                            <span className="truncate">
+                              {todo.text}
+                            </span>
                           </div>
                         );
                       })}
