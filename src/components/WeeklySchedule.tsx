@@ -195,7 +195,7 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: We
           <div className="h-8 w-12" />
           <div
             className={`text-center py-1 text-xs font-medium border-l ${
-              isToday(currentDate) ? 'bg-blue-50' : ''
+              isToday(currentDate) ? 'bg-amber-100' : ''
             }`}
           >
             {format(currentDate, 'M/d (E)', { locale: ja })}
@@ -291,7 +291,7 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: We
               <div 
                 key={index}
                 className={`min-h-[100px] border-b border-l p-1 ${
-                  isToday(day) ? 'bg-blue-50' : 
+                  isToday(day) ? 'bg-amber-100' : 
                   !isCurrentMonth ? 'bg-gray-50 text-gray-400' : 
                   isSunday ? 'text-red-500' : 
                   isSaturday ? 'text-blue-500' : ''
@@ -444,7 +444,7 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: We
                 <div
                   key={index}
                   className={`text-center py-1 text-xs font-medium border-l ${
-                    isToday(day) ? 'bg-blue-50' : ''
+                    isToday(day) ? 'bg-amber-100' : ''
                   }`}
                 >
                   {format(day, 'M/d (E)', { locale: ja })}
@@ -500,7 +500,7 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate }: We
                   <div 
                     key={`${dateKey}-${index}`}
                     className={`min-h-[100px] border-b border-l p-1 ${
-                      isToday(day) ? 'bg-blue-50' : 
+                      isToday(day) ? 'bg-amber-100' : 
                       !isCurrentMonth ? 'bg-gray-50 text-gray-400' : 
                       isSunday ? 'text-red-500' : 
                       isSaturday ? 'text-blue-500' : ''
