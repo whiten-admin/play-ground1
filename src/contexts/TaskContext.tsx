@@ -25,7 +25,7 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
           text: '議事録の作成',
           completed: true,
           dueDate: new Date(2025, 2, 5),
-          estimatedHours: 2,
+          estimatedHours: 3,
           startDate: '2025-03-01',
           endDate: '2025-03-05',
         },

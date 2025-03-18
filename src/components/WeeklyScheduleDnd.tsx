@@ -3,14 +3,15 @@
 import React, { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { Task } from '@/types/task'
-import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
+import { BUSINESS_HOURS } from '@/utils/constants'
 
 interface WeeklyScheduleDndProps {
   weekDays: Date[]
   timeSlots: number[]
   tasks: Task[]
-  onTaskSelect: (taskId: string) => void
-  onTodoUpdate: (todoId: string, taskId: string, newDate: Date) => void
+  onTaskSelect: (taskId: string, todoId?: string) => void
+  onTodoUpdate?: (todoId: string, taskId: string, newDate: Date, isPlannedDate?: boolean) => void
+  selectedTodoId?: string | null
 }
 
 interface TodoWithMeta {
@@ -20,10 +21,14 @@ interface TodoWithMeta {
     completed: boolean
     dueDate: Date
     estimatedHours: number
+    originalEstimatedHours?: number
     startTime?: number
+    plannedStartDate?: Date
   }
   taskId: string
   taskTitle: string
+  priority?: number
+  isNextTodo?: boolean
 }
 
 export default function WeeklyScheduleDnd({
@@ -32,6 +37,7 @@ export default function WeeklyScheduleDnd({
   tasks,
   onTaskSelect,
   onTodoUpdate,
+  selectedTodoId,
 }: WeeklyScheduleDndProps) {
   const [mounted, setMounted] = useState(false)
   const [todos, setTodos] = useState<Map<string, TodoWithMeta[]>>(new Map())
@@ -42,6 +48,13 @@ export default function WeeklyScheduleDnd({
     setTodos(initialTodos)
   }, [tasks])
 
+  // selectedTodoIdが変更されたときにコンソールログに出力
+  useEffect(() => {
+    if (selectedTodoId) {
+      console.log('WeeklyScheduleDnd - 選択されたTODO:', selectedTodoId)
+    }
+  }, [selectedTodoId])
+
   // マウント状態の管理
   useEffect(() => {
     setMounted(true)
@@ -51,100 +64,304 @@ export default function WeeklyScheduleDnd({
   const scheduleTodos = () => {
     // 全タスクのTODOを日付でグループ化
     const todosByDate = new Map<string, TodoWithMeta[]>()
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const todayDate = new Date();
+    todayDate.setHours(0, 0, 0, 0);
 
+    // まず、WeeklySchedule.tsxと同様のロジックですべてのTODOを適切な日付に配置
     tasks.forEach(task => {
       task.todos.forEach(todo => {
-        const dateKey = format(todo.dueDate, 'yyyy-MM-dd')
+        // 該当する日付を決定
+        let dateKey: string;
+        let scheduleDate: Date;
+        
+        if (todo.plannedStartDate) {
+          // 着手予定日が設定されている場合はそれを使用
+          dateKey = format(todo.plannedStartDate, 'yyyy-MM-dd');
+          scheduleDate = new Date(todo.plannedStartDate);
+        } else {
+          // 期日が今日または過去の場合は今日に配置
+          const dueDate = new Date(todo.dueDate);
+          dueDate.setHours(0, 0, 0, 0);
+          if (dueDate.getTime() <= todayDate.getTime()) {
+            dateKey = today;
+            scheduleDate = new Date(todayDate);
+          } else {
+            // それ以外は期日に配置
+            dateKey = format(todo.dueDate, 'yyyy-MM-dd');
+            scheduleDate = new Date(todo.dueDate);
+          }
+        }
+        
         if (!todosByDate.has(dateKey)) {
           todosByDate.set(dateKey, [])
         }
-        const todoHour = todo.dueDate.getHours()
+        
+        // デフォルトの開始時間は営業開始時間
+        const defaultStartTime = BUSINESS_HOURS.START_HOUR;
+        
+        // 表示用の見積もり時間を調整（最大時間に制限）
+        const displayEstimatedHours = Math.min(todo.estimatedHours, BUSINESS_HOURS.MAX_HOURS);
+        
+        // 開始時間の決定
+        let startTime = defaultStartTime;
+        
+        // plannedStartDateが設定されている場合はその時間を使用
+        if (todo.plannedStartDate) {
+          const plannedHour = todo.plannedStartDate.getHours();
+          // 営業時間内の場合のみその時間を使用（休憩時間は除く）
+          if (plannedHour >= BUSINESS_HOURS.START_HOUR && plannedHour <= BUSINESS_HOURS.END_HOUR - 1 && 
+              !(plannedHour >= BUSINESS_HOURS.BREAK_START && plannedHour < BUSINESS_HOURS.BREAK_END)) {
+            startTime = plannedHour;
+          } else if (plannedHour >= BUSINESS_HOURS.BREAK_START && plannedHour < BUSINESS_HOURS.BREAK_END) {
+            // 休憩時間内の場合は休憩後に設定
+            startTime = BUSINESS_HOURS.BREAK_END;
+          }
+        }
+          
         todosByDate.get(dateKey)?.push({
           todo: {
             ...todo,
-            startTime: todoHour >= 9 && todoHour <= 17 ? todoHour : 9 // 営業時間内の場合はその時間、それ以外は9時をデフォルトに
+            dueDate: scheduleDate,
+            startTime: startTime,
+            estimatedHours: displayEstimatedHours,
+            originalEstimatedHours: todo.estimatedHours
           },
           taskId: task.id,
-          taskTitle: task.title
+          taskTitle: task.title,
+          priority: task.priority || 0,
+          isNextTodo: false
         })
       })
     })
 
-    // 各日付のTODOを時間で並べ替え
-    todosByDate.forEach((todos) => {
+    // 各日付のTODOを時間と優先度で並べ替え
+    todosByDate.forEach((todos, dateKey) => {
+      // 今日の日付かどうかチェック
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      const isTodayDate = dateKey === todayStr;
+      
+      // TODOをソート（優先度のみ、完了状態は考慮しない）
       todos.sort((a, b) => {
-        const timeA = a.todo.startTime || 9
-        const timeB = b.todo.startTime || 9
-        if (timeA === timeB) {
-          // 同じ時間の場合は推定時間の短い順
-          return a.todo.estimatedHours - b.todo.estimatedHours
+        // 1. 優先度でソート（高い順）
+        if (a.priority !== b.priority) {
+          return (b.priority || 0) - (a.priority || 0);
         }
-        return timeA - timeB
-      })
-    })
+        
+        // 2. 期日でソート
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);  // startOfDay相当の処理
+        
+        const aDueDate = a.todo.dueDate;
+        const bDueDate = b.todo.dueDate;
+        const aIsOverdue = aDueDate.getTime() < today.getTime();
+        const bIsOverdue = bDueDate.getTime() < today.getTime();
+        const aIsToday = aDueDate.getTime() === today.getTime();
+        const bIsToday = bDueDate.getTime() === today.getTime();
+
+        if (aIsOverdue !== bIsOverdue) return aIsOverdue ? -1 : 1;
+        if (aIsToday !== bIsToday) return aIsToday ? -1 : 1;
+        return aDueDate.getTime() - bDueDate.getTime();
+      });
+      
+      // 今日の未完了TODOの中で最優先のものをNEXTTODOとしてマーク
+      if (isTodayDate) {
+        const incompleteTodos = todos.filter(item => !item.todo.completed);
+        if (incompleteTodos.length > 0) {
+          incompleteTodos[0].isNextTodo = true;
+        }
+      }
+    });
+
+    // 日付ごとのTODOをスケジュール配置する
+    const processedDates = new Set<string>(); // 処理済みの日付を管理
+    const scheduleQueue: { dateKey: string, overflow: TodoWithMeta[] }[] = []; // 翌日以降にスケジュールするTODOのキュー
+
+    // 初回は日付順にすべての日付を処理
+    Array.from(todosByDate.keys())
+      .sort((a, b) => new Date(a).getTime() - new Date(b).getTime()) // 日付順にソート
+      .forEach(dateKey => {
+        scheduleDateTodos(dateKey);
+        processedDates.add(dateKey);
+      });
+
+    // キューに入ったオーバーフローを処理
+    while (scheduleQueue.length > 0) {
+      const queueItem = scheduleQueue.shift()!;
+      const { dateKey, overflow } = queueItem;
+      
+      // 翌日の日付を計算
+      const currentDate = new Date(dateKey);
+      currentDate.setDate(currentDate.getDate() + 1);
+      const nextDateKey = format(currentDate, 'yyyy-MM-dd');
+
+      // 翌日のTODOリストを取得または作成
+      if (!todosByDate.has(nextDateKey)) {
+        todosByDate.set(nextDateKey, []);
+      }
+
+      // 超過分のTODOを翌日のリストに追加
+      const nextDayTodos = todosByDate.get(nextDateKey) || [];
+      nextDayTodos.push(...overflow);
+      
+      // 翌日がまだ処理されていない場合、スケジューリング
+      if (!processedDates.has(nextDateKey)) {
+        scheduleDateTodos(nextDateKey);
+        processedDates.add(nextDateKey);
+      } else {
+        // 既に処理済みの日付の場合は再スケジューリング
+        rescheduleDateTodos(nextDateKey);
+      }
+    }
+
+    // 指定した日付のTODOをスケジュールする関数
+    function scheduleDateTodos(dateKey: string) {
+      const todos = todosByDate.get(dateKey) || [];
+      if (todos.length === 0) return;
+
+      // 今日の日付かどうかチェック
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      const isTodayDate = dateKey === todayStr;
+      
+      let currentHour = BUSINESS_HOURS.START_HOUR;
+      let totalWorkHours = 0;
+      const overflowTodos: TodoWithMeta[] = [];
+
+      todos.forEach((todoWithMeta) => {
+        const { todo } = todoWithMeta;
+        
+        // 休憩時間を考慮して開始時間を設定
+        if (currentHour === BUSINESS_HOURS.BREAK_START) {
+          currentHour = BUSINESS_HOURS.BREAK_END; // 休憩時間は飛ばす
+        }
+        
+        // 1日の最大作業時間をチェック
+        if (totalWorkHours + todo.estimatedHours > BUSINESS_HOURS.MAX_HOURS) {
+          // 1日あたりの最大作業時間を超える場合
+          const remainingHours = BUSINESS_HOURS.MAX_HOURS - totalWorkHours;
+          
+          if (remainingHours > 0) {
+            // 残りの時間でできる分だけ設定
+            todo.startTime = currentHour;
+            
+            // 調整された見積時間
+            const actualEstimatedHours = Math.min(
+              remainingHours, 
+              todo.estimatedHours
+            );
+            
+            // 翌日にスケジュールする時間
+            const overflowHours = todo.estimatedHours - actualEstimatedHours;
+            
+            // 今日の分の見積時間を調整
+            todo.estimatedHours = actualEstimatedHours;
+            
+            // 開始時間を更新
+            currentHour += actualEstimatedHours;
+            totalWorkHours += actualEstimatedHours;
+            
+            // 翌日分のTODOを作成（残りの時間分）
+            if (overflowHours > 0) {
+              // 同じTODOを複製して超過分として記録
+              const overflowTodo: TodoWithMeta = {
+                todo: {
+                  ...todo,
+                  id: `${todo.id}-overflow-${Date.now()}`, // 一意のIDを生成
+                  estimatedHours: overflowHours,
+                  originalEstimatedHours: todo.originalEstimatedHours
+                },
+                taskId: todoWithMeta.taskId,
+                taskTitle: todoWithMeta.taskTitle,
+                priority: todoWithMeta.priority,
+                isNextTodo: false
+              };
+              
+              overflowTodos.push(overflowTodo);
+            }
+          } else {
+            // 今日はもう時間が残っていない場合、全て翌日にスケジュール
+            overflowTodos.push(todoWithMeta);
+          }
+        } else {
+          // 最大作業時間内に収まる場合
+          // 開始時間を割り当て
+          todo.startTime = currentHour;
+          
+          // 次のTODOの開始時間を計算（休憩時間を考慮）
+          let nextHour = currentHour + todo.estimatedHours;
+          
+          // 作業時間が休憩時間をまたぐ場合
+          if (currentHour < BUSINESS_HOURS.BREAK_START && nextHour > BUSINESS_HOURS.BREAK_START) {
+            // 休憩開始時間までの作業時間に制限する
+            todo.estimatedHours = BUSINESS_HOURS.BREAK_START - currentHour;
+            nextHour = BUSINESS_HOURS.BREAK_START;
+          }
+          
+          // 次の開始時間が休憩時間内にある場合は休憩後に設定
+          if (nextHour >= BUSINESS_HOURS.BREAK_START && nextHour < BUSINESS_HOURS.BREAK_END) {
+            nextHour = BUSINESS_HOURS.BREAK_END;
+          }
+          
+          // 終了時間が営業終了時間を超えないように調整
+          nextHour = Math.min(BUSINESS_HOURS.END_HOUR, nextHour);
+          currentHour = nextHour;
+          totalWorkHours += todo.estimatedHours;
+        }
+      });
+
+      // 超過分のTODOがある場合、スケジュールキューに追加
+      if (overflowTodos.length > 0) {
+        scheduleQueue.push({ dateKey, overflow: overflowTodos });
+      }
+    }
+
+    // 既に処理済みの日付のTODOを再スケジュールする関数
+    function rescheduleDateTodos(dateKey: string) {
+      const todos = todosByDate.get(dateKey) || [];
+      if (todos.length === 0) return;
+      
+      // 最新の状態でソート（優先度のみ、完了状態は考慮しない）
+      todos.sort((a, b) => {
+        // 1. 優先度でソート（高い順）
+        if (a.priority !== b.priority) {
+          return (b.priority || 0) - (a.priority || 0);
+        }
+        
+        // 2. 期日でソート
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const aDueDate = a.todo.dueDate;
+        const bDueDate = b.todo.dueDate;
+        const aIsOverdue = aDueDate.getTime() < today.getTime();
+        const bIsOverdue = bDueDate.getTime() < today.getTime();
+        const aIsToday = aDueDate.getTime() === today.getTime();
+        const bIsToday = bDueDate.getTime() === today.getTime();
+
+        if (aIsOverdue !== bIsOverdue) return aIsOverdue ? -1 : 1;
+        if (aIsToday !== bIsToday) return aIsToday ? -1 : 1;
+        return aDueDate.getTime() - bDueDate.getTime();
+      });
+      
+      // すべての予定を一旦リセットして再スケジュール
+      scheduleDateTodos(dateKey);
+    }
+
+    // デバッグのためにスケジュールされたTODOの情報を出力
+    console.log('スケジュールされたTODO:', Array.from(todosByDate.entries()).map(([date, todos]) => {
+      return {
+        date,
+        todos: todos.map(t => ({
+          id: t.todo.id,
+          text: t.todo.text,
+          startTime: t.todo.startTime,
+          estimatedHours: t.todo.estimatedHours,
+          completed: t.todo.completed
+        }))
+      };
+    }));
 
     return todosByDate
-  }
-
-  // ドラッグ終了時の処理
-  const onDragEnd = (result: DropResult) => {
-    if (!result.destination) return
-
-    const { draggableId, source, destination } = result
-    const [todoId, taskId] = draggableId.split('-')
-    const [day, hour] = destination.droppableId.split('-')
-
-    try {
-      // 新しい日時を計算
-      const newDate = new Date(day)
-      newDate.setHours(parseInt(hour), 0, 0, 0)
-
-      // 親コンポーネントに更新を通知
-      onTodoUpdate(todoId, taskId, newDate)
-
-      // ローカルの状態も更新
-      setTodos(prevTodos => {
-        const newTodos = new Map(prevTodos)
-        const [sourceDay] = source.droppableId.split('-')
-        const sourceDateKey = sourceDay
-        const destinationDateKey = day
-
-        // 移動元からTODOを削除
-        const sourceTodos = newTodos.get(sourceDateKey) || []
-        const todoToMove = sourceTodos.find(t => t.todo.id === todoId)
-        
-        if (todoToMove) {
-          // 移動元から削除
-          newTodos.set(
-            sourceDateKey,
-            sourceTodos.filter(t => t.todo.id !== todoId)
-          )
-
-          // 移動先のTODOを取得
-          const destinationTodos = newTodos.get(destinationDateKey) || []
-          
-          // 更新されたTODOを作成
-          const updatedTodo = {
-            ...todoToMove,
-            todo: {
-              ...todoToMove.todo,
-              dueDate: newDate,
-              startTime: parseInt(hour)
-            }
-          }
-
-          // 移動先に追加（同じ日付の場合は既存のものを削除）
-          newTodos.set(
-            destinationDateKey,
-            [...destinationTodos.filter(t => t.todo.id !== todoId), updatedTodo]
-          )
-        }
-
-        return newTodos
-      })
-    } catch (error) {
-      console.error('Error updating todo:', error)
-    }
   }
 
   if (!mounted) {
@@ -172,83 +389,97 @@ export default function WeeklyScheduleDnd({
   }
 
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
-      <div className="relative">
-        {timeSlots.map((hour) => (
-          <div 
-            key={hour} 
-            className="grid" 
-            style={{ gridTemplateColumns: `3rem repeat(${weekDays.length}, 1fr)` }}
-          >
-            <div className="h-12 text-xs text-right pr-1 pt-1 text-gray-500 w-12">
-              {`${hour}:00`}
-            </div>
-            {weekDays.map((day, dayIndex) => {
-              const dateKey = format(day, 'yyyy-MM-dd')
-              const todosForDay = todos.get(dateKey) || []
-              const todosForHour = todosForDay.filter(
-                ({ todo }) => (todo.startTime || 9) === hour
-              )
-
-              return (
-                <Droppable
-                  key={`${format(day, 'yyyy-MM-dd')}-${hour}`}
-                  droppableId={`${format(day, 'yyyy-MM-dd')}-${hour}`}
-                >
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className={`h-12 border-t border-l relative ${
-                        snapshot.isDraggingOver ? 'bg-blue-50' : ''
-                      }`}
-                    >
-                      {todosForHour.map(({ todo, taskId, taskTitle }, index) => (
-                        <Draggable
-                          key={`${todo.id}-${taskId}`}
-                          draggableId={`${todo.id}-${taskId}`}
-                          index={index}
-                        >
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onTaskSelect(taskId)
-                              }}
-                              style={{
-                                ...provided.draggableProps.style,
-                                height: `${todo.estimatedHours * 48}px`,
-                                width: 'calc(100% - 2px)',
-                                position: 'absolute',
-                                top: 0,
-                                left: 1,
-                                zIndex: snapshot.isDragging ? 100 : 1,
-                              }}
-                              className={`${
-                                todo.completed ? 'bg-green-100' : 'bg-blue-100'
-                              } ${
-                                snapshot.isDragging ? 'shadow-lg' : ''
-                              } rounded p-1 cursor-pointer hover:shadow-md transition-shadow overflow-hidden`}
-                            >
-                              <div className="text-xs font-medium truncate">{todo.text}</div>
-                              <div className="text-xs text-gray-500 truncate">{taskTitle}</div>
-                              <div className="text-xs text-gray-500">{todo.estimatedHours}h</div>
-                            </div>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              )
-            })}
+    <div className="relative">
+      {timeSlots.map((hour) => (
+        <div 
+          key={hour} 
+          className="grid" 
+          style={{ gridTemplateColumns: `3rem repeat(${weekDays.length}, 1fr)` }}
+        >
+          <div className="h-12 text-xs text-right pr-1 pt-1 text-gray-500 w-12">
+            {`${hour}:00`}
           </div>
-        ))}
-      </div>
-    </DragDropContext>
+          {weekDays.map((day, dayIndex) => {
+            const dateKey = format(day, 'yyyy-MM-dd')
+            const todosForDay = todos.get(dateKey) || []
+            // 時間枠に一致するTODOを表示
+            const todosForHour = todosForDay.filter(
+              ({ todo }) => Math.floor(todo.startTime || 0) === hour
+            )
+
+            return (
+              <div
+                key={`${format(day, 'yyyy-MM-dd')}-${hour}`}
+                className={`h-12 border-t border-l relative ${
+                  hour === BUSINESS_HOURS.BREAK_START ? 'bg-gray-200' : ''
+                }`}
+              >
+                {hour === BUSINESS_HOURS.BREAK_START && (
+                  <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-500 font-medium z-10">
+                    休憩
+                  </div>
+                )}
+                {todosForHour.map(({ todo, taskId, taskTitle, priority, isNextTodo }) => {
+                  // 選択されているかどうかをチェック
+                  const isSelected = selectedTodoId === todo.id;
+                  
+                  // デバッグ用：選択状態を出力
+                  if (isSelected) {
+                    console.log('選択されたTODOを表示:', todo.id, todo.text);
+                  }
+
+                  return (
+                    <div
+                      key={`${todo.id}-${taskId}`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        console.log('TODO選択:', todo.id, taskId);
+                        onTaskSelect(taskId, todo.id)
+                      }}
+                      style={{
+                        height: `${todo.estimatedHours * 48}px`,
+                        width: 'calc(100% - 2px)',
+                        position: 'absolute',
+                        top: 0,
+                        left: 1,
+                        // 選択されている場合は前面に表示
+                        zIndex: isSelected ? 10 : 1,
+                        // 選択されている場合は境界線を追加
+                        border: isSelected ? '2px solid #3b82f6' : undefined,
+                        // 選択されている場合は影を強調
+                        boxShadow: isSelected ? '0 4px 12px rgba(59, 130, 246, 0.5)' : undefined,
+                        // 選択されている場合は背景色を強調
+                        backgroundColor: isSelected ? 
+                          (todo.completed ? '#e5e7eb' : 
+                           (format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') && isNextTodo) ? '#fef3c7' : 
+                           priority === 2 ? '#fee2e2' : 
+                           priority === 1 ? '#ffedd5' : '#dbeafe') : undefined
+                      }}
+                      className={`${
+                        todo.completed ? 'bg-gray-100' : 
+                        (format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') && 
+                         isNextTodo) ? 'bg-amber-100' :
+                        priority === 2 ? 'bg-red-100' : 
+                        priority === 1 ? 'bg-orange-100' : 'bg-blue-100'
+                      } rounded p-1 cursor-pointer hover:shadow-md transition-shadow overflow-hidden
+                        ${isSelected ? 'ring-4 ring-blue-500 shadow-md' : ''}`}
+                    >
+                      <div className={`text-xs font-medium truncate ${isSelected ? 'text-blue-700 font-bold' : ''}`}>
+                        {todo.text}
+                      </div>
+                      <div className="text-xs text-gray-500 truncate">{taskTitle}</div>
+                      <div className="text-xs text-gray-500">{Math.round((todo.originalEstimatedHours || todo.estimatedHours) * 10) / 10}h</div>
+                      {priority === 2 && !todo.completed && (
+                        <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" title="高優先度" />
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })}
+        </div>
+      ))}
+    </div>
   )
 } 

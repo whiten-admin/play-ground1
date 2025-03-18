@@ -184,6 +184,7 @@ export default function Home() {
                   tasks={tasks}
                   onTaskSelect={handleTaskSelect}
                   onTodoUpdate={handleTodoUpdate}
+                  selectedTodoId={selectedTodoId}
                 />
               </div>
             </div>
