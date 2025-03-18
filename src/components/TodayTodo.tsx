@@ -150,14 +150,9 @@ export default function TodayTodo({
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className={`text-xs ${getDueDateStyle(todo.dueDate)}`}>
-                    期日: {format(todo.dueDate, 'M/d', { locale: ja })}
+                  <span className="text-xs text-gray-600">
+                    見積工数：{Math.round(todo.estimatedHours * 10) / 10}h
                   </span>
-                  {todo.isNew && (
-                    <span className="px-1 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
-                      NEW
-                    </span>
-                  )}
                 </div>
               </div>
               <div className="ml-4 text-xs text-gray-500">タスク名：{todo.taskTitle}</div>
