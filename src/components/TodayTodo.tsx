@@ -30,6 +30,8 @@ export default function TodayTodo({
 }: TodayTodoProps) {
   // アコーディオンの開閉状態を管理
   const [isExpanded, setIsExpanded] = useState(false);
+  // 1日の最大工数（時間）
+  const MAX_DAILY_HOURS = 8;
 
   // 全タスクからTODOを抽出し、親タスク情報と一緒にフラット化
   const allTodos = tasks.flatMap((task) =>
@@ -77,6 +79,45 @@ export default function TodayTodo({
     return aDueDate.getTime() - bDueDate.getTime();
   });
 
+  // 工数制限を適用したTODOリストの作成
+  const todosWithinTimeLimit = (() => {
+    let totalHours = 0;
+    const result = [];
+    
+    // まず未完了のTODOを処理（優先度の高いものから）
+    for (const todo of sortedTodos) {
+      if (!todo.completed) {
+        if (totalHours + todo.estimatedHours <= MAX_DAILY_HOURS) {
+          result.push(todo);
+          totalHours += todo.estimatedHours;
+        }
+      }
+    }
+    
+    // 完了済みのTODOは表示に含める（工数には含めない）
+    for (const todo of sortedTodos) {
+      if (todo.completed) {
+        result.push(todo);
+      }
+    }
+    
+    return result;
+  })();
+
+  // 表示されないTODOの情報
+  const excludedTodos = sortedTodos.filter(
+    todo => !todo.completed && !todosWithinTimeLimit.some(t => t.id === todo.id)
+  );
+  const excludedTodosHours = excludedTodos.reduce(
+    (sum, todo) => sum + todo.estimatedHours, 
+    0
+  );
+  
+  // 含まれるTODOの合計工数
+  const includedUncompletedTodosHours = todosWithinTimeLimit
+    .filter(todo => !todo.completed)
+    .reduce((sum, todo) => sum + todo.estimatedHours, 0);
+
   // 期日の状態に応じたスタイルを返す関数
   const getDueDateStyle = (dueDate: Date | string) => {
     const today = startOfDay(new Date());
@@ -94,16 +135,21 @@ export default function TodayTodo({
     <div className="bg-white rounded-lg shadow p-2">
       <div className="flex justify-between items-center mb-1">
         <h2 className="text-base font-bold">今日のTODO</h2>
-        <button 
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="text-xs text-gray-500 hover:text-gray-700 flex items-center"
-        >
-          {isExpanded ? '折りたたむ' : '展開する'}
-          <span className="ml-1">{isExpanded ? '▲' : '▼'}</span>
-        </button>
+        <div className="flex items-center">
+          <span className="text-xs mr-3 text-gray-600">
+            工数: {Math.round(includedUncompletedTodosHours * 10) / 10}h / {MAX_DAILY_HOURS}h
+          </span>
+          <button 
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="text-xs text-gray-500 hover:text-gray-700 flex items-center"
+          >
+            {isExpanded ? '折りたたむ' : '展開する'}
+            <span className="ml-1">{isExpanded ? '▲' : '▼'}</span>
+          </button>
+        </div>
       </div>
       <div className="space-y-1">
-        {sortedTodos.map((todo, index) => {
+        {todosWithinTimeLimit.map((todo, index) => {
           // NEXT TODOか、展開されている場合に表示
           const shouldShow = (index === 0 && !todo.completed) || isExpanded;
           if (!shouldShow) return null;
@@ -160,14 +206,21 @@ export default function TodayTodo({
           );
         })}
       </div>
-      {!isExpanded && sortedTodos.length > 1 && (
-        <div className="mt-1 text-center">
-          <button 
-            onClick={() => setIsExpanded(true)}
-            className="text-xs text-blue-500 hover:text-blue-700"
-          >
-            他 {sortedTodos.length - 1} 件のTODOを表示
-          </button>
+      {!isExpanded && (
+        <div className="mt-1 text-center space-y-1">
+          {todosWithinTimeLimit.length > 1 && (
+            <button 
+              onClick={() => setIsExpanded(true)}
+              className="text-xs text-blue-500 hover:text-blue-700"
+            >
+              他 {todosWithinTimeLimit.filter(t => !t.completed).length - 1} 件のTODOを表示
+            </button>
+          )}
+          {excludedTodos.length > 0 && (
+            <div className="text-xs text-gray-500">
+              <span className="text-orange-500 font-semibold"></span> 明日以降のTODO {excludedTodos.length} 件（合計 {Math.round(excludedTodosHours * 10) / 10}h）
+            </div>
+          )}
         </div>
       )}
     </div>
