@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FiUser, FiBell, FiLock, FiGlobe, FiHelpCircle, FiLogOut } from 'react-icons/fi';
+import { FiUser, FiBell, FiLock, FiGlobe, FiHelpCircle, FiLogOut, FiRefreshCw } from 'react-icons/fi';
+import { useTaskContext } from '@/contexts/TaskContext';
 
 const DecorativeBackground = () => (
   <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -224,6 +225,8 @@ const Ribbon = ({ text }: { text: string }) => (
 );
 
 const SettingsView = () => {
+  const { resetTasks, resetTasksWithSchedule } = useTaskContext();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-beige-50 to-pink-100 p-6 relative">
       <DecorativeBackground />
@@ -239,11 +242,38 @@ const SettingsView = () => {
         </motion.div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* アカウント設定 */}
+          {/* データリセット */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.1 }}
+            className="col-span-1 md:col-span-2 hover:scale-105 transition-transform duration-300"
+          >
+            <DecorativeFrame>
+              <Ribbon text="データリセット" />
+              <div className="flex items-center mb-4">
+                <div className="p-3 bg-blue-200/80 rounded-full">
+                  <FiRefreshCw className="w-6 h-6 text-blue-800" />
+                </div>
+                <h2 className="text-xl font-semibold text-blue-800 ml-4">データ管理</h2>
+              </div>
+              <p className="text-blue-600 mb-4">システムデータをリセットします</p>
+              <div className="flex justify-center">
+                <button 
+                  onClick={resetTasksWithSchedule}
+                  className="bg-blue-200/80 hover:bg-blue-300 text-blue-800 py-2 px-8 rounded-full transition-colors shadow-md"
+                >
+                  データをリセット
+                </button>
+              </div>
+            </DecorativeFrame>
+          </motion.div>
+
+          {/* アカウント設定 */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
             className="hover:scale-105 transition-transform duration-300"
           >
             <DecorativeFrame>
@@ -265,7 +295,7 @@ const SettingsView = () => {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
             className="hover:scale-105 transition-transform duration-300"
           >
             <DecorativeFrame>
@@ -287,7 +317,7 @@ const SettingsView = () => {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
             className="hover:scale-105 transition-transform duration-300"
           >
             <DecorativeFrame>
@@ -309,7 +339,7 @@ const SettingsView = () => {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
             className="hover:scale-105 transition-transform duration-300"
           >
             <DecorativeFrame>
@@ -331,7 +361,7 @@ const SettingsView = () => {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
+            transition={{ duration: 0.5, delay: 0.6 }}
             className="hover:scale-105 transition-transform duration-300"
           >
             <DecorativeFrame>
@@ -353,7 +383,7 @@ const SettingsView = () => {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.6 }}
+            transition={{ duration: 0.5, delay: 0.7 }}
             className="hover:scale-105 transition-transform duration-300"
           >
             <DecorativeFrame>
