@@ -23,7 +23,6 @@ interface TodoWithMeta {
     originalEstimatedHours?: number
     startTime?: number
     plannedStartDate?: Date
-    plannedEndDate?: Date
   }
   taskId: string
   taskTitle: string
