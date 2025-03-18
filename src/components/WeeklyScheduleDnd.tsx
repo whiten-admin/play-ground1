@@ -100,9 +100,13 @@ export default function WeeklyScheduleDnd({
         // plannedStartDateが設定されている場合はその時間を使用
         if (todo.plannedStartDate) {
           const plannedHour = todo.plannedStartDate.getHours();
-          // 営業時間内の場合のみその時間を使用
-          if (plannedHour >= BUSINESS_HOURS.START_HOUR && plannedHour <= BUSINESS_HOURS.END_HOUR - 1) {
+          // 営業時間内の場合のみその時間を使用（休憩時間は除く）
+          if (plannedHour >= BUSINESS_HOURS.START_HOUR && plannedHour <= BUSINESS_HOURS.END_HOUR - 1 && 
+              !(plannedHour >= BUSINESS_HOURS.BREAK_START && plannedHour < BUSINESS_HOURS.BREAK_END)) {
             startTime = plannedHour;
+          } else if (plannedHour >= BUSINESS_HOURS.BREAK_START && plannedHour < BUSINESS_HOURS.BREAK_END) {
+            // 休憩時間内の場合は休憩後に設定
+            startTime = BUSINESS_HOURS.BREAK_END;
           }
         }
           
@@ -158,21 +162,181 @@ export default function WeeklyScheduleDnd({
           incompleteTodos[0].isNextTodo = true;
         }
       }
+    });
+
+    // 日付ごとのTODOをスケジュール配置する
+    const processedDates = new Set<string>(); // 処理済みの日付を管理
+    const scheduleQueue: { dateKey: string, overflow: TodoWithMeta[] }[] = []; // 翌日以降にスケジュールするTODOのキュー
+
+    // 初回は日付順にすべての日付を処理
+    Array.from(todosByDate.keys())
+      .sort((a, b) => new Date(a).getTime() - new Date(b).getTime()) // 日付順にソート
+      .forEach(dateKey => {
+        scheduleDateTodos(dateKey);
+        processedDates.add(dateKey);
+      });
+
+    // キューに入ったオーバーフローを処理
+    while (scheduleQueue.length > 0) {
+      const queueItem = scheduleQueue.shift()!;
+      const { dateKey, overflow } = queueItem;
       
-      // 今日のTODOの場合は営業開始時間から詰めて配置する
-      if (isTodayDate) {
-        let currentHour = BUSINESS_HOURS.START_HOUR;
-        todos.forEach((todoWithMeta) => {
-          const { todo } = todoWithMeta;
+      // 翌日の日付を計算
+      const currentDate = new Date(dateKey);
+      currentDate.setDate(currentDate.getDate() + 1);
+      const nextDateKey = format(currentDate, 'yyyy-MM-dd');
+
+      // 翌日のTODOリストを取得または作成
+      if (!todosByDate.has(nextDateKey)) {
+        todosByDate.set(nextDateKey, []);
+      }
+
+      // 超過分のTODOを翌日のリストに追加
+      const nextDayTodos = todosByDate.get(nextDateKey) || [];
+      nextDayTodos.push(...overflow);
+      
+      // 翌日がまだ処理されていない場合、スケジューリング
+      if (!processedDates.has(nextDateKey)) {
+        scheduleDateTodos(nextDateKey);
+        processedDates.add(nextDateKey);
+      } else {
+        // 既に処理済みの日付の場合は再スケジューリング
+        rescheduleDateTodos(nextDateKey);
+      }
+    }
+
+    // 指定した日付のTODOをスケジュールする関数
+    function scheduleDateTodos(dateKey: string) {
+      const todos = todosByDate.get(dateKey) || [];
+      if (todos.length === 0) return;
+
+      // 今日の日付かどうかチェック
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      const isTodayDate = dateKey === todayStr;
+      
+      let currentHour = BUSINESS_HOURS.START_HOUR;
+      let totalWorkHours = 0;
+      const overflowTodos: TodoWithMeta[] = [];
+
+      todos.forEach((todoWithMeta) => {
+        const { todo } = todoWithMeta;
+        
+        // 休憩時間を考慮して開始時間を設定
+        if (currentHour === BUSINESS_HOURS.BREAK_START) {
+          currentHour = BUSINESS_HOURS.BREAK_END; // 休憩時間は飛ばす
+        }
+        
+        // 1日の最大作業時間をチェック
+        if (totalWorkHours + todo.estimatedHours > BUSINESS_HOURS.MAX_HOURS) {
+          // 1日あたりの最大作業時間を超える場合
+          const remainingHours = BUSINESS_HOURS.MAX_HOURS - totalWorkHours;
           
+          if (remainingHours > 0) {
+            // 残りの時間でできる分だけ設定
+            todo.startTime = currentHour;
+            
+            // 調整された見積時間
+            const actualEstimatedHours = Math.min(
+              remainingHours, 
+              todo.estimatedHours
+            );
+            
+            // 翌日にスケジュールする時間
+            const overflowHours = todo.estimatedHours - actualEstimatedHours;
+            
+            // 今日の分の見積時間を調整
+            todo.estimatedHours = actualEstimatedHours;
+            
+            // 開始時間を更新
+            currentHour += actualEstimatedHours;
+            totalWorkHours += actualEstimatedHours;
+            
+            // 翌日分のTODOを作成（残りの時間分）
+            if (overflowHours > 0) {
+              // 同じTODOを複製して超過分として記録
+              const overflowTodo: TodoWithMeta = {
+                todo: {
+                  ...todo,
+                  id: `${todo.id}-overflow-${Date.now()}`, // 一意のIDを生成
+                  estimatedHours: overflowHours,
+                  originalEstimatedHours: todo.originalEstimatedHours
+                },
+                taskId: todoWithMeta.taskId,
+                taskTitle: todoWithMeta.taskTitle,
+                priority: todoWithMeta.priority,
+                isNextTodo: false
+              };
+              
+              overflowTodos.push(overflowTodo);
+            }
+          } else {
+            // 今日はもう時間が残っていない場合、全て翌日にスケジュール
+            overflowTodos.push(todoWithMeta);
+          }
+        } else {
+          // 最大作業時間内に収まる場合
           // 開始時間を割り当て
           todo.startTime = currentHour;
           
-          // 次のTODOの開始時間を計算（最大営業終了時間まで）
-          currentHour = Math.min(BUSINESS_HOURS.END_HOUR, currentHour + todo.estimatedHours);
-        });
+          // 次のTODOの開始時間を計算（休憩時間を考慮）
+          let nextHour = currentHour + todo.estimatedHours;
+          
+          // 作業時間が休憩時間をまたぐ場合
+          if (currentHour < BUSINESS_HOURS.BREAK_START && nextHour > BUSINESS_HOURS.BREAK_START) {
+            // 休憩開始時間までの作業時間に制限する
+            todo.estimatedHours = BUSINESS_HOURS.BREAK_START - currentHour;
+            nextHour = BUSINESS_HOURS.BREAK_START;
+          }
+          
+          // 次の開始時間が休憩時間内にある場合は休憩後に設定
+          if (nextHour >= BUSINESS_HOURS.BREAK_START && nextHour < BUSINESS_HOURS.BREAK_END) {
+            nextHour = BUSINESS_HOURS.BREAK_END;
+          }
+          
+          // 終了時間が営業終了時間を超えないように調整
+          nextHour = Math.min(BUSINESS_HOURS.END_HOUR, nextHour);
+          currentHour = nextHour;
+          totalWorkHours += todo.estimatedHours;
+        }
+      });
+
+      // 超過分のTODOがある場合、スケジュールキューに追加
+      if (overflowTodos.length > 0) {
+        scheduleQueue.push({ dateKey, overflow: overflowTodos });
       }
-    });
+    }
+
+    // 既に処理済みの日付のTODOを再スケジュールする関数
+    function rescheduleDateTodos(dateKey: string) {
+      const todos = todosByDate.get(dateKey) || [];
+      if (todos.length === 0) return;
+      
+      // 最新の状態でソート
+      todos.sort((a, b) => {
+        // 1. 完了状態でソート（未完了が上、完了が下）
+        if (a.todo.completed !== b.todo.completed) {
+          return a.todo.completed ? 1 : -1;
+        }
+        
+        // 2. 期日でソート
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const aDueDate = a.todo.dueDate;
+        const bDueDate = b.todo.dueDate;
+        const aIsOverdue = aDueDate.getTime() < today.getTime();
+        const bIsOverdue = bDueDate.getTime() < today.getTime();
+        const aIsToday = aDueDate.getTime() === today.getTime();
+        const bIsToday = bDueDate.getTime() === today.getTime();
+
+        if (aIsOverdue !== bIsOverdue) return aIsOverdue ? -1 : 1;
+        if (aIsToday !== bIsToday) return aIsToday ? -1 : 1;
+        return aDueDate.getTime() - bDueDate.getTime();
+      });
+      
+      // すべての予定を一旦リセットして再スケジュール
+      scheduleDateTodos(dateKey);
+    }
 
     // デバッグのためにスケジュールされたTODOの情報を出力
     console.log('スケジュールされたTODO:', Array.from(todosByDate.entries()).map(([date, todos]) => {
@@ -237,8 +401,15 @@ export default function WeeklyScheduleDnd({
             return (
               <div
                 key={`${format(day, 'yyyy-MM-dd')}-${hour}`}
-                className="h-12 border-t border-l relative"
+                className={`h-12 border-t border-l relative ${
+                  hour === BUSINESS_HOURS.BREAK_START ? 'bg-gray-200' : ''
+                }`}
               >
+                {hour === BUSINESS_HOURS.BREAK_START && (
+                  <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-500 font-medium z-10">
+                    休憩
+                  </div>
+                )}
                 {todosForHour.map(({ todo, taskId, taskTitle, priority, isNextTodo }) => (
                   <div
                     key={`${todo.id}-${taskId}`}
