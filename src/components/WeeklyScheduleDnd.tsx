@@ -133,13 +133,20 @@ export default function WeeklyScheduleDnd({
           return a.todo.completed ? 1 : -1;
         }
         
-        // 2. 優先度でソート（高い順）
-        if (a.priority !== b.priority) {
-          return (b.priority || 0) - (a.priority || 0);
-        }
+        // 2. 期日でソート（TodayTodo.tsxと同じ並び順にする）
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);  // startOfDay相当の処理
         
-        // 3. 推定時間の短い順
-        return a.todo.estimatedHours - b.todo.estimatedHours;
+        const aDueDate = a.todo.dueDate;
+        const bDueDate = b.todo.dueDate;
+        const aIsOverdue = aDueDate.getTime() < today.getTime();
+        const bIsOverdue = bDueDate.getTime() < today.getTime();
+        const aIsToday = aDueDate.getTime() === today.getTime();
+        const bIsToday = bDueDate.getTime() === today.getTime();
+
+        if (aIsOverdue !== bIsOverdue) return aIsOverdue ? -1 : 1;
+        if (aIsToday !== bIsToday) return aIsToday ? -1 : 1;
+        return aDueDate.getTime() - bDueDate.getTime();
       });
       
       // 今日の未完了TODOの中で最優先のものをNEXTTODOとしてマーク
