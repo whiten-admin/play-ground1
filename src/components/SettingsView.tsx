@@ -2,8 +2,10 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FiUser, FiBell, FiLock, FiGlobe, FiHelpCircle, FiLogOut, FiRefreshCw } from 'react-icons/fi';
+import { FiUser, FiBell, FiLock, FiGlobe, FiHelpCircle, FiLogOut, FiRefreshCw, FiDatabase } from 'react-icons/fi';
 import { useTaskContext } from '@/contexts/TaskContext';
+import DataManagement from './DataManagement';
+import { useState } from 'react';
 
 const DecorativeBackground = () => (
   <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -226,6 +228,7 @@ const Ribbon = ({ text }: { text: string }) => (
 
 const SettingsView = () => {
   const { resetTasks, resetTasksWithSchedule } = useTaskContext();
+  const [showDataManagement, setShowDataManagement] = useState(false);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-beige-50 to-pink-100 p-6 relative">
@@ -250,20 +253,36 @@ const SettingsView = () => {
             className="col-span-1 md:col-span-2 hover:scale-105 transition-transform duration-300"
           >
             <DecorativeFrame>
-              <Ribbon text="データリセット" />
+              <Ribbon text="データ管理" />
               <div className="flex items-center mb-4">
                 <div className="p-3 bg-blue-200/80 rounded-full">
-                  <FiRefreshCw className="w-6 h-6 text-blue-800" />
+                  <FiDatabase className="w-6 h-6 text-blue-800" />
                 </div>
                 <h2 className="text-xl font-semibold text-blue-800 ml-4">データ管理</h2>
               </div>
-              <p className="text-blue-600 mb-4">システムデータをリセットします</p>
+              <p className="text-blue-600 mb-4">システムデータのエクスポート、インポート、リセットなどを行います</p>
               <div className="flex justify-center">
                 <button 
-                  onClick={resetTasksWithSchedule}
-                  className="bg-blue-200/80 hover:bg-blue-300 text-blue-800 py-2 px-8 rounded-full transition-colors shadow-md"
+                  onClick={() => setShowDataManagement(!showDataManagement)}
+                  className="bg-blue-200/80 hover:bg-blue-300 text-blue-800 py-2 px-8 rounded-full transition-colors shadow-md mb-4"
                 >
-                  データをリセット
+                  {showDataManagement ? 'データ管理パネルを閉じる' : 'データ管理パネルを開く'}
+                  <span className="ml-2">{showDataManagement ? '▲' : '▼'}</span>
+                </button>
+              </div>
+              
+              {showDataManagement && (
+                <div className="mt-4 bg-white/70 backdrop-blur-sm rounded-lg p-4">
+                  <DataManagement />
+                </div>
+              )}
+              
+              <div className="flex justify-center mt-4">
+                <button 
+                  onClick={resetTasksWithSchedule}
+                  className="bg-red-200/80 hover:bg-red-300 text-red-800 py-2 px-8 rounded-full transition-colors shadow-md"
+                >
+                  クイックリセット
                 </button>
               </div>
             </DecorativeFrame>
