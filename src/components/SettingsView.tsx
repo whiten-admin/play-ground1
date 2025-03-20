@@ -1,10 +1,9 @@
 'use client';
 
 import React from 'react';
-import { FiUser, FiBell, FiLock, FiGlobe, FiHelpCircle, FiLogOut, FiRefreshCw, FiDatabase } from 'react-icons/fi';
+import { FiUser, FiBell, FiLock, FiGlobe, FiDatabase } from 'react-icons/fi';
 import { useTaskContext } from '@/contexts/TaskContext';
 import DataManagement from './DataManagement';
-import { useState } from 'react';
 
 // シンプルなカードコンポーネント
 const SettingsCard = ({ title, children }: { title: string, children: React.ReactNode }) => (
@@ -16,7 +15,6 @@ const SettingsCard = ({ title, children }: { title: string, children: React.Reac
 
 const SettingsView = () => {
   const { resetTasks, resetTasksWithSchedule } = useTaskContext();
-  const [showDataManagement, setShowDataManagement] = useState(false);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -29,37 +27,15 @@ const SettingsView = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* データ管理 */}
           <div className="col-span-1 md:col-span-2">
-            <SettingsCard title="データ管理">
+            <SettingsCard title="開発用シードデータ管理">
               <div className="flex items-center mb-4">
                 <div className="p-3 bg-blue-100 rounded-full">
                   <FiDatabase className="w-6 h-6 text-blue-600" />
                 </div>
-                <p className="text-gray-600 ml-4">システムデータのエクスポート、インポート、リセットなどを行います</p>
-              </div>
-              <div className="flex justify-center">
-                <button 
-                  onClick={() => setShowDataManagement(!showDataManagement)}
-                  className="bg-blue-100 hover:bg-blue-200 text-blue-700 py-2 px-6 rounded transition-colors mb-4"
-                >
-                  {showDataManagement ? 'データ管理パネルを閉じる' : 'データ管理パネルを開く'}
-                  <span className="ml-2">{showDataManagement ? '▲' : '▼'}</span>
-                </button>
+                <p className="text-gray-600 ml-4">開発用シードデータのエクスポート、インポート、リセットなどを行います</p>
               </div>
               
-              {showDataManagement && (
-                <div className="mt-4 bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <DataManagement />
-                </div>
-              )}
-              
-              <div className="flex justify-center mt-4">
-                <button 
-                  onClick={resetTasksWithSchedule}
-                  className="bg-red-100 hover:bg-red-200 text-red-700 py-2 px-6 rounded transition-colors"
-                >
-                  クイックリセット
-                </button>
-              </div>
+              <DataManagement />
             </SettingsCard>
           </div>
 
@@ -122,40 +98,10 @@ const SettingsView = () => {
               </button>
             </SettingsCard>
           </div>
-
-          {/* ヘルプとサポート */}
-          <div>
-            <SettingsCard title="ヘルプとサポート">
-              <div className="flex items-center mb-4">
-                <div className="p-3 bg-gray-100 rounded-full">
-                  <FiHelpCircle className="w-6 h-6 text-gray-600" />
-                </div>
-                <p className="text-gray-600 ml-4">サポートとFAQ</p>
-              </div>
-              <button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded transition-colors">
-                確認する
-              </button>
-            </SettingsCard>
-          </div>
-
-          {/* ログアウト */}
-          <div>
-            <SettingsCard title="ログアウト">
-              <div className="flex items-center mb-4">
-                <div className="p-3 bg-gray-100 rounded-full">
-                  <FiLogOut className="w-6 h-6 text-gray-600" />
-                </div>
-                <p className="text-gray-600 ml-4">アカウントからログアウト</p>
-              </div>
-              <button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded transition-colors">
-                ログアウト
-              </button>
-            </SettingsCard>
-          </div>
         </div>
       </div>
     </div>
   );
 };
 
-export default SettingsView; 
+export default SettingsView;
