@@ -24,13 +24,13 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
     if (initialized) return;
     
     const storedTasks = getTasksFromLocalStorage();
-    // ローカルストレージにデータがあればそれを使用、なければスケジュール済みシードデータを保存
+    // ローカルストレージにデータがあればそれを使用、なければシードデータを保存
     if (storedTasks) {
       setTasks(storedTasks);
     } else {
-      // 初期データとしてスケジュール済みのシードデータを使用
-      const scheduledTasks = resetToScheduledSeedData();
-      setTasks(scheduledTasks);
+      // 初期データとして通常のシードデータを使用（スケジュールなし）
+      const defaultTasks = resetToSeedData();
+      setTasks(defaultTasks);
     }
     
     setInitialized(true);
