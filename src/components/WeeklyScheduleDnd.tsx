@@ -79,18 +79,14 @@ export default function WeeklyScheduleDnd({
           // 着手予定日が設定されている場合はそれを使用
           dateKey = format(todo.plannedStartDate, 'yyyy-MM-dd');
           scheduleDate = new Date(todo.plannedStartDate);
+        } else if (todo.startDate) {
+          // startDateが設定されている場合はそれを使用
+          dateKey = format(new Date(todo.startDate), 'yyyy-MM-dd');
+          scheduleDate = new Date(todo.startDate);
         } else {
-          // 期日が今日または過去の場合は今日に配置
-          const dueDate = new Date(todo.dueDate);
-          dueDate.setHours(0, 0, 0, 0);
-          if (dueDate.getTime() <= todayDate.getTime()) {
-            dateKey = today;
-            scheduleDate = new Date(todayDate);
-          } else {
-            // それ以外は期日に配置
-            dateKey = format(todo.dueDate, 'yyyy-MM-dd');
-            scheduleDate = new Date(todo.dueDate);
-          }
+          // それ以外は期日に配置
+          dateKey = format(new Date(todo.dueDate), 'yyyy-MM-dd');
+          scheduleDate = new Date(todo.dueDate);
         }
         
         if (!todosByDate.has(dateKey)) {

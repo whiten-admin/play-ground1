@@ -153,15 +153,12 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
         if (todo.plannedStartDate) {
           // 着手予定日が設定されている場合はそれを使用
           dateKey = format(todo.plannedStartDate, 'yyyy-MM-dd');
+        } else if (todo.startDate) {
+          // startDateが設定されている場合はそれを使用
+          dateKey = format(new Date(todo.startDate), 'yyyy-MM-dd');
         } else {
-          // 期日が今日または過去の場合は今日に配置
-          const dueDate = startOfDay(new Date(todo.dueDate));
-          if (isToday(dueDate) || isBefore(dueDate, todayDate)) {
-            dateKey = today;
-          } else {
-            // それ以外は期日に配置
-            dateKey = format(dueDate, 'yyyy-MM-dd');
-          }
+          // それ以外は期日に配置
+          dateKey = format(new Date(todo.dueDate), 'yyyy-MM-dd');
         }
         
         // 該当日付のリストがなければ作成
