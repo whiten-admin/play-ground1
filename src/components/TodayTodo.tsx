@@ -12,6 +12,7 @@ import {
 } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { Task, Todo } from '@/types/task';
+import { getUserNameById, getUserNamesByIds } from '@/utils/userUtils';
 
 interface TodayTodoProps {
   tasks: Task[];
@@ -41,6 +42,8 @@ export default function TodayTodo({
       taskId: task.id,
       taskTitle: task.title,
       isNew: task.isNew,
+      priority: task.priority,
+      assigneeIds: todo.assigneeIds || task.assigneeIds,
     }))
   );
 
@@ -211,7 +214,10 @@ export default function TodayTodo({
                   </span>
                 </div>
               </div>
-              <div className="ml-4 text-xs text-gray-500">タスク名：{todo.taskTitle}</div>
+              <div className="ml-4 text-xs flex justify-between">
+                <span className="text-gray-500">タスク名：{todo.taskTitle}</span>
+                <span className="text-gray-500">担当：{getUserNamesByIds(todo.assigneeIds)}</span>
+              </div>
             </div>
           );
         })}
@@ -289,11 +295,9 @@ export default function TodayTodo({
                       </span>
                     </div>
                   </div>
-                  <div className="ml-4 text-xs text-gray-500">
-                    タスク名：{todo.taskTitle}
-                    <span className="ml-2">
-                      予定日：{format(getPlannedStartDate(todo), 'MM/dd')}
-                    </span>
+                  <div className="ml-4 text-xs flex justify-between">
+                    <span className="text-gray-500">タスク名：{todo.taskTitle}</span>
+                    <span className="text-gray-500">担当：{getUserNamesByIds(todo.assigneeIds)}</span>
                   </div>
                 </div>
               );
