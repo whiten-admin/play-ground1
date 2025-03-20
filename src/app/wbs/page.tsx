@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { Project } from '@/types/project'
 
 export default function WBSPage() {
-  const { isAuthenticated, login, logout } = useAuth()
+  const { isAuthenticated, user, login, logout } = useAuth()
   const [activeTab, setActiveTab] = useState('wbs')
   const [selectedTaskId, setSelectedTaskId] = useState<string>('')
   const [project, setProject] = useState<Project>({
@@ -42,7 +42,7 @@ export default function WBSPage() {
     <div className="flex h-screen bg-gray-100">
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header onLogout={logout} project={project} />
+        <Header onLogout={logout} project={project} user={user} />
         <main className="flex-1 overflow-y-auto p-6">
           <div className="bg-white rounded-lg shadow">
             <div className="p-6 border-b">

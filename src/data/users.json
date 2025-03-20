@@ -1,0 +1,32 @@
+[
+  {
+    "id": "taro",
+    "password": "aaa",
+    "name": "太郎",
+    "role": "manager"
+  },
+  {
+    "id": "gonzo",
+    "password": "aaa",
+    "name": "ゴンゾウ",
+    "role": "manager"
+  },
+  {
+    "id": "hanako",
+    "password": "aaa",
+    "name": "花子",
+    "role": "member"
+  },
+  {
+    "id": "jiro",
+    "password": "aaa",
+    "name": "次郎",
+    "role": "member"
+  },
+  {
+    "id": "saburo",
+    "password": "aaa",
+    "name": "三郎",
+    "role": "member"
+  }
+] 

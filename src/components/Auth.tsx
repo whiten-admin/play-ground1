@@ -1,23 +1,25 @@
 'use client'
 
 import { useState } from 'react'
+import usersData from '@/data/users.json'
 
 interface AuthProps {
-  onLogin: () => void
+  onLogin: (id: string, password: string) => boolean
 }
 
 export default function Auth({ onLogin }: AuthProps) {
-  const [id, setId] = useState('aaa')
-  const [password, setPassword] = useState('bbb')
+  const [id, setId] = useState('taro')
+  const [password, setPassword] = useState('aaa')
   const [error, setError] = useState('')
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (id === 'aaa' && password === 'bbb') {
-      onLogin()
-      setError('')
-    } else {
+    const isSuccess = onLogin(id, password)
+    
+    if (!isSuccess) {
       setError('IDまたはパスワードが正しくありません')
+    } else {
+      setError('')
     }
   }
 
@@ -60,6 +62,27 @@ export default function Auth({ onLogin }: AuthProps) {
             ログイン
           </button>
         </form>
+
+        <div className="mt-6 border-t pt-4">
+          <p className="text-sm font-medium text-gray-700 mb-2">利用可能なアカウント：</p>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            {usersData.map((user: any) => (
+              <div key={user.id} className="bg-gray-50 p-2 rounded">
+                <p className="font-bold">{user.name}</p>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">ID: {user.id}</span>
+                  <span className={`px-1.5 py-0.5 rounded text-xs ${
+                    user.role === 'manager' 
+                      ? 'bg-blue-100 text-blue-800' 
+                      : 'bg-green-100 text-green-800'
+                  }`}>
+                    {user.role === 'manager' ? 'マネージャー' : 'メンバー'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )
