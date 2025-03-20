@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { TaskProvider } from '@/contexts/TaskContext';
+import { FilterProvider } from '@/contexts/FilterContext';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -18,7 +19,11 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body className={inter.className}>
-        <TaskProvider>{children}</TaskProvider>
+        <TaskProvider>
+          <FilterProvider>
+            {children}
+          </FilterProvider>
+        </TaskProvider>
       </body>
     </html>
   );

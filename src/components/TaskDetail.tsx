@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { IoAdd, IoTrash, IoPencil, IoSave, IoClose, IoBulb, IoList, IoGrid, IoBarChart, IoCaretDown, IoCaretUp } from 'react-icons/io5'
+import React, { useState, useEffect, useRef } from 'react'
+import { IoAdd, IoTrash, IoPencil, IoSave, IoClose, IoBulb, IoList, IoGrid, IoBarChart, IoCaretDown, IoCaretUp, IoFilter, IoCheckbox } from 'react-icons/io5'
 import { Task, Todo } from '@/types/task'
 import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
@@ -9,6 +9,10 @@ import { suggestTodos } from '@/utils/openai'
 import KanbanView from './KanbanView'
 import WBSView from './WBSView'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
+import { getUserNameById, getUserNamesByIds, getAllUsers } from '@/utils/userUtils'
+import UserAssignSelect from './UserAssignSelect'
+import { User } from '@/types/user'
+import { useFilterContext } from '@/contexts/FilterContext'
 
 type ViewMode = 'list' | 'kanban' | 'gantt'
 
@@ -89,6 +93,24 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
   const [newTaskTodoText, setNewTaskTodoText] = useState('')
   const [isGeneratingTodos, setIsGeneratingTodos] = useState(false)
   const [newTaskSuggestedTodos, setNewTaskSuggestedTodos] = useState<{ text: string; estimatedHours: number }[]>([])
+  
+  // フィルタリングコンテキストを使用
+  const { selectedUserIds, showUnassigned } = useFilterContext();
+  
+  // 表示するタスクをフィルタリングする
+  const filteredTasks = tasks.filter((task) => {
+    // アサインされていないタスクを表示するかどうか
+    if (showUnassigned && (!task.assigneeIds || task.assigneeIds.length === 0)) {
+      return true;
+    }
+    
+    // 選択されたユーザーのタスクを表示
+    if (task.assigneeIds && task.assigneeIds.some(id => selectedUserIds.includes(id))) {
+      return true;
+    }
+    
+    return false;
+  });
 
   // 編集モードの切り替え
   const toggleEdit = (field: 'title' | 'description' | string, isEditingTodo: boolean = false) => {
@@ -143,17 +165,41 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
     }
   }
 
+  // TODOの追加、更新、削除時に、タスク全体のアサイン情報を更新する関数
+  const updateTaskAssignees = (todos: Todo[], task: Task): string[] => {
+    // 各TODOのアサイン情報を集める
+    const assigneeIdsSet = new Set<string>();
+    
+    todos.forEach(todo => {
+      if (todo.assigneeIds && todo.assigneeIds.length > 0) {
+        todo.assigneeIds.forEach(id => assigneeIdsSet.add(id));
+      }
+    });
+    
+    // 配列に変換して返す
+    return Array.from(assigneeIdsSet);
+  };
+
   // TODOの完了状態の更新
   const handleTodoStatusChange = (todoId: string) => {
     if (editedTask) {
       const updatedTodos = editedTask.todos.map(todo =>
         todo.id === todoId ? { ...todo, completed: !todo.completed } : todo
-      )
-      const updatedTask = { ...editedTask, todos: updatedTodos }
-      setEditedTask(updatedTask)
-      onTaskUpdate?.(updatedTask)
+      );
+      
+      // タスク全体のアサイン情報を更新
+      const updatedAssigneeIds = updateTaskAssignees(updatedTodos, editedTask);
+      
+      const updatedTask = { 
+        ...editedTask, 
+        todos: updatedTodos,
+        assigneeIds: updatedAssigneeIds
+      };
+      
+      setEditedTask(updatedTask);
+      onTaskUpdate?.(updatedTask);
     }
-  }
+  };
 
   // TODOの内容の更新
   const handleTodoTextChange = (todoId: string, newText: string) => {
@@ -167,45 +213,61 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
 
   // 新しいTODOの追加
   const handleAddTodo = () => {
-    if (editedTask && newTodoText.trim()) {
-      const today = new Date()
-      const formattedDate = today.toISOString().split('T')[0] // YYYY-MM-DD形式
-      
-      const newTodo: Todo = {
-        id: `todo-${Date.now()}`,
-        text: newTodoText.trim(),
-        completed: false,
-        startDate: formattedDate,
-        endDate: formattedDate,
-        dueDate: new Date(),
-        estimatedHours: 0 // デフォルトの見積もり工数を0時間に設定
-      }
-      const updatedTask = {
-        ...editedTask,
-        todos: [...editedTask.todos, newTodo]
-      }
-      setEditedTask(updatedTask)
-      onTaskUpdate?.(updatedTask)
-      setNewTodoText('')
+    if (!newTodoText || !editedTask) return
+
+    const today = new Date()
+    const formattedDate = today.toISOString().split('T')[0] // YYYY-MM-DD形式
+    
+    const newTodo: Todo = {
+      id: `todo-${Date.now()}`,
+      text: newTodoText,
+      completed: false,
+      startDate: formattedDate,
+      endDate: formattedDate,
+      dueDate: new Date(),
+      estimatedHours: 0,
+      assigneeIds: []
     }
+    
+    const updatedTodos = [...editedTask.todos, newTodo];
+    
+    // タスク全体のアサイン情報を更新
+    const updatedAssigneeIds = updateTaskAssignees(updatedTodos, editedTask);
+    
+    const updatedTask = {
+      ...editedTask,
+      todos: updatedTodos,
+      assigneeIds: updatedAssigneeIds
+    }
+    
+    setEditedTask(updatedTask)
+    onTaskUpdate?.(updatedTask)
+    setNewTodoText('')
   }
 
   // TODOの削除
   const handleDeleteTodo = (todoId: string) => {
     if (editedTask) {
-      const todoToDelete = editedTask.todos.find(todo => todo.id === todoId)
-      if (!todoToDelete) return
+      const todoToDelete = editedTask.todos.find(todo => todo.id === todoId);
+      if (!todoToDelete) return;
 
       if (window.confirm(`「${todoToDelete.text}」を削除してもよろしいですか？`)) {
+        const updatedTodos = editedTask.todos.filter(todo => todo.id !== todoId);
+        
+        // タスク全体のアサイン情報を更新
+        const updatedAssigneeIds = updateTaskAssignees(updatedTodos, editedTask);
+        
         const updatedTask = {
           ...editedTask,
-          todos: editedTask.todos.filter(todo => todo.id !== todoId)
-        }
-        setEditedTask(updatedTask)
-        onTaskUpdate?.(updatedTask)
+          todos: updatedTodos,
+          assigneeIds: updatedAssigneeIds
+        };
+        
+        setEditedTask(updatedTask);
+        onTaskUpdate?.(updatedTask);
       }
     }
-  }
+  };
 
   // 進捗率を計算する関数
   const calculateProgress = (todos: Todo[]) => {
@@ -278,9 +340,12 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
     }))
   }
 
-  // 新しいタスクを作成する関数
+  // 新規タスクを作成する関数
   const handleCreateTask = () => {
     if (!newTask.title) return
+
+    // タスク全体のアサイン情報を更新
+    const assigneeIds = updateTaskAssignees(newTaskTodos, { id: '', title: '', description: '', todos: newTaskTodos, startDate: '', endDate: '' });
 
     const taskToCreate: Task = {
       id: `task-${Date.now()}`,
@@ -289,7 +354,8 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
       todos: newTaskTodos,
       startDate: newTask.startDate || new Date().toISOString().split('T')[0],
       endDate: newTask.endDate || new Date().toISOString().split('T')[0],
-      priority: newTask.priority || 0
+      priority: newTask.priority || 0,
+      assigneeIds: assigneeIds
     }
 
     onTaskCreate?.(taskToCreate)
@@ -309,21 +375,22 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
 
   // 新規タスクにTODOを追加
   const handleAddNewTaskTodo = () => {
-    if (!newTaskTodoText.trim()) return
-
+    if (!newTaskTodoText) return
+    
     const today = new Date()
     const formattedDate = today.toISOString().split('T')[0] // YYYY-MM-DD形式
     
     const newTodo: Todo = {
       id: `todo-${Date.now()}`,
-      text: newTaskTodoText.trim(),
+      text: newTaskTodoText,
       completed: false,
       startDate: formattedDate,
       endDate: formattedDate,
       dueDate: new Date(),
-      estimatedHours: 1 // デフォルトの見積もり工数を1時間に設定
+      estimatedHours: 0,
+      assigneeIds: []
     }
-
+    
     setNewTaskTodos([...newTaskTodos, newTodo])
     setNewTaskTodoText('')
   }
@@ -365,10 +432,13 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
       startDate: formattedDate,
       endDate: formattedDate,
       dueDate: new Date(),
-      estimatedHours: suggestion.estimatedHours
+      estimatedHours: suggestion.estimatedHours,
+      assigneeIds: []
     }
 
-    setNewTaskTodos([...newTaskTodos, newTodo])
+    const updatedTodos = [...newTaskTodos, newTodo];
+    
+    setNewTaskTodos(updatedTodos)
     
     // 追加したTODOを提案リストから削除
     setNewTaskSuggestedTodos(prev => prev.filter(todo => todo.text !== suggestion.text))
@@ -414,6 +484,19 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
                 <option value={1}>中</option>
                 <option value={2}>高</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">担当者</label>
+              <UserAssignSelect
+                assigneeIds={newTask.assigneeIds || []}
+                onAssigneeChange={(newAssigneeIds) => {
+                  setNewTask({
+                    ...newTask,
+                    assigneeIds: newAssigneeIds
+                  });
+                }}
+              />
             </div>
 
             <div>
@@ -644,7 +727,7 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
         <div className="flex-1 overflow-y-auto mt-1">
           {viewMode === 'list' && (
             <div className="space-y-4 pr-2">
-              {sortTasks(tasks).map((task) => (
+              {sortTasks(filteredTasks).map((task) => (
                 <div
                   key={task.id}
                   onClick={() => onTaskSelect(task.id)}
@@ -702,6 +785,10 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
                         {task.priority === 2 ? '高' : task.priority === 1 ? '中' : '低'}
                       </span>
                     </div>
+                    <div className="flex items-center gap-1">
+                      <span>担当:</span>
+                      <span>{getUserNamesByIds(task.assigneeIds)}</span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -710,7 +797,7 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
 
           {viewMode === 'kanban' && (
             <KanbanView
-              tasks={sortTasks(tasks)}
+              tasks={sortTasks(filteredTasks)}
               onTaskSelect={onTaskSelect}
               onTaskUpdate={onTaskUpdate}
               onTaskCreate={onTaskCreate}
@@ -777,12 +864,21 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
         startDate: formattedDate,
         endDate: formattedDate,
         dueDate: new Date(),
-        estimatedHours: suggestion.estimatedHours
+        estimatedHours: suggestion.estimatedHours,
+        assigneeIds: []
       }
+      
+      const updatedTodos = [...taskToUpdate.todos, newTodo];
+      
+      // タスク全体のアサイン情報を更新
+      const updatedAssigneeIds = updateTaskAssignees(updatedTodos, taskToUpdate);
+      
       const updatedTask = {
         ...taskToUpdate,
-        todos: [...taskToUpdate.todos, newTodo]
+        todos: updatedTodos,
+        assigneeIds: updatedAssigneeIds
       }
+      
       setEditedTask(updatedTask)
       onTaskUpdate?.(updatedTask)
 
@@ -841,12 +937,25 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
                   </div>
                 </div>
               </div>
-              <button
-                onClick={() => toggleEdit('title')}
-                className="p-1 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-gray-600"
-              >
-                <IoPencil className="w-4 h-4" />
-              </button>
+              <div className="ml-2 flex items-center">
+                <div className="text-sm mr-4">
+                  <span className="text-gray-500 mr-1">担当:</span>
+                  <div className="text-sm text-gray-600">
+                    {selectedTask?.assigneeIds && selectedTask.assigneeIds.length > 0 
+                      ? getUserNamesByIds(selectedTask.assigneeIds)
+                      : '担当者なし'
+                    }
+                  </div>
+                </div>
+                {!editState.title && (
+                  <button
+                    onClick={() => toggleEdit('title')}
+                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-gray-600"
+                  >
+                    <IoPencil className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </>
           )}
         </div>
@@ -946,6 +1055,37 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
                   <div className="text-xs text-gray-500 mt-1 space-y-1">
                     <div>期日: {format(todo.dueDate, 'yyyy年M月d日', { locale: ja })}</div>
                     <div>見積もり工数: {todo.estimatedHours}時間</div>
+                    <div className="flex items-center gap-1">
+                      <span>担当:</span>
+                      <UserAssignSelect
+                        assigneeIds={todo.assigneeIds || []}
+                        onAssigneeChange={(newAssigneeIds) => {
+                          // TODOの担当者を更新
+                          const updatedTodo = { ...todo, assigneeIds: newAssigneeIds };
+                          
+                          // タスクのTODOリストを更新
+                          const updatedTodos = taskToDisplay.todos.map(t => 
+                            t.id === todo.id ? updatedTodo : t
+                          );
+                          
+                          // タスク全体のアサイン情報を更新
+                          const updatedAssigneeIds = updateTaskAssignees(updatedTodos, taskToDisplay);
+                          
+                          // 全体のタスク情報を更新
+                          const updatedTask = {
+                            ...taskToDisplay,
+                            todos: updatedTodos,
+                            assigneeIds: updatedAssigneeIds
+                          };
+                          
+                          if (editedTask) {
+                            setEditedTask(updatedTask);
+                          }
+                          onTaskUpdate?.(updatedTask);
+                        }}
+                        size="sm"
+                      />
+                    </div>
                   </div>
                 </div>
                 <div className="flex gap-2 opacity-0 group-hover:opacity-100">

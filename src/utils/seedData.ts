@@ -9,6 +9,7 @@ export const seedTasks: Task[] = [
     startDate: '2025-03-01',
     endDate: '2025-03-05',
     priority: 2, // 高
+    assigneeIds: ['taro', 'gonzo', 'hanako'], // すべてのTODO担当者の和集合
     todos: [
       {
         id: 'todo-1-1',
@@ -17,7 +18,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-03-01',
         endDate: '2025-03-02',
         dueDate: new Date(2025, 2, 2),
-        estimatedHours: 4
+        estimatedHours: 4,
+        assigneeIds: ['taro'] // 太郎が担当
       },
       {
         id: 'todo-1-2',
@@ -26,7 +28,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-03-02',
         endDate: '2025-03-03',
         dueDate: new Date(2025, 2, 3),
-        estimatedHours: 3
+        estimatedHours: 3,
+        assigneeIds: ['gonzo'] // ゴンゾウが担当
       },
       {
         id: 'todo-1-3',
@@ -35,7 +38,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-03-03',
         endDate: '2025-03-04',
         dueDate: new Date(2025, 2, 4),
-        estimatedHours: 2
+        estimatedHours: 2,
+        assigneeIds: ['taro', 'gonzo'] // 太郎とゴンゾウが共同で担当
       },
       {
         id: 'todo-1-4',
@@ -44,7 +48,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-03-04',
         endDate: '2025-03-05',
         dueDate: new Date(2025, 2, 5),
-        estimatedHours: 2
+        estimatedHours: 2,
+        assigneeIds: ['taro', 'gonzo', 'hanako'] // 全員参加
       }
     ]
   },
@@ -55,6 +60,7 @@ export const seedTasks: Task[] = [
     startDate: '2025-03-06',
     endDate: '2025-03-10',
     priority: 2, // 高
+    assigneeIds: ['jiro', 'saburo', 'taro'], // すべてのTODO担当者の和集合
     todos: [
       {
         id: 'todo-2-1',
@@ -63,7 +69,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-03-06',
         endDate: '2025-03-07',
         dueDate: new Date(2025, 2, 7),
-        estimatedHours: 3
+        estimatedHours: 3,
+        assigneeIds: ['jiro'] // 次郎が担当
       },
       {
         id: 'todo-2-2',
@@ -72,7 +79,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-03-07',
         endDate: '2025-03-08',
         dueDate: new Date(2025, 2, 8),
-        estimatedHours: 4
+        estimatedHours: 4,
+        assigneeIds: ['saburo'] // 三郎が担当
       },
       {
         id: 'todo-2-3',
@@ -81,7 +89,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-03-08',
         endDate: '2025-03-09',
         dueDate: new Date(2025, 2, 9),
-        estimatedHours: 3
+        estimatedHours: 3,
+        assigneeIds: ['jiro', 'saburo'] // 次郎と三郎が共同で担当
       },
       {
         id: 'todo-2-4',
@@ -90,7 +99,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-03-09',
         endDate: '2025-03-10',
         dueDate: new Date(2025, 2, 10),
-        estimatedHours: 2
+        estimatedHours: 2,
+        assigneeIds: ['taro', 'jiro', 'saburo'] // マネージャーと担当者
       }
     ]
   },
@@ -101,6 +111,7 @@ export const seedTasks: Task[] = [
     startDate: '2025-03-11',
     endDate: '2025-03-17',
     priority: 1, // 中
+    assigneeIds: ['hanako', 'taro', 'gonzo'], // すべてのTODO担当者の和集合
     todos: [
       {
         id: 'todo-3-1',
@@ -109,7 +120,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-03-11',
         endDate: '2025-03-12',
         dueDate: new Date(2025, 2, 12),
-        estimatedHours: 4
+        estimatedHours: 4,
+        assigneeIds: ['hanako'] // 花子が担当
       },
       {
         id: 'todo-3-2',
@@ -118,7 +130,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-03-13',
         endDate: '2025-03-14',
         dueDate: new Date(2025, 2, 14),
-        estimatedHours: 3
+        estimatedHours: 3,
+        assigneeIds: ['hanako'] // 花子が担当
       },
       {
         id: 'todo-3-3',
@@ -127,7 +140,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-03-15',
         endDate: '2025-03-16',
         dueDate: new Date(2025, 2, 16),
-        estimatedHours: 4
+        estimatedHours: 4,
+        assigneeIds: ['hanako'] // 花子が担当
       },
       {
         id: 'todo-3-4',
@@ -136,7 +150,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-03-16',
         endDate: '2025-03-17',
         dueDate: new Date(2025, 2, 17),
-        estimatedHours: 2
+        estimatedHours: 2,
+        assigneeIds: ['taro', 'gonzo', 'hanako'] // マネージャーとデザイナー
       }
     ]
   },
@@ -147,6 +162,7 @@ export const seedTasks: Task[] = [
     startDate: '2025-03-18',
     endDate: '2025-03-24',
     priority: 1, // 中
+    assigneeIds: [], // 未アサイン
     todos: [
       {
         id: 'todo-4-1',
@@ -155,7 +171,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-03-18',
         endDate: '2025-03-19',
         dueDate: new Date(2025, 2, 19),
-        estimatedHours: 3
+        estimatedHours: 3,
+        assigneeIds: [] // 未アサイン
       },
       {
         id: 'todo-4-2',
@@ -164,7 +181,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-03-20',
         endDate: '2025-03-21',
         dueDate: new Date(2025, 2, 21),
-        estimatedHours: 4
+        estimatedHours: 4,
+        assigneeIds: [] // 未アサイン
       },
       {
         id: 'todo-4-3',
@@ -173,7 +191,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-03-22',
         endDate: '2025-03-23',
         dueDate: new Date(2025, 2, 23),
-        estimatedHours: 4
+        estimatedHours: 4,
+        assigneeIds: [] // 未アサイン
       },
       {
         id: 'todo-4-4',
@@ -182,7 +201,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-03-23',
         endDate: '2025-03-24',
         dueDate: new Date(2025, 2, 24),
-        estimatedHours: 3
+        estimatedHours: 3,
+        assigneeIds: [] // 未アサイン
       }
     ]
   },
@@ -193,6 +213,7 @@ export const seedTasks: Task[] = [
     startDate: '2025-03-25',
     endDate: '2025-03-31',
     priority: 1, // 中
+    assigneeIds: ['jiro', 'hanako'], // すべてのTODO担当者の和集合
     todos: [
       {
         id: 'todo-5-1',
@@ -201,7 +222,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-03-25',
         endDate: '2025-03-26',
         dueDate: new Date(2025, 2, 26),
-        estimatedHours: 2
+        estimatedHours: 2,
+        assigneeIds: ['jiro'] // 次郎が担当
       },
       {
         id: 'todo-5-2',
@@ -210,7 +232,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-03-27',
         endDate: '2025-03-28',
         dueDate: new Date(2025, 2, 28),
-        estimatedHours: 4
+        estimatedHours: 4,
+        assigneeIds: ['jiro'] // 次郎が担当
       },
       {
         id: 'todo-5-3',
@@ -219,7 +242,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-03-29',
         endDate: '2025-03-30',
         dueDate: new Date(2025, 2, 30),
-        estimatedHours: 4
+        estimatedHours: 4,
+        assigneeIds: ['jiro'] // 次郎が担当
       },
       {
         id: 'todo-5-4',
@@ -228,7 +252,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-03-30',
         endDate: '2025-03-31',
         dueDate: new Date(2025, 2, 31),
-        estimatedHours: 3
+        estimatedHours: 3,
+        assigneeIds: ['jiro', 'hanako'] // 次郎と花子が共同で担当（UIレビュー）
       }
     ]
   },
@@ -239,6 +264,7 @@ export const seedTasks: Task[] = [
     startDate: '2025-04-01',
     endDate: '2025-04-07',
     priority: 2, // 高
+    assigneeIds: ['saburo'], // すべてのTODO担当者の和集合
     todos: [
       {
         id: 'todo-6-1',
@@ -247,7 +273,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-04-01',
         endDate: '2025-04-02',
         dueDate: new Date(2025, 3, 2),
-        estimatedHours: 3
+        estimatedHours: 3,
+        assigneeIds: ['saburo'] // 三郎が担当
       },
       {
         id: 'todo-6-2',
@@ -256,7 +283,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-04-03',
         endDate: '2025-04-04',
         dueDate: new Date(2025, 3, 4),
-        estimatedHours: 4
+        estimatedHours: 4,
+        assigneeIds: ['saburo'] // 三郎が担当
       },
       {
         id: 'todo-6-3',
@@ -265,7 +293,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-04-05',
         endDate: '2025-04-06',
         dueDate: new Date(2025, 3, 6),
-        estimatedHours: 4
+        estimatedHours: 4,
+        assigneeIds: ['saburo'] // 三郎が担当
       },
       {
         id: 'todo-6-4',
@@ -274,7 +303,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-04-06',
         endDate: '2025-04-07',
         dueDate: new Date(2025, 3, 7),
-        estimatedHours: 3
+        estimatedHours: 3,
+        assigneeIds: ['saburo'] // 三郎が担当
       }
     ]
   },
@@ -285,6 +315,7 @@ export const seedTasks: Task[] = [
     startDate: '2025-04-08',
     endDate: '2025-04-14',
     priority: 1, // 中
+    assigneeIds: ['taro', 'jiro'], // すべてのTODO担当者の和集合
     todos: [
       {
         id: 'todo-7-1',
@@ -293,7 +324,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-04-08',
         endDate: '2025-04-09',
         dueDate: new Date(2025, 3, 9),
-        estimatedHours: 3
+        estimatedHours: 3,
+        assigneeIds: ['taro'] // 太郎が担当
       },
       {
         id: 'todo-7-2',
@@ -302,7 +334,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-04-10',
         endDate: '2025-04-11',
         dueDate: new Date(2025, 3, 11),
-        estimatedHours: 4
+        estimatedHours: 4,
+        assigneeIds: ['jiro'] // 次郎が担当
       },
       {
         id: 'todo-7-3',
@@ -311,7 +344,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-04-12',
         endDate: '2025-04-13',
         dueDate: new Date(2025, 3, 13),
-        estimatedHours: 4
+        estimatedHours: 4,
+        assigneeIds: ['jiro'] // 次郎が担当
       },
       {
         id: 'todo-7-4',
@@ -320,7 +354,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-04-13',
         endDate: '2025-04-14',
         dueDate: new Date(2025, 3, 14),
-        estimatedHours: 3
+        estimatedHours: 3,
+        assigneeIds: ['taro', 'jiro'] // 太郎と次郎が共同で担当
       }
     ]
   },
@@ -331,6 +366,7 @@ export const seedTasks: Task[] = [
     startDate: '2025-04-15',
     endDate: '2025-04-21',
     priority: 2, // 高
+    assigneeIds: ['gonzo', 'saburo'], // すべてのTODO担当者の和集合
     todos: [
       {
         id: 'todo-8-1',
@@ -339,7 +375,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-04-15',
         endDate: '2025-04-16',
         dueDate: new Date(2025, 3, 16),
-        estimatedHours: 3
+        estimatedHours: 3,
+        assigneeIds: ['gonzo'] // ゴンゾウが担当
       },
       {
         id: 'todo-8-2',
@@ -348,7 +385,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-04-17',
         endDate: '2025-04-18',
         dueDate: new Date(2025, 3, 18),
-        estimatedHours: 4
+        estimatedHours: 4,
+        assigneeIds: ['saburo'] // 三郎が担当
       },
       {
         id: 'todo-8-3',
@@ -357,7 +395,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-04-19',
         endDate: '2025-04-20',
         dueDate: new Date(2025, 3, 20),
-        estimatedHours: 4
+        estimatedHours: 4,
+        assigneeIds: ['gonzo', 'saburo'] // ゴンゾウと三郎が共同で担当
       },
       {
         id: 'todo-8-4',
@@ -366,7 +405,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-04-20',
         endDate: '2025-04-21',
         dueDate: new Date(2025, 3, 21),
-        estimatedHours: 3
+        estimatedHours: 3,
+        assigneeIds: ['saburo'] // 三郎が担当
       }
     ]
   },
@@ -377,6 +417,7 @@ export const seedTasks: Task[] = [
     startDate: '2025-04-22',
     endDate: '2025-04-28',
     priority: 1, // 中
+    assigneeIds: ['hanako', 'taro', 'jiro', 'saburo'], // すべてのTODO担当者の和集合
     todos: [
       {
         id: 'todo-9-1',
@@ -385,7 +426,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-04-22',
         endDate: '2025-04-23',
         dueDate: new Date(2025, 3, 23),
-        estimatedHours: 2
+        estimatedHours: 2,
+        assigneeIds: ['hanako', 'taro'] // 花子と太郎が共同で担当
       },
       {
         id: 'todo-9-2',
@@ -394,7 +436,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-04-24',
         endDate: '2025-04-25',
         dueDate: new Date(2025, 3, 25),
-        estimatedHours: 4
+        estimatedHours: 4,
+        assigneeIds: ['hanako', 'jiro'] // 花子と次郎が共同で担当
       },
       {
         id: 'todo-9-3',
@@ -403,7 +446,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-04-26',
         endDate: '2025-04-27',
         dueDate: new Date(2025, 3, 27),
-        estimatedHours: 4
+        estimatedHours: 4,
+        assigneeIds: ['hanako', 'saburo'] // 花子と三郎が共同で担当
       },
       {
         id: 'todo-9-4',
@@ -412,7 +456,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-04-27',
         endDate: '2025-04-28',
         dueDate: new Date(2025, 3, 28),
-        estimatedHours: 3
+        estimatedHours: 3,
+        assigneeIds: ['hanako'] // 花子が担当
       }
     ]
   },
@@ -423,6 +468,7 @@ export const seedTasks: Task[] = [
     startDate: '2025-04-29',
     endDate: '2025-05-03',
     priority: 2, // 高
+    assigneeIds: [], // 未アサイン
     todos: [
       {
         id: 'todo-10-1',
@@ -431,7 +477,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-04-29',
         endDate: '2025-04-30',
         dueDate: new Date(2025, 3, 30),
-        estimatedHours: 3
+        estimatedHours: 3,
+        assigneeIds: [] // 未アサイン
       },
       {
         id: 'todo-10-2',
@@ -440,7 +487,8 @@ export const seedTasks: Task[] = [
         startDate: '2025-04-30',
         endDate: '2025-05-01',
         dueDate: new Date(2025, 4, 1),
-        estimatedHours: 4
+        estimatedHours: 4,
+        assigneeIds: [] // 未アサイン
       },
       {
         id: 'todo-10-3',
@@ -449,16 +497,18 @@ export const seedTasks: Task[] = [
         startDate: '2025-05-01',
         endDate: '2025-05-02',
         dueDate: new Date(2025, 4, 2),
-        estimatedHours: 4
+        estimatedHours: 3,
+        assigneeIds: [] // 未アサイン
       },
       {
         id: 'todo-10-4',
-        text: '監視・アラートシステムの設定',
+        text: '監視・アラート設定',
         completed: false,
         startDate: '2025-05-02',
         endDate: '2025-05-03',
         dueDate: new Date(2025, 4, 3),
-        estimatedHours: 3
+        estimatedHours: 2,
+        assigneeIds: [] // 未アサイン
       }
     ]
   }

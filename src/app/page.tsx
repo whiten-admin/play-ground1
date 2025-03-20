@@ -14,9 +14,10 @@ import { useAuth } from '@/hooks/useAuth'
 import { Task } from '@/types/task'
 import { useTaskContext } from '@/contexts/TaskContext'
 import { Project } from '@/types/project'
+import UserFilter from '@/components/UserFilter'
 
 export default function Home() {
-  const { isAuthenticated, login, logout } = useAuth()
+  const { isAuthenticated, user, login, logout } = useAuth()
   const [activeTab, setActiveTab] = useState('todo')
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null)
@@ -134,7 +135,7 @@ export default function Home() {
         </div>
       </div>
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header onLogout={logout} project={project} />
+        <Header onLogout={logout} project={project} user={user} />
         <main className="flex-1 overflow-y-auto p-3">
           {/* データ管理ボタン */}
           <div className="mb-3">
@@ -153,6 +154,11 @@ export default function Home() {
               <DataManagement />
             </div>
           )}
+          
+          {/* ユーザーフィルター */}
+          <div className="mb-3">
+            <UserFilter />
+          </div>
           
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-3">

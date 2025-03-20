@@ -7,6 +7,7 @@ import { Task } from '@/types/task'
 import { IoCalendarOutline, IoGrid, IoList, IoChevronBack, IoChevronForward, IoCalendarClearOutline, IoCalendarNumberOutline } from 'react-icons/io5'
 import dynamic from 'next/dynamic'
 import { BUSINESS_HOURS, generateTimeSlots } from '@/utils/constants'
+import { useFilterContext } from '@/contexts/FilterContext'
 
 const DndContext = dynamic(
   () => import('./WeeklyScheduleDnd').then(mod => mod.default),
@@ -57,6 +58,9 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
     { id: 'week', icon: <IoCalendarOutline className="w-5 h-5" />, label: '週' },
     { id: 'month', icon: <IoCalendarNumberOutline className="w-5 h-5" />, label: '月' }
   ])
+  
+  // フィルタリングコンテキストを使用
+  const { selectedUserIds, showUnassigned } = useFilterContext()
   
   // 選択状態の変更を検知するuseEffect
   useEffect(() => {
@@ -141,33 +145,58 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
   const scheduleTodos = () => {
     // 全タスクのTODOを日付でグループ化
     const todosByDate = new Map<string, TodoWithMeta[]>()
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const todayDate = startOfDay(new Date());
+    const today = format(new Date(), 'yyyy-MM-dd')
+    const todayDate = startOfDay(new Date())
+    
+    // フィルタリングされたタスクを使用
+    const filteredTasks = tasks.filter(task => {
+      // アサインされていないタスクを表示するかどうか
+      if (showUnassigned && (!task.assigneeIds || task.assigneeIds.length === 0)) {
+        return true
+      }
+      
+      // 選択されたユーザーのタスクを表示
+      if (task.assigneeIds && task.assigneeIds.some(id => selectedUserIds.includes(id))) {
+        return true
+      }
+      
+      return false
+    })
     
     // すべてのTODOを一度に処理し、適切な日付に配置
-    tasks.forEach(task => {
+    filteredTasks.forEach(task => {
       task.todos.forEach(todo => {
+        // TODO自体の担当者でもフィルタリング
+        const todoAssigneeIds = todo.assigneeIds || task.assigneeIds
+        const isAssignedToSelectedUser = todoAssigneeIds && todoAssigneeIds.some(id => selectedUserIds.includes(id))
+        const isUnassigned = !todoAssigneeIds || todoAssigneeIds.length === 0
+        
+        // フィルタリング条件に合わない場合はスキップ
+        if (!(isAssignedToSelectedUser || (showUnassigned && isUnassigned))) {
+          return
+        }
+        
         // 該当する日付を決定
-        let dateKey: string;
+        let dateKey: string
         
         if (todo.plannedStartDate) {
           // 着手予定日が設定されている場合はそれを使用
-          dateKey = format(todo.plannedStartDate, 'yyyy-MM-dd');
+          dateKey = format(todo.plannedStartDate, 'yyyy-MM-dd')
         } else if (todo.startDate) {
           // startDateが設定されている場合はそれを使用
-          dateKey = format(new Date(todo.startDate), 'yyyy-MM-dd');
+          dateKey = format(new Date(todo.startDate), 'yyyy-MM-dd')
         } else {
           // それ以外は期日に配置
-          dateKey = format(new Date(todo.dueDate), 'yyyy-MM-dd');
+          dateKey = format(new Date(todo.dueDate), 'yyyy-MM-dd')
         }
         
         // 該当日付のリストがなければ作成
         if (!todosByDate.has(dateKey)) {
-          todosByDate.set(dateKey, []);
+          todosByDate.set(dateKey, [])
         }
         
         // 表示用の見積もり時間を調整（最大8時間とする）
-        const displayEstimatedHours = Math.min(todo.estimatedHours, BUSINESS_HOURS.MAX_HOURS);
+        const displayEstimatedHours = Math.min(todo.estimatedHours, BUSINESS_HOURS.MAX_HOURS)
         
         // TODOを追加
         todosByDate.get(dateKey)?.push({
@@ -182,9 +211,9 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
           taskTitle: task.title,
           priority: task.priority || 0, // 優先度を追加（未設定の場合は0）
           isNextTodo: false // NEXTTODOフラグの初期値
-        });
-      });
-    });
+        })
+      })
+    })
 
     // 各日付のTODOを優先度で並べ替え（完了状態は考慮しない）
     todosByDate.forEach((todos, dateKey) => {

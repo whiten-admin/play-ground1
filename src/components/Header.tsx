@@ -2,13 +2,15 @@
 
 import React from 'react'
 import { Project } from '@/types/project'
+import { User } from '@/types/user'
 
 interface HeaderProps {
   onLogout?: () => void
   project?: Project
+  user?: User | null
 }
 
-export default function Header({ onLogout, project }: HeaderProps) {
+export default function Header({ onLogout, project, user }: HeaderProps) {
   const formatDate = (date: string | undefined) => {
     if (!date) return '未定'
     return new Date(date).toLocaleDateString('ja-JP', {
@@ -32,6 +34,18 @@ export default function Header({ onLogout, project }: HeaderProps) {
 
   const remainingDays = project?.endDate ? calculateRemainingDays(project.endDate) : null
 
+  // ユーザーロールの日本語表示
+  const getRoleLabel = (role?: string) => {
+    switch (role) {
+      case 'manager':
+        return 'マネージャー'
+      case 'member':
+        return 'メンバー'
+      default:
+        return ''
+    }
+  }
+
   return (
     <header className="bg-white border-b border-gray-200 py-2 px-4">
       <div className="flex items-center justify-between">
@@ -50,6 +64,14 @@ export default function Header({ onLogout, project }: HeaderProps) {
           <div className="text-red-600 font-semibold text-sm">
             PJ炎上リスク：50%
           </div>
+          {user && (
+            <div className="px-3 py-1 text-sm bg-gray-100 rounded-lg flex items-center gap-1">
+              <span className="font-medium">{user.name}</span>
+              <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800 rounded">
+                {getRoleLabel(user.role)}
+              </span>
+            </div>
+          )}
           {onLogout && (
             <button
               onClick={onLogout}
