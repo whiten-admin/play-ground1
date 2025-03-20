@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { Task } from '@/types/task'
 import { BUSINESS_HOURS } from '@/utils/constants'
+import { useFilterContext } from '@/contexts/FilterContext'
 
 interface WeeklyScheduleDndProps {
   weekDays: Date[]
@@ -41,12 +42,15 @@ export default function WeeklyScheduleDnd({
 }: WeeklyScheduleDndProps) {
   const [mounted, setMounted] = useState(false)
   const [todos, setTodos] = useState<Map<string, TodoWithMeta[]>>(new Map())
+  
+  // フィルタリングコンテキストを使用
+  const { selectedUserIds, showUnassigned } = useFilterContext()
 
   // tasksが変更されたときにtodosを再計算
   useEffect(() => {
     const initialTodos = scheduleTodos()
     setTodos(initialTodos)
-  }, [tasks])
+  }, [tasks, selectedUserIds, showUnassigned]) // フィルター条件が変更されたときも再計算
 
   // selectedTodoIdが変更されたときにコンソールログに出力
   useEffect(() => {
@@ -64,29 +68,54 @@ export default function WeeklyScheduleDnd({
   const scheduleTodos = () => {
     // 全タスクのTODOを日付でグループ化
     const todosByDate = new Map<string, TodoWithMeta[]>()
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const todayDate = new Date();
-    todayDate.setHours(0, 0, 0, 0);
+    const today = format(new Date(), 'yyyy-MM-dd')
+    const todayDate = new Date()
+    todayDate.setHours(0, 0, 0, 0)
+    
+    // フィルタリングされたタスクを使用
+    const filteredTasks = tasks.filter(task => {
+      // アサインされていないタスクを表示するかどうか
+      if (showUnassigned && (!task.assigneeIds || task.assigneeIds.length === 0)) {
+        return true
+      }
+      
+      // 選択されたユーザーのタスクを表示
+      if (task.assigneeIds && task.assigneeIds.some(id => selectedUserIds.includes(id))) {
+        return true
+      }
+      
+      return false
+    })
 
     // まず、WeeklySchedule.tsxと同様のロジックですべてのTODOを適切な日付に配置
-    tasks.forEach(task => {
+    filteredTasks.forEach(task => {
       task.todos.forEach(todo => {
+        // TODO自体の担当者でもフィルタリング
+        const todoAssigneeIds = todo.assigneeIds || task.assigneeIds
+        const isAssignedToSelectedUser = todoAssigneeIds && todoAssigneeIds.some(id => selectedUserIds.includes(id))
+        const isUnassigned = !todoAssigneeIds || todoAssigneeIds.length === 0
+        
+        // フィルタリング条件に合わない場合はスキップ
+        if (!(isAssignedToSelectedUser || (showUnassigned && isUnassigned))) {
+          return
+        }
+        
         // 該当する日付を決定
-        let dateKey: string;
-        let scheduleDate: Date;
+        let dateKey: string
+        let scheduleDate: Date
         
         if (todo.plannedStartDate) {
           // 着手予定日が設定されている場合はそれを使用
-          dateKey = format(todo.plannedStartDate, 'yyyy-MM-dd');
-          scheduleDate = new Date(todo.plannedStartDate);
+          dateKey = format(todo.plannedStartDate, 'yyyy-MM-dd')
+          scheduleDate = new Date(todo.plannedStartDate)
         } else if (todo.startDate) {
           // startDateが設定されている場合はそれを使用
-          dateKey = format(new Date(todo.startDate), 'yyyy-MM-dd');
-          scheduleDate = new Date(todo.startDate);
+          dateKey = format(new Date(todo.startDate), 'yyyy-MM-dd')
+          scheduleDate = new Date(todo.startDate)
         } else {
           // それ以外は期日に配置
-          dateKey = format(new Date(todo.dueDate), 'yyyy-MM-dd');
-          scheduleDate = new Date(todo.dueDate);
+          dateKey = format(new Date(todo.dueDate), 'yyyy-MM-dd')
+          scheduleDate = new Date(todo.dueDate)
         }
         
         if (!todosByDate.has(dateKey)) {
