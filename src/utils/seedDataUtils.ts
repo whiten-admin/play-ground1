@@ -1,5 +1,6 @@
 import { Task, Todo } from '@/types/task';
 import { seedTasks } from './seedData';
+import { scheduleTodosByDueDate } from './taskScheduler';
 
 // シードデータをローカルストレージに保存する
 export const saveSeedDataToLocalStorage = (tasks: Task[]) => {
@@ -41,6 +42,13 @@ export const getTasksFromLocalStorage = (): Task[] | null => {
 export const resetToSeedData = () => {
   saveSeedDataToLocalStorage(seedTasks);
   return seedTasks;
+};
+
+// スケジュール済みのシードデータを初期状態にリセットする
+export const resetToScheduledSeedData = () => {
+  const scheduledTasks = scheduleTodosByDueDate(seedTasks);
+  saveSeedDataToLocalStorage(scheduledTasks);
+  return scheduledTasks;
 };
 
 // 特定のタスクの完了状態を一括で変更する

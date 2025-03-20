@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { IoAdd, IoBulb, IoTrash } from 'react-icons/io5';
 import { Task, Todo } from '@/types/task';
 import { suggestTodos } from '@/utils/openai';
+import ScheduleTodosButton from './ScheduleTodosButton';
 
 interface WBSViewProps {
   onTaskCreate?: (newTask: Task) => void;
@@ -376,13 +377,20 @@ export default function WBSView({ onTaskCreate, onTaskSelect }: WBSViewProps) {
     <div className="overflow-x-auto relative" ref={containerRef}>
       <div className="flex justify-between items-center mb-2">
         <h3 className="font-medium text-gray-700">ガントチャート</h3>
-        <button
-          onClick={() => setIsCreatingTask(true)}
-          className="px-2 py-0.5 text-xs rounded flex items-center gap-1 bg-blue-500 text-white hover:bg-blue-600"
-        >
-          <IoAdd className="w-3 h-3" />
-          タスク追加
-        </button>
+        <div className="flex items-center gap-2">
+          <ScheduleTodosButton 
+            onScheduleComplete={() => {
+              // 再レンダリングのトリガーになる処理を追加（必要であれば）
+            }} 
+          />
+          <button
+            onClick={() => setIsCreatingTask(true)}
+            className="px-2 py-0.5 text-xs rounded flex items-center gap-1 bg-blue-500 text-white hover:bg-blue-600"
+          >
+            <IoAdd className="w-3 h-3" />
+            タスク追加
+          </button>
+        </div>
       </div>
       <div className="min-w-[1200px]">
         {/* ヘッダー */}
