@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import usersData from '@/data/users.json'
 import Logo from './Logo'
+import { theme } from '@/styles/theme'
 
 interface AuthProps {
   onLogin: (id: string, password: string) => boolean
@@ -61,7 +62,10 @@ export default function Auth({ onLogin }: AuthProps) {
           )}
           <button
             type="submit"
-            className="w-full bg-[#8BC34A] text-white py-2 rounded-lg hover:bg-[#7CB342] transition-colors"
+            className="w-full text-white py-2 rounded-lg transition-colors"
+            style={{ backgroundColor: theme.colors.primary }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = theme.colors.primaryHover}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = theme.colors.primary}
           >
             ログイン
           </button>
