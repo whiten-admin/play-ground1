@@ -13,6 +13,7 @@ import {
 import { ja } from 'date-fns/locale';
 import { Task, Todo } from '@/types/task';
 import { getUserNameById, getUserNamesByIds } from '@/utils/userUtils';
+import { useFilterContext } from '@/contexts/FilterContext';
 
 interface TodayTodoProps {
   tasks: Task[];
@@ -34,6 +35,9 @@ export default function TodayTodo({
   const [isOverdueExpanded, setIsOverdueExpanded] = useState(false);
   // 1日の最大工数（時間）
   const MAX_DAILY_HOURS = 8;
+  
+  // フィルタリングコンテキストを使用
+  const { selectedUserIds, showUnassigned } = useFilterContext();
 
   // 全タスクからTODOを抽出し、親タスク情報と一緒にフラット化
   const allTodos = tasks.flatMap((task) =>
@@ -46,6 +50,21 @@ export default function TodayTodo({
       assigneeIds: todo.assigneeIds || task.assigneeIds,
     }))
   );
+  
+  // 担当者でフィルタリングする
+  const filteredByAssigneeTodos = allTodos.filter((todo) => {
+    // アサインされていないTODOを表示するかどうか
+    if (showUnassigned && (!todo.assigneeIds || todo.assigneeIds.length === 0)) {
+      return true;
+    }
+    
+    // 選択されたユーザーのTODOを表示
+    if (todo.assigneeIds && todo.assigneeIds.some(id => selectedUserIds.includes(id))) {
+      return true;
+    }
+    
+    return false;
+  });
 
   // TODOの開始予定日を取得する関数
   const getPlannedStartDate = (todo: Todo & { taskId: string; taskTitle: string; isNew?: boolean }) => {
@@ -58,13 +77,13 @@ export default function TodayTodo({
   };
 
   // 今日が開始日のTODO
-  const todaysTodos = allTodos.filter((todo) => {
+  const todaysTodos = filteredByAssigneeTodos.filter((todo) => {
     const plannedDate = getPlannedStartDate(todo);
     return isToday(plannedDate);
   });
 
   // 過去の開始日で未完了のTODO（期限切れTODO）
-  const overdueTodos = allTodos.filter((todo) => {
+  const overdueTodos = filteredByAssigneeTodos.filter((todo) => {
     const plannedDate = getPlannedStartDate(todo);
     const today = startOfDay(new Date());
     return isBefore(plannedDate, today) && !todo.completed;

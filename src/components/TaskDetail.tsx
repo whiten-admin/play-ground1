@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import { IoAdd, IoTrash, IoPencil, IoSave, IoClose, IoBulb, IoList, IoGrid, IoBarChart, IoCaretDown, IoCaretUp } from 'react-icons/io5'
+import { IoAdd, IoTrash, IoPencil, IoSave, IoClose, IoBulb, IoList, IoGrid, IoBarChart, IoCaretDown, IoCaretUp, IoFilter, IoCheckbox } from 'react-icons/io5'
 import { Task, Todo } from '@/types/task'
 import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
@@ -9,8 +9,10 @@ import { suggestTodos } from '@/utils/openai'
 import KanbanView from './KanbanView'
 import WBSView from './WBSView'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
-import { getUserNameById, getUserNamesByIds } from '@/utils/userUtils'
+import { getUserNameById, getUserNamesByIds, getAllUsers } from '@/utils/userUtils'
 import UserAssignSelect from './UserAssignSelect'
+import { User } from '@/types/user'
+import { useFilterContext } from '@/contexts/FilterContext'
 
 type ViewMode = 'list' | 'kanban' | 'gantt'
 
@@ -91,6 +93,24 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
   const [newTaskTodoText, setNewTaskTodoText] = useState('')
   const [isGeneratingTodos, setIsGeneratingTodos] = useState(false)
   const [newTaskSuggestedTodos, setNewTaskSuggestedTodos] = useState<{ text: string; estimatedHours: number }[]>([])
+  
+  // フィルタリングコンテキストを使用
+  const { selectedUserIds, showUnassigned } = useFilterContext();
+  
+  // 表示するタスクをフィルタリングする
+  const filteredTasks = tasks.filter((task) => {
+    // アサインされていないタスクを表示するかどうか
+    if (showUnassigned && (!task.assigneeIds || task.assigneeIds.length === 0)) {
+      return true;
+    }
+    
+    // 選択されたユーザーのタスクを表示
+    if (task.assigneeIds && task.assigneeIds.some(id => selectedUserIds.includes(id))) {
+      return true;
+    }
+    
+    return false;
+  });
 
   // 編集モードの切り替え
   const toggleEdit = (field: 'title' | 'description' | string, isEditingTodo: boolean = false) => {
@@ -707,7 +727,7 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
         <div className="flex-1 overflow-y-auto mt-1">
           {viewMode === 'list' && (
             <div className="space-y-4 pr-2">
-              {sortTasks(tasks).map((task) => (
+              {sortTasks(filteredTasks).map((task) => (
                 <div
                   key={task.id}
                   onClick={() => onTaskSelect(task.id)}
@@ -777,7 +797,7 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
 
           {viewMode === 'kanban' && (
             <KanbanView
-              tasks={sortTasks(tasks)}
+              tasks={sortTasks(filteredTasks)}
               onTaskSelect={onTaskSelect}
               onTaskUpdate={onTaskUpdate}
               onTaskCreate={onTaskCreate}
@@ -920,30 +940,12 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
               <div className="ml-2 flex items-center">
                 <div className="text-sm mr-4">
                   <span className="text-gray-500 mr-1">担当:</span>
-                  {/*
-                  {editState.title ? (
-                    <div className="flex gap-2 items-center">
-                      <UserAssignSelect 
-                        assigneeIds={editedTask?.assigneeIds || []} 
-                        onAssigneeChange={(newAssigneeIds) => {
-                          if (editedTask) {
-                            setEditedTask({
-                              ...editedTask,
-                              assigneeIds: newAssigneeIds
-                            });
-                          }
-                        }}
-                      />
-                    </div>
-                  ) : (
-                  */}
-                    <div className="text-sm text-gray-600">
-                      {selectedTask?.assigneeIds && selectedTask.assigneeIds.length > 0 
-                        ? getUserNamesByIds(selectedTask.assigneeIds)
-                        : '担当者なし'
-                      }
-                    </div>
-                  {/*)}*/}
+                  <div className="text-sm text-gray-600">
+                    {selectedTask?.assigneeIds && selectedTask.assigneeIds.length > 0 
+                      ? getUserNamesByIds(selectedTask.assigneeIds)
+                      : '担当者なし'
+                    }
+                  </div>
                 </div>
                 {!editState.title && (
                   <button

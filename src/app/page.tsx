@@ -14,6 +14,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { Task } from '@/types/task'
 import { useTaskContext } from '@/contexts/TaskContext'
 import { Project } from '@/types/project'
+import UserFilter from '@/components/UserFilter'
 
 export default function Home() {
   const { isAuthenticated, user, login, logout } = useAuth()
@@ -153,6 +154,11 @@ export default function Home() {
               <DataManagement />
             </div>
           )}
+          
+          {/* ユーザーフィルター */}
+          <div className="mb-3">
+            <UserFilter />
+          </div>
           
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-3">
