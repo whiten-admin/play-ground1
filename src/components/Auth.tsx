@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import usersData from '@/data/users.json'
+import Logo from './Logo'
 
 interface AuthProps {
   onLogin: (id: string, password: string) => boolean
@@ -26,6 +27,9 @@ export default function Auth({ onLogin }: AuthProps) {
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
       <div className="bg-white p-8 rounded-lg shadow-md w-96">
+        <div className="flex justify-center mb-6">
+          <Logo className="mb-4" />
+        </div>
         <h2 className="text-2xl font-bold text-center mb-6">ログイン</h2>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
@@ -57,14 +61,14 @@ export default function Auth({ onLogin }: AuthProps) {
           )}
           <button
             type="submit"
-            className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors"
+            className="w-full bg-[#8BC34A] text-white py-2 rounded-lg hover:bg-[#7CB342] transition-colors"
           >
             ログイン
           </button>
         </form>
 
         <div className="mt-6 border-t pt-4">
-          <p className="text-sm font-medium text-gray-700 mb-2">利用可能なアカウント：</p>
+          <p className="text-sm font-medium text-gray-700 mb-2">利用可能なアカウント（開発用）：</p>
           <div className="grid grid-cols-2 gap-2 text-xs">
             {usersData.map((user: any) => (
               <div key={user.id} className="bg-gray-50 p-2 rounded">
