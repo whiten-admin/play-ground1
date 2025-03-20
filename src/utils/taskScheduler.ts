@@ -88,14 +88,24 @@ export const scheduleTodosByDueDate = (tasks: Task[]): Task[] => {
   
   // 各TODOをスケジュール
   allTodos.forEach(({ todo, taskIndex }) => {
-    const dueDate = todo.dueDate instanceof Date ? todo.dueDate : new Date(todo.dueDate);
-    let currentDate = startOfDay(dueDate);
-    let remainingHours = todo.estimatedHours;
+    let startDate: Date;
+    
+    // 開始日を決定
+    if (todo.plannedStartDate) {
+      startDate = todo.plannedStartDate;
+    } else if (todo.startDate) {
+      startDate = new Date(todo.startDate);
+    } else {
+      startDate = new Date(todo.dueDate);
+    }
     
     // 過去日の場合は今日からスケジュール
-    if (currentDate < startOfDay(new Date())) {
-      currentDate = startOfDay(new Date());
+    if (startDate < startOfDay(new Date())) {
+      startDate = startOfDay(new Date());
     }
+    
+    let currentDate = startOfDay(startDate);
+    let remainingHours = todo.estimatedHours;
     
     // 日付文字列の形式を統一
     const getDateKey = (date: Date) => format(date, 'yyyy-MM-dd');
