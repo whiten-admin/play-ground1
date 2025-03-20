@@ -99,9 +99,7 @@ export default function DataManagement() {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-4 mb-4">
-      <h2 className="text-lg font-bold mb-4">データ管理</h2>
-      
+    <div className="bg-white rounded-lg shadow p-4 mb-4">      
       {/* メッセージ表示 */}
       {message && (
         <div className={`p-2 mb-4 rounded ${message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>

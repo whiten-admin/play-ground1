@@ -180,66 +180,72 @@ export default function TodayTodo({
       
       {/* NEXT TODOと今日のTODO */}
       <div className="space-y-1">
-        {todaysWithinTimeLimit.map((todo, index) => {
-          // NEXT TODOは常に表示、その他は展開されている場合のみ表示
-          const isNextTodo = index === 0 && !todo.completed;
-          const shouldShow = isNextTodo || isTodayExpanded;
-          if (!shouldShow) return null;
-          
-          return (
-            <div
-              key={todo.id}
-              onClick={() => onTaskSelect(todo.taskId, todo.id)}
-              className={`py-1 px-2 rounded-lg cursor-pointer transition-colors ${
-                selectedTaskId === todo.taskId && selectedTodoId === todo.id
-                  ? 'bg-blue-50 border border-blue-200'
-                  : 'hover:bg-gray-50'
-              } ${
-                todo.completed ? 'opacity-60 bg-gray-50' : ''
-              } ${
-                isNextTodo ? 'border-l-4 border-l-amber-500 bg-amber-50' : ''
-              }`}
-            >
-              {isNextTodo && (
-                <div className="mb-0.5">
-                  <span className="text-xs font-semibold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">NEXT TODO</span>
+        {todaysWithinTimeLimit.length > 0 ? (
+          todaysWithinTimeLimit.map((todo, index) => {
+            // NEXT TODOは常に表示、その他は展開されている場合のみ表示
+            const isNextTodo = index === 0 && !todo.completed;
+            const shouldShow = isNextTodo || isTodayExpanded;
+            if (!shouldShow) return null;
+            
+            return (
+              <div
+                key={todo.id}
+                onClick={() => onTaskSelect(todo.taskId, todo.id)}
+                className={`py-1 px-2 rounded-lg cursor-pointer transition-colors ${
+                  selectedTaskId === todo.taskId && selectedTodoId === todo.id
+                    ? 'bg-blue-50 border border-blue-200'
+                    : 'hover:bg-gray-50'
+                } ${
+                  todo.completed ? 'opacity-60 bg-gray-50' : ''
+                } ${
+                  isNextTodo ? 'border-l-4 border-l-amber-500 bg-amber-50' : ''
+                }`}
+              >
+                {isNextTodo && (
+                  <div className="mb-0.5">
+                    <span className="text-xs font-semibold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">NEXT TODO</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between mb-0.5">
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="checkbox"
+                      checked={todo.completed}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        onTodoStatusChange(todo.taskId, todo.id);
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                      className="w-3.5 h-3.5"
+                    />
+                    <span
+                      className={`text-sm ${
+                        todo.completed ? 'line-through text-gray-500' : ''
+                      }`}
+                    >
+                      {todo.text}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-600">
+                      見積工数：{Math.round(todo.estimatedHours * 10) / 10}h
+                    </span>
+                  </div>
                 </div>
-              )}
-              <div className="flex items-center justify-between mb-0.5">
-                <div className="flex items-center gap-1">
-                  <input
-                    type="checkbox"
-                    checked={todo.completed}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      onTodoStatusChange(todo.taskId, todo.id);
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                    className="w-3.5 h-3.5"
-                  />
-                  <span
-                    className={`text-sm ${
-                      todo.completed ? 'line-through text-gray-500' : ''
-                    }`}
-                  >
-                    {todo.text}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-gray-600">
-                    見積工数：{Math.round(todo.estimatedHours * 10) / 10}h
-                  </span>
+                <div className="ml-4 text-xs flex justify-between">
+                  <span className="text-gray-500">タスク名：{todo.taskTitle}</span>
+                  <span className="text-gray-500">担当：{getUserNamesByIds(todo.assigneeIds)}</span>
                 </div>
               </div>
-              <div className="ml-4 text-xs flex justify-between">
-                <span className="text-gray-500">タスク名：{todo.taskTitle}</span>
-                <span className="text-gray-500">担当：{getUserNamesByIds(todo.assigneeIds)}</span>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })
+        ) : (
+          <div className="py-2 px-2 text-center">
+            <p className="text-sm text-gray-400">該当するTODOがありません</p>
+          </div>
+        )}
       </div>
       
       {/* 今日のTODOが1件以上あり、展開されていない場合に表示するボタン */}

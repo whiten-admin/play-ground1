@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import 'react-resizable/css/styles.css';
 import { TaskProvider } from '@/contexts/TaskContext';
 import { FilterProvider } from '@/contexts/FilterContext';
 

@@ -8,13 +8,13 @@ import TodayTodo from '@/components/TodayTodo'
 import AdditionalTask from '@/components/AdditionalTask'
 import ProjectDetail from '@/components/ProjectDetail'
 import WeeklySchedule from '@/components/WeeklySchedule'
-import DataManagement from '@/components/DataManagement'
 import Auth from '@/components/Auth'
 import { useAuth } from '@/hooks/useAuth'
 import { Task } from '@/types/task'
 import { useTaskContext } from '@/contexts/TaskContext'
 import { Project } from '@/types/project'
 import UserFilter from '@/components/UserFilter'
+import ResizablePanel from '@/components/layout/ResizablePanel'
 
 export default function Home() {
   const { isAuthenticated, user, login, logout } = useAuth()
@@ -22,7 +22,6 @@ export default function Home() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null)
   const { tasks, setTasks } = useTaskContext()
-  const [showDataManagement, setShowDataManagement] = useState(false)
   const [project, setProject] = useState<Project>({
     id: '1',
     title: 'プロジェクトA',
@@ -137,65 +136,55 @@ export default function Home() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header onLogout={logout} project={project} user={user} />
         <main className="flex-1 overflow-y-auto p-3">
-          {/* データ管理ボタン */}
-          <div className="mb-3">
-            <button
-              onClick={() => setShowDataManagement(!showDataManagement)}
-              className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded text-sm flex items-center"
-            >
-              <span>{showDataManagement ? '管理パネルを閉じる' : 'データ管理パネルを開く'}（開発用）</span>
-              <span className="ml-1">{showDataManagement ? '▲' : '▼'}</span>
-            </button>
-          </div>
-          
-          {/* データ管理パネル */}
-          {showDataManagement && (
-            <div className="mb-3">
-              <DataManagement />
-            </div>
-          )}
-          
           {/* ユーザーフィルター */}
           <div className="mb-3">
             <UserFilter />
           </div>
           
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-3">
-              <div className="text-sm">
-                <TodayTodo
-                  tasks={tasks}
-                  selectedTaskId={selectedTaskId}
-                  selectedTodoId={selectedTodoId}
-                  onTaskSelect={handleTodoSelect}
-                  onTodoStatusChange={handleTodoStatusChange}
-                />
+          <ResizablePanel
+            leftPanel={
+              <div className="space-y-3">
+                <div className="text-sm">
+                  <TodayTodo
+                    tasks={tasks}
+                    selectedTaskId={selectedTaskId}
+                    selectedTodoId={selectedTodoId}
+                    onTaskSelect={handleTodoSelect}
+                    onTodoStatusChange={handleTodoStatusChange}
+                  />
+                </div>
+                <div className="text-sm">
+                  <WeeklySchedule
+                    tasks={tasks}
+                    onTaskSelect={handleTaskSelect}
+                    onTodoUpdate={handleTodoUpdate}
+                    selectedTodoId={selectedTodoId}
+                  />
+                </div>
               </div>
-              <div className="text-sm">
-                <WeeklySchedule
-                  tasks={tasks}
-                  onTaskSelect={handleTaskSelect}
-                  onTodoUpdate={handleTodoUpdate}
-                  selectedTodoId={selectedTodoId}
-                />
+            }
+            rightPanel={
+              <div className="space-y-3">
+                <div className="text-sm">
+                  <TaskDetail
+                    selectedTask={selectedTask}
+                    selectedTodoId={selectedTodoId}
+                    onTaskUpdate={handleTaskUpdate}
+                    tasks={tasks}
+                    onTaskSelect={handleTaskSelect}
+                    onTaskCreate={handleTaskCreate}
+                  />
+                </div>
+                <div className="text-sm">
+                  <AdditionalTask />
+                </div>
               </div>
-            </div>
-            <div className="space-y-3">
-              <div className="text-sm">
-                <TaskDetail
-                  selectedTask={selectedTask}
-                  selectedTodoId={selectedTodoId}
-                  onTaskUpdate={handleTaskUpdate}
-                  tasks={tasks}
-                  onTaskSelect={handleTaskSelect}
-                  onTaskCreate={handleTaskCreate}
-                />
-              </div>
-              <div className="text-sm">
-                <AdditionalTask />
-              </div>
-            </div>
-          </div>
+            }
+            defaultLeftWidth={450}
+            minLeftWidth={300}
+            maxLeftWidth={800}
+            storageKey="todoAppPanelWidth"
+          />
         </main>
       </div>
     </div>

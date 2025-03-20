@@ -7,6 +7,7 @@ import WBSView from '@/components/WBSView'
 import Auth from '@/components/Auth'
 import { useAuth } from '@/hooks/useAuth'
 import { Project } from '@/types/project'
+import ProjectDetail from '@/components/ProjectDetail'
 
 export default function WBSPage() {
   const { isAuthenticated, user, login, logout } = useAuth()
@@ -34,13 +35,26 @@ export default function WBSPage() {
     console.log('新しいタスクが作成されました:', newTask)
   }
 
+  // プロジェクト更新処理
+  const handleProjectUpdate = (updatedProject: Project) => {
+    setProject(updatedProject)
+  }
+
   if (!isAuthenticated) {
     return <Auth onLogin={login} />;
   }
 
   return (
     <div className="flex h-screen bg-gray-100">
-      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      <div className="flex-shrink-0 flex flex-col">
+        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        <div className="p-2">
+          <ProjectDetail 
+            project={project} 
+            onUpdate={handleProjectUpdate} 
+          />
+        </div>
+      </div>
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header onLogout={logout} project={project} user={user} />
         <main className="flex-1 overflow-y-auto p-6">
