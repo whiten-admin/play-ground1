@@ -16,6 +16,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     { id: 'todo', label: 'やること', icon: '📝', href: '/' },
     { id: 'wbs', label: 'WBS', icon: '📊', href: '/wbs' },
     { id: 'analysis', label: 'PJ分析', icon: '📈', href: '/analysis' },
+    { id: 'guide', label: '使い方', icon: '🎓', href: '/guide' },
     { id: 'settings', label: '設定', icon: '⚙️', href: '/settings' },
   ]
 
