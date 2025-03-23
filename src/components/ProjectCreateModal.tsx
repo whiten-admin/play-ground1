@@ -251,9 +251,10 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject }:
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 プロジェクト資料
               </label>
-              <p className="text-sm text-gray-500 mb-3">
+              <p className="text-sm text-gray-500">
                 プロジェクト計画書やテキストを入力すると、自動的にプロジェクト情報を抽出します。
               </p>
+              <span className='text-xs text-red-500'>※開発中のため実際にファイルを読み込むことはできません</span>
               
               <div className="space-y-4">
                 <div className="border-2 border-dashed border-gray-300 rounded-md p-4">
