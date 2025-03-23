@@ -522,11 +522,11 @@ export const seedTasks: Task[] = [
       }
     ]
   },
-  // プロジェクトB用のタスク
+  // プロジェクトB（海外への販路拡大プロジェクト）用のタスク
   {
     id: 'task-b1',
     title: '市場調査',
-    description: '新規プロジェクトのための市場調査を実施します。',
+    description: '海外市場の動向調査と分析を行います。',
     startDate: '2025-04-01',
     endDate: '2025-04-10',
     priority: 2, // 高
@@ -535,7 +535,7 @@ export const seedTasks: Task[] = [
     todos: [
       {
         id: 'todo-b1-1',
-        text: '競合分析',
+        text: '現地市場の競合分析',
         completed: false,
         startDate: '2025-04-01',
         endDate: '2025-04-03',
@@ -545,7 +545,7 @@ export const seedTasks: Task[] = [
       },
       {
         id: 'todo-b1-2',
-        text: 'ユーザーインタビュー',
+        text: '現地ユーザーインタビュー実施',
         completed: false,
         startDate: '2025-04-04',
         endDate: '2025-04-07',
@@ -555,7 +555,7 @@ export const seedTasks: Task[] = [
       },
       {
         id: 'todo-b1-3',
-        text: '調査レポート作成',
+        text: '市場調査レポート作成',
         completed: false,
         startDate: '2025-04-08',
         endDate: '2025-04-10',
@@ -567,8 +567,8 @@ export const seedTasks: Task[] = [
   },
   {
     id: 'task-b2',
-    title: '要件定義',
-    description: '新規プロジェクトの要件を定義します。',
+    title: '進出戦略の立案',
+    description: '海外市場への進出戦略を策定します。',
     startDate: '2025-04-11',
     endDate: '2025-04-20',
     priority: 2, // 高
@@ -577,7 +577,7 @@ export const seedTasks: Task[] = [
     todos: [
       {
         id: 'todo-b2-1',
-        text: '機能要件書作成',
+        text: '進出戦略ドキュメント作成',
         completed: false,
         startDate: '2025-04-11',
         endDate: '2025-04-15',
@@ -587,7 +587,7 @@ export const seedTasks: Task[] = [
       },
       {
         id: 'todo-b2-2',
-        text: '非機能要件書作成',
+        text: 'リスク分析と対策立案',
         completed: false,
         startDate: '2025-04-16',
         endDate: '2025-04-20',
@@ -597,20 +597,199 @@ export const seedTasks: Task[] = [
       }
     ]
   },
-  // プロジェクトC用のタスク
+  {
+    id: 'task-b3',
+    title: '現地法人の設立準備',
+    description: '海外現地法人の設立に向けた手続きと準備を行います。',
+    startDate: '2025-04-21',
+    endDate: '2025-05-10',
+    priority: 2, // 高
+    assigneeIds: ['taro', 'gonzo'],
+    projectId: '2', // プロジェクトB
+    todos: [
+      {
+        id: 'todo-b3-1',
+        text: '現地弁護士との面談',
+        completed: false,
+        startDate: '2025-04-21',
+        endDate: '2025-04-23',
+        dueDate: new Date(2025, 3, 23),
+        estimatedHours: 4,
+        assigneeIds: ['taro']
+      },
+      {
+        id: 'todo-b3-2',
+        text: '必要書類の準備',
+        completed: false,
+        startDate: '2025-04-24',
+        endDate: '2025-04-30',
+        dueDate: new Date(2025, 3, 30),
+        estimatedHours: 12,
+        assigneeIds: ['gonzo']
+      },
+      {
+        id: 'todo-b3-3',
+        text: '現地視察の計画',
+        completed: false,
+        startDate: '2025-05-01',
+        endDate: '2025-05-05',
+        dueDate: new Date(2025, 4, 5),
+        estimatedHours: 6,
+        assigneeIds: ['taro', 'gonzo']
+      },
+      {
+        id: 'todo-b3-4',
+        text: '現地オフィス候補選定',
+        completed: false,
+        startDate: '2025-05-06',
+        endDate: '2025-05-10',
+        dueDate: new Date(2025, 4, 10),
+        estimatedHours: 8,
+        assigneeIds: ['gonzo']
+      }
+    ]
+  },
+  {
+    id: 'task-b4',
+    title: '現地採用計画',
+    description: '現地スタッフの採用計画と体制構築を行います。',
+    startDate: '2025-05-11',
+    endDate: '2025-05-25',
+    priority: 1, // 中
+    assigneeIds: ['hanako', 'saburo'],
+    projectId: '2', // プロジェクトB
+    todos: [
+      {
+        id: 'todo-b4-1',
+        text: '採用計画策定',
+        completed: false,
+        startDate: '2025-05-11',
+        endDate: '2025-05-15',
+        dueDate: new Date(2025, 4, 15),
+        estimatedHours: 8,
+        assigneeIds: ['hanako']
+      },
+      {
+        id: 'todo-b4-2',
+        text: '求人広告の作成',
+        completed: false,
+        startDate: '2025-05-16',
+        endDate: '2025-05-20',
+        dueDate: new Date(2025, 4, 20),
+        estimatedHours: 4,
+        assigneeIds: ['saburo']
+      },
+      {
+        id: 'todo-b4-3',
+        text: '採用面接の準備',
+        completed: false,
+        startDate: '2025-05-21',
+        endDate: '2025-05-25',
+        dueDate: new Date(2025, 4, 25),
+        estimatedHours: 6,
+        assigneeIds: ['hanako', 'saburo']
+      }
+    ]
+  },
+  {
+    id: 'task-b5',
+    title: '現地向け製品の調整',
+    description: '現地市場に合わせた製品のローカライズと調整を行います。',
+    startDate: '2025-05-26',
+    endDate: '2025-06-15',
+    priority: 2, // 高
+    assigneeIds: ['jiro', 'saburo'],
+    projectId: '2', // プロジェクトB
+    todos: [
+      {
+        id: 'todo-b5-1',
+        text: '製品ローカライズ要件定義',
+        completed: false,
+        startDate: '2025-05-26',
+        endDate: '2025-05-31',
+        dueDate: new Date(2025, 4, 31),
+        estimatedHours: 10,
+        assigneeIds: ['jiro']
+      },
+      {
+        id: 'todo-b5-2',
+        text: '現地言語への翻訳',
+        completed: false,
+        startDate: '2025-06-01',
+        endDate: '2025-06-07',
+        dueDate: new Date(2025, 5, 7),
+        estimatedHours: 15,
+        assigneeIds: ['saburo']
+      },
+      {
+        id: 'todo-b5-3',
+        text: '現地法規制への対応',
+        completed: false,
+        startDate: '2025-06-08',
+        endDate: '2025-06-15',
+        dueDate: new Date(2025, 5, 15),
+        estimatedHours: 12,
+        assigneeIds: ['jiro', 'saburo']
+      }
+    ]
+  },
+  {
+    id: 'task-b6',
+    title: 'マーケティング戦略立案',
+    description: '海外市場向けのマーケティング戦略を策定します。',
+    startDate: '2025-06-16',
+    endDate: '2025-06-30',
+    priority: 1, // 中
+    assigneeIds: ['hanako', 'taro'],
+    projectId: '2', // プロジェクトB
+    todos: [
+      {
+        id: 'todo-b6-1',
+        text: 'マーケティングプラン策定',
+        completed: false,
+        startDate: '2025-06-16',
+        endDate: '2025-06-20',
+        dueDate: new Date(2025, 5, 20),
+        estimatedHours: 8,
+        assigneeIds: ['hanako']
+      },
+      {
+        id: 'todo-b6-2',
+        text: '販促資料の作成',
+        completed: false,
+        startDate: '2025-06-21',
+        endDate: '2025-06-25',
+        dueDate: new Date(2025, 5, 25),
+        estimatedHours: 6,
+        assigneeIds: ['hanako']
+      },
+      {
+        id: 'todo-b6-3',
+        text: '現地パートナー候補の選定',
+        completed: false,
+        startDate: '2025-06-26',
+        endDate: '2025-06-30',
+        dueDate: new Date(2025, 5, 30),
+        estimatedHours: 10,
+        assigneeIds: ['taro', 'hanako']
+      }
+    ]
+  },
+  
+  // プロジェクトC（コーポレートサイトの保守運用）用のタスク
   {
     id: 'task-c1',
-    title: '改善点の洗い出し',
-    description: '既存システムの改善点を洗い出します。',
+    title: 'サイト分析とパフォーマンス評価',
+    description: '現在のコーポレートサイトの分析と改善点の洗い出しを行います。',
     startDate: '2025-05-15',
-    endDate: '2025-05-20',
+    endDate: '2025-05-25',
     priority: 1, // 中
     assigneeIds: ['saburo'],
     projectId: '3', // プロジェクトC
     todos: [
       {
         id: 'todo-c1-1',
-        text: 'パフォーマンス分析',
+        text: 'アクセス解析データの分析',
         completed: false,
         startDate: '2025-05-15',
         endDate: '2025-05-17',
@@ -620,45 +799,253 @@ export const seedTasks: Task[] = [
       },
       {
         id: 'todo-c1-2',
-        text: 'ユーザビリティ評価',
+        text: 'パフォーマンス計測とボトルネック特定',
         completed: false,
         startDate: '2025-05-18',
         endDate: '2025-05-20',
         dueDate: new Date(2025, 4, 20),
         estimatedHours: 4,
         assigneeIds: ['saburo']
+      },
+      {
+        id: 'todo-c1-3',
+        text: 'ユーザビリティテスト実施',
+        completed: false,
+        startDate: '2025-05-21',
+        endDate: '2025-05-23',
+        dueDate: new Date(2025, 4, 23),
+        estimatedHours: 8,
+        assigneeIds: ['saburo']
+      },
+      {
+        id: 'todo-c1-4',
+        text: '改善提案書の作成',
+        completed: false,
+        startDate: '2025-05-24',
+        endDate: '2025-05-25',
+        dueDate: new Date(2025, 4, 25),
+        estimatedHours: 3,
+        assigneeIds: ['saburo']
       }
     ]
   },
   {
     id: 'task-c2',
-    title: '改善実装',
-    description: '特定された改善点の実装を行います。',
-    startDate: '2025-05-21',
-    endDate: '2025-05-30',
+    title: '定期コンテンツ更新',
+    description: 'コーポレートサイトの定期的なコンテンツ更新を行います。',
+    startDate: '2025-05-26',
+    endDate: '2025-06-05',
     priority: 0, // 低
-    assigneeIds: ['jiro', 'saburo'],
+    assigneeIds: ['jiro', 'hanako'],
     projectId: '3', // プロジェクトC
     todos: [
       {
         id: 'todo-c2-1',
-        text: 'コード修正',
+        text: '更新コンテンツの企画',
         completed: false,
-        startDate: '2025-05-21',
-        endDate: '2025-05-25',
-        dueDate: new Date(2025, 4, 25),
-        estimatedHours: 12,
-        assigneeIds: ['jiro']
+        startDate: '2025-05-26',
+        endDate: '2025-05-28',
+        dueDate: new Date(2025, 4, 28),
+        estimatedHours: 4,
+        assigneeIds: ['hanako']
       },
       {
         id: 'todo-c2-2',
-        text: 'テスト実行',
+        text: 'コンテンツ作成',
         completed: false,
-        startDate: '2025-05-26',
-        endDate: '2025-05-30',
-        dueDate: new Date(2025, 4, 30),
+        startDate: '2025-05-29',
+        endDate: '2025-06-02',
+        dueDate: new Date(2025, 5, 2),
         estimatedHours: 8,
+        assigneeIds: ['hanako']
+      },
+      {
+        id: 'todo-c2-3',
+        text: 'CMS更新作業',
+        completed: false,
+        startDate: '2025-06-03',
+        endDate: '2025-06-05',
+        dueDate: new Date(2025, 5, 5),
+        estimatedHours: 3,
+        assigneeIds: ['jiro']
+      }
+    ]
+  },
+  {
+    id: 'task-c3',
+    title: 'セキュリティ対策強化',
+    description: 'コーポレートサイトのセキュリティ対策を強化します。',
+    startDate: '2025-06-06',
+    endDate: '2025-06-15',
+    priority: 2, // 高
+    assigneeIds: ['saburo', 'gonzo'],
+    projectId: '3', // プロジェクトC
+    todos: [
+      {
+        id: 'todo-c3-1',
+        text: 'セキュリティ監査の実施',
+        completed: false,
+        startDate: '2025-06-06',
+        endDate: '2025-06-08',
+        dueDate: new Date(2025, 5, 8),
+        estimatedHours: 6,
         assigneeIds: ['saburo']
+      },
+      {
+        id: 'todo-c3-2',
+        text: '脆弱性の修正',
+        completed: false,
+        startDate: '2025-06-09',
+        endDate: '2025-06-12',
+        dueDate: new Date(2025, 5, 12),
+        estimatedHours: 10,
+        assigneeIds: ['saburo']
+      },
+      {
+        id: 'todo-c3-3',
+        text: 'セキュリティレポート作成',
+        completed: false,
+        startDate: '2025-06-13',
+        endDate: '2025-06-15',
+        dueDate: new Date(2025, 5, 15),
+        estimatedHours: 3,
+        assigneeIds: ['gonzo']
+      }
+    ]
+  },
+  {
+    id: 'task-c4',
+    title: 'サーバー・インフラ保守',
+    description: 'サーバーとインフラの定期的な保守作業を行います。',
+    startDate: '2025-06-16',
+    endDate: '2025-06-25',
+    priority: 1, // 中
+    assigneeIds: ['saburo'],
+    projectId: '3', // プロジェクトC
+    todos: [
+      {
+        id: 'todo-c4-1',
+        text: 'サーバーパフォーマンスチェック',
+        completed: false,
+        startDate: '2025-06-16',
+        endDate: '2025-06-18',
+        dueDate: new Date(2025, 5, 18),
+        estimatedHours: 4,
+        assigneeIds: ['saburo']
+      },
+      {
+        id: 'todo-c4-2',
+        text: 'バックアップ検証',
+        completed: false,
+        startDate: '2025-06-19',
+        endDate: '2025-06-20',
+        dueDate: new Date(2025, 5, 20),
+        estimatedHours: 2,
+        assigneeIds: ['saburo']
+      },
+      {
+        id: 'todo-c4-3',
+        text: 'ミドルウェアアップデート',
+        completed: false,
+        startDate: '2025-06-21',
+        endDate: '2025-06-23',
+        dueDate: new Date(2025, 5, 23),
+        estimatedHours: 6,
+        assigneeIds: ['saburo']
+      },
+      {
+        id: 'todo-c4-4',
+        text: '監視システム設定の見直し',
+        completed: false,
+        startDate: '2025-06-24',
+        endDate: '2025-06-25',
+        dueDate: new Date(2025, 5, 25),
+        estimatedHours: 3,
+        assigneeIds: ['saburo']
+      }
+    ]
+  },
+  {
+    id: 'task-c5',
+    title: 'モバイル対応の強化',
+    description: 'コーポレートサイトのモバイル対応を強化します。',
+    startDate: '2025-06-26',
+    endDate: '2025-07-10',
+    priority: 1, // 中
+    assigneeIds: ['jiro', 'hanako'],
+    projectId: '3', // プロジェクトC
+    todos: [
+      {
+        id: 'todo-c5-1',
+        text: 'モバイルUIの検証',
+        completed: false,
+        startDate: '2025-06-26',
+        endDate: '2025-06-30',
+        dueDate: new Date(2025, 5, 30),
+        estimatedHours: 5,
+        assigneeIds: ['hanako']
+      },
+      {
+        id: 'todo-c5-2',
+        text: 'レスポンシブデザインの改善',
+        completed: false,
+        startDate: '2025-07-01',
+        endDate: '2025-07-05',
+        dueDate: new Date(2025, 6, 5),
+        estimatedHours: 8,
+        assigneeIds: ['jiro']
+      },
+      {
+        id: 'todo-c5-3',
+        text: 'モバイルパフォーマンス最適化',
+        completed: false,
+        startDate: '2025-07-06',
+        endDate: '2025-07-10',
+        dueDate: new Date(2025, 6, 10),
+        estimatedHours: 6,
+        assigneeIds: ['jiro']
+      }
+    ]
+  },
+  {
+    id: 'task-c6',
+    title: 'アクセシビリティ対応',
+    description: 'コーポレートサイトのアクセシビリティを改善します。',
+    startDate: '2025-07-11',
+    endDate: '2025-07-25',
+    priority: 0, // 低
+    assigneeIds: ['hanako', 'jiro'],
+    projectId: '3', // プロジェクトC
+    todos: [
+      {
+        id: 'todo-c6-1',
+        text: 'アクセシビリティ監査',
+        completed: false,
+        startDate: '2025-07-11',
+        endDate: '2025-07-15',
+        dueDate: new Date(2025, 6, 15),
+        estimatedHours: 6,
+        assigneeIds: ['hanako']
+      },
+      {
+        id: 'todo-c6-2',
+        text: 'WAI-ARIA対応',
+        completed: false,
+        startDate: '2025-07-16',
+        endDate: '2025-07-20',
+        dueDate: new Date(2025, 6, 20),
+        estimatedHours: 8,
+        assigneeIds: ['jiro']
+      },
+      {
+        id: 'todo-c6-3',
+        text: 'スクリーンリーダーテスト',
+        completed: false,
+        startDate: '2025-07-21',
+        endDate: '2025-07-25',
+        dueDate: new Date(2025, 6, 25),
+        estimatedHours: 4,
+        assigneeIds: ['hanako', 'jiro']
       }
     ]
   }
