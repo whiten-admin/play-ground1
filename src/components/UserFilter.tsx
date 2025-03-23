@@ -120,13 +120,7 @@ export default function UserFilter() {
               onClick={() => setIsFilterOpen(false)}
               className="text-xs px-2 py-1 text-gray-600 hover:text-gray-800"
             >
-              キャンセル
-            </button>
-            <button
-              onClick={() => setIsFilterOpen(false)}
-              className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              適用
+              閉じる
             </button>
           </div>
         </div>
