@@ -8,6 +8,7 @@ import Auth from '@/components/Auth';
 import { useAuth } from '@/hooks/useAuth';
 import { Project } from '@/types/project';
 import ProjectDetail from '@/components/ProjectDetail';
+import { FilterProvider } from '@/contexts/FilterContext';
 
 const SettingsPage = () => {
   const { isAuthenticated, user, login, logout } = useAuth();
@@ -33,23 +34,25 @@ const SettingsPage = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <div className="flex-shrink-0 flex flex-col">
-        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-        <div className="p-2">
-          <ProjectDetail 
-            project={project} 
-            onUpdate={handleProjectUpdate} 
-          />
+    <FilterProvider>
+      <div className="flex h-screen bg-gray-100">
+        <div className="flex-shrink-0 flex flex-col">
+          <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+          <div className="p-2">
+            <ProjectDetail 
+              project={project} 
+              onUpdate={handleProjectUpdate} 
+            />
+          </div>
+        </div>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header onLogout={logout} user={user} />
+          <main className="flex-1 overflow-y-auto p-4">
+            <SettingsView />
+          </main>
         </div>
       </div>
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header project={project} user={user} onLogout={logout} />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto">
-          <SettingsView />
-        </main>
-      </div>
-    </div>
+    </FilterProvider>
   );
 };
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface FilterContextType {
   currentUserId: string;
@@ -18,22 +19,37 @@ interface FilterContextType {
 const FilterContext = createContext<FilterContextType | undefined>(undefined);
 
 export const FilterProvider = ({ children }: { children: ReactNode }) => {
-  const [currentUserId, setCurrentUserId] = useState<string>("taro"); // 仮のユーザーID
+  const { user } = useAuth();
+  const [currentUserId, setCurrentUserId] = useState<string>("");
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [showUnassigned, setShowUnassigned] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   
+  // ログインユーザーのIDを設定
+  useEffect(() => {
+    if (user && user.id) {
+      // 前のユーザーと違う場合はリセット
+      if (currentUserId && currentUserId !== user.id) {
+        setSelectedUserIds([]);
+      }
+      setCurrentUserId(user.id);
+    } else {
+      // ログアウト時は全てリセット
+      setCurrentUserId("");
+      setSelectedUserIds([]);
+    }
+  }, [user, currentUserId]);
+  
   // 初期化時に自分のIDを選択状態にする
   useEffect(() => {
-    setSelectedUserIds([currentUserId]);
-  }, [currentUserId]);
+    if (currentUserId && selectedUserIds.length === 0) {
+      setSelectedUserIds([currentUserId]);
+    }
+  }, [currentUserId, selectedUserIds]);
   
   // ユーザー選択の切り替え
   const toggleUserSelection = (userId: string) => {
     if (selectedUserIds.includes(userId)) {
-      // 自分自身は常に選択状態にする
-      if (userId === currentUserId) return;
-      
       setSelectedUserIds(prev => prev.filter(id => id !== userId));
     } else {
       setSelectedUserIds(prev => [...prev, userId]);

@@ -49,7 +49,6 @@ export default function UserFilter() {
                   checked={selectedUserIds.includes(user.id)}
                   onChange={() => toggleUserSelection(user.id)}
                   className="mr-2"
-                  disabled={user.id === currentUserId} // 自分自身は無効化（常に選択状態）
                 />
                 <label htmlFor={`user-${user.id}`} className="text-sm flex items-center gap-2">
                   {user.name}

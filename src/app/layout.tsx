@@ -3,7 +3,6 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import 'react-resizable/css/styles.css';
 import { TaskProvider } from '@/contexts/TaskContext';
-import { FilterProvider } from '@/contexts/FilterContext';
 import { ProjectProvider } from '@/contexts/ProjectContext';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -23,9 +22,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <ProjectProvider>
           <TaskProvider>
-            <FilterProvider>
-              {children}
-            </FilterProvider>
+            {children}
           </TaskProvider>
         </ProjectProvider>
       </body>
