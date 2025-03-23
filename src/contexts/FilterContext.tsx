@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 
 interface FilterContextType {
@@ -24,6 +24,7 @@ export const FilterProvider = ({ children }: { children: ReactNode }) => {
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [showUnassigned, setShowUnassigned] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const initializedRef = useRef<boolean>(false);
   
   // ログインユーザーのIDを設定
   useEffect(() => {
@@ -31,19 +32,22 @@ export const FilterProvider = ({ children }: { children: ReactNode }) => {
       // 前のユーザーと違う場合はリセット
       if (currentUserId && currentUserId !== user.id) {
         setSelectedUserIds([]);
+        initializedRef.current = false;
       }
       setCurrentUserId(user.id);
     } else {
       // ログアウト時は全てリセット
       setCurrentUserId("");
       setSelectedUserIds([]);
+      initializedRef.current = false;
     }
   }, [user, currentUserId]);
   
-  // 初期化時に自分のIDを選択状態にする
+  // 初期化時のみ自分のIDを選択状態にする
   useEffect(() => {
-    if (currentUserId && selectedUserIds.length === 0) {
+    if (currentUserId && selectedUserIds.length === 0 && !initializedRef.current) {
       setSelectedUserIds([currentUserId]);
+      initializedRef.current = true;
     }
   }, [currentUserId, selectedUserIds]);
   
