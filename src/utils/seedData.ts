@@ -1,6 +1,6 @@
 import { Task } from '@/types/task';
 
-// ECサイト構築のためのシードデータ
+// プロジェクトA（ECサイト構築）のシードデータ
 export const seedTasks: Task[] = [
   {
     id: 'task-1',
@@ -10,6 +10,7 @@ export const seedTasks: Task[] = [
     endDate: '2025-03-05',
     priority: 2, // 高
     assigneeIds: ['taro', 'gonzo', 'hanako'], // すべてのTODO担当者の和集合
+    projectId: '1', // プロジェクトA
     todos: [
       {
         id: 'todo-1-1',
@@ -61,6 +62,7 @@ export const seedTasks: Task[] = [
     endDate: '2025-03-10',
     priority: 2, // 高
     assigneeIds: ['jiro', 'saburo', 'taro'], // すべてのTODO担当者の和集合
+    projectId: '1', // プロジェクトA
     todos: [
       {
         id: 'todo-2-1',
@@ -112,6 +114,7 @@ export const seedTasks: Task[] = [
     endDate: '2025-03-17',
     priority: 1, // 中
     assigneeIds: ['hanako', 'taro', 'gonzo'], // すべてのTODO担当者の和集合
+    projectId: '1', // プロジェクトA
     todos: [
       {
         id: 'todo-3-1',
@@ -163,6 +166,7 @@ export const seedTasks: Task[] = [
     endDate: '2025-03-24',
     priority: 1, // 中
     assigneeIds: [], // 未アサイン
+    projectId: '1', // プロジェクトA
     todos: [
       {
         id: 'todo-4-1',
@@ -214,6 +218,7 @@ export const seedTasks: Task[] = [
     endDate: '2025-03-31',
     priority: 1, // 中
     assigneeIds: ['jiro', 'hanako'], // すべてのTODO担当者の和集合
+    projectId: '1', // プロジェクトA
     todos: [
       {
         id: 'todo-5-1',
@@ -265,6 +270,7 @@ export const seedTasks: Task[] = [
     endDate: '2025-04-07',
     priority: 2, // 高
     assigneeIds: ['saburo'], // すべてのTODO担当者の和集合
+    projectId: '1', // プロジェクトA
     todos: [
       {
         id: 'todo-6-1',
@@ -316,6 +322,7 @@ export const seedTasks: Task[] = [
     endDate: '2025-04-14',
     priority: 1, // 中
     assigneeIds: ['taro', 'jiro'], // すべてのTODO担当者の和集合
+    projectId: '1', // プロジェクトA
     todos: [
       {
         id: 'todo-7-1',
@@ -367,6 +374,7 @@ export const seedTasks: Task[] = [
     endDate: '2025-04-21',
     priority: 2, // 高
     assigneeIds: ['gonzo', 'saburo'], // すべてのTODO担当者の和集合
+    projectId: '1', // プロジェクトA
     todos: [
       {
         id: 'todo-8-1',
@@ -418,6 +426,7 @@ export const seedTasks: Task[] = [
     endDate: '2025-04-28',
     priority: 1, // 中
     assigneeIds: ['hanako', 'taro', 'jiro', 'saburo'], // すべてのTODO担当者の和集合
+    projectId: '1', // プロジェクトA
     todos: [
       {
         id: 'todo-9-1',
@@ -469,6 +478,7 @@ export const seedTasks: Task[] = [
     endDate: '2025-05-02',
     priority: 2, // 高
     assigneeIds: [], // 未アサイン
+    projectId: '1', // プロジェクトA
     todos: [
       {
         id: 'todo-10-1',
@@ -509,6 +519,146 @@ export const seedTasks: Task[] = [
         dueDate: new Date(2025, 4, 3),
         estimatedHours: 2,
         assigneeIds: [] // 未アサイン
+      }
+    ]
+  },
+  // プロジェクトB用のタスク
+  {
+    id: 'task-b1',
+    title: '市場調査',
+    description: '新規プロジェクトのための市場調査を実施します。',
+    startDate: '2025-04-01',
+    endDate: '2025-04-10',
+    priority: 2, // 高
+    assigneeIds: ['taro', 'hanako'],
+    projectId: '2', // プロジェクトB
+    todos: [
+      {
+        id: 'todo-b1-1',
+        text: '競合分析',
+        completed: false,
+        startDate: '2025-04-01',
+        endDate: '2025-04-03',
+        dueDate: new Date(2025, 3, 3),
+        estimatedHours: 5,
+        assigneeIds: ['taro']
+      },
+      {
+        id: 'todo-b1-2',
+        text: 'ユーザーインタビュー',
+        completed: false,
+        startDate: '2025-04-04',
+        endDate: '2025-04-07',
+        dueDate: new Date(2025, 3, 7),
+        estimatedHours: 8,
+        assigneeIds: ['hanako']
+      },
+      {
+        id: 'todo-b1-3',
+        text: '調査レポート作成',
+        completed: false,
+        startDate: '2025-04-08',
+        endDate: '2025-04-10',
+        dueDate: new Date(2025, 3, 10),
+        estimatedHours: 4,
+        assigneeIds: ['taro', 'hanako']
+      }
+    ]
+  },
+  {
+    id: 'task-b2',
+    title: '要件定義',
+    description: '新規プロジェクトの要件を定義します。',
+    startDate: '2025-04-11',
+    endDate: '2025-04-20',
+    priority: 2, // 高
+    assigneeIds: ['gonzo', 'jiro'],
+    projectId: '2', // プロジェクトB
+    todos: [
+      {
+        id: 'todo-b2-1',
+        text: '機能要件書作成',
+        completed: false,
+        startDate: '2025-04-11',
+        endDate: '2025-04-15',
+        dueDate: new Date(2025, 3, 15),
+        estimatedHours: 10,
+        assigneeIds: ['gonzo']
+      },
+      {
+        id: 'todo-b2-2',
+        text: '非機能要件書作成',
+        completed: false,
+        startDate: '2025-04-16',
+        endDate: '2025-04-20',
+        dueDate: new Date(2025, 3, 20),
+        estimatedHours: 8,
+        assigneeIds: ['jiro']
+      }
+    ]
+  },
+  // プロジェクトC用のタスク
+  {
+    id: 'task-c1',
+    title: '改善点の洗い出し',
+    description: '既存システムの改善点を洗い出します。',
+    startDate: '2025-05-15',
+    endDate: '2025-05-20',
+    priority: 1, // 中
+    assigneeIds: ['saburo'],
+    projectId: '3', // プロジェクトC
+    todos: [
+      {
+        id: 'todo-c1-1',
+        text: 'パフォーマンス分析',
+        completed: false,
+        startDate: '2025-05-15',
+        endDate: '2025-05-17',
+        dueDate: new Date(2025, 4, 17),
+        estimatedHours: 6,
+        assigneeIds: ['saburo']
+      },
+      {
+        id: 'todo-c1-2',
+        text: 'ユーザビリティ評価',
+        completed: false,
+        startDate: '2025-05-18',
+        endDate: '2025-05-20',
+        dueDate: new Date(2025, 4, 20),
+        estimatedHours: 4,
+        assigneeIds: ['saburo']
+      }
+    ]
+  },
+  {
+    id: 'task-c2',
+    title: '改善実装',
+    description: '特定された改善点の実装を行います。',
+    startDate: '2025-05-21',
+    endDate: '2025-05-30',
+    priority: 0, // 低
+    assigneeIds: ['jiro', 'saburo'],
+    projectId: '3', // プロジェクトC
+    todos: [
+      {
+        id: 'todo-c2-1',
+        text: 'コード修正',
+        completed: false,
+        startDate: '2025-05-21',
+        endDate: '2025-05-25',
+        dueDate: new Date(2025, 4, 25),
+        estimatedHours: 12,
+        assigneeIds: ['jiro']
+      },
+      {
+        id: 'todo-c2-2',
+        text: 'テスト実行',
+        completed: false,
+        startDate: '2025-05-26',
+        endDate: '2025-05-30',
+        dueDate: new Date(2025, 4, 30),
+        estimatedHours: 8,
+        assigneeIds: ['saburo']
       }
     ]
   }

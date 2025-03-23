@@ -21,7 +21,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('todo')
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null)
-  const { tasks, setTasks } = useTaskContext()
+  const { filteredTasks, setTasks, addTask } = useTaskContext()
   const { currentProject, updateProject } = useProjectContext()
 
   // タスク選択ハンドラーを修正
@@ -47,7 +47,11 @@ export default function Home() {
 
   // タスクの作成処理
   const handleTaskCreate = (newTask: Task) => {
-    setTasks((prevTasks) => [...prevTasks, newTask]);
+    // プロジェクトIDを設定
+    if (currentProject) {
+      newTask.projectId = currentProject.id;
+    }
+    addTask(newTask);
   };
 
   // TODOの完了状態を更新
@@ -104,9 +108,9 @@ export default function Home() {
     return <Auth onLogin={login} />;
   }
 
-  // 選択されたタスクを取得
+  // 選択されたタスクを取得（現在のプロジェクトのタスクから）
   const selectedTask = selectedTaskId
-    ? tasks.find((task) => task.id === selectedTaskId) || null
+    ? filteredTasks.find((task) => task.id === selectedTaskId) || null
     : null;
 
   return (
@@ -135,7 +139,7 @@ export default function Home() {
               <div className="space-y-3">
                 <div className="text-sm">
                   <TodayTodo
-                    tasks={tasks}
+                    tasks={filteredTasks}
                     selectedTaskId={selectedTaskId}
                     selectedTodoId={selectedTodoId}
                     onTaskSelect={handleTodoSelect}
@@ -144,7 +148,7 @@ export default function Home() {
                 </div>
                 <div className="text-sm">
                   <WeeklySchedule
-                    tasks={tasks}
+                    tasks={filteredTasks}
                     onTaskSelect={handleTaskSelect}
                     onTodoUpdate={handleTodoUpdate}
                     selectedTodoId={selectedTodoId}
@@ -159,7 +163,7 @@ export default function Home() {
                     selectedTask={selectedTask}
                     selectedTodoId={selectedTodoId}
                     onTaskUpdate={handleTaskUpdate}
-                    tasks={tasks}
+                    tasks={filteredTasks}
                     onTaskSelect={handleTaskSelect}
                     onTaskCreate={handleTaskCreate}
                   />

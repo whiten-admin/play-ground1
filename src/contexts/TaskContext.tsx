@@ -4,12 +4,15 @@ import { createContext, useContext, useState, ReactNode, useEffect } from 'react
 import { Task } from '@/types/task';
 import { seedTasks } from '@/utils/seedData';
 import { getTasksFromLocalStorage, saveSeedDataToLocalStorage, resetToSeedData, resetToScheduledSeedData } from '@/utils/seedDataUtils';
+import { useProjectContext } from './ProjectContext';
 
 interface TaskContextType {
   tasks: Task[];
+  filteredTasks: Task[]; // 現在のプロジェクトのタスクのみ
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
   resetTasks: () => void;
   resetTasksWithSchedule: () => void;
+  addTask: (task: Task) => void;
 }
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
@@ -18,6 +21,12 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
   // 初期値はシードデータを使用
   const [tasks, setTasks] = useState<Task[]>(seedTasks);
   const [initialized, setInitialized] = useState(false);
+  const { currentProject } = useProjectContext();
+  
+  // 現在のプロジェクトに基づいてタスクをフィルタリング
+  const filteredTasks = currentProject
+    ? tasks.filter(task => task.projectId === currentProject.id)
+    : [];
   
   // 初回レンダリング時にローカルストレージからデータを読み込む
   useEffect(() => {
@@ -55,8 +64,24 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
     setTasks(scheduledTasks);
   };
 
+  // 新しいタスクを追加する関数
+  const addTask = (task: Task) => {
+    // もし現在のプロジェクトがあれば、そのプロジェクトIDをタスクに設定
+    if (currentProject && !task.projectId) {
+      task.projectId = currentProject.id;
+    }
+    setTasks(prevTasks => [...prevTasks, task]);
+  };
+
   return (
-    <TaskContext.Provider value={{ tasks, setTasks, resetTasks, resetTasksWithSchedule }}>
+    <TaskContext.Provider value={{ 
+      tasks, 
+      filteredTasks,
+      setTasks, 
+      resetTasks, 
+      resetTasksWithSchedule,
+      addTask 
+    }}>
       {children}
     </TaskContext.Provider>
   );
