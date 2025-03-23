@@ -66,60 +66,74 @@ export default function Header({ onLogout, user }: HeaderProps) {
     setIsDropdownOpen(false)
   }
 
+  // プロジェクトがない場合の新規作成ボタン
+  const handleCreateProjectButton = () => {
+    setIsCreateModalOpen(true)
+  }
+
   return (
     <header className="bg-white border-b border-gray-200 py-2 px-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="relative">
-            <button
-              className="flex items-center gap-1 text-lg font-bold text-gray-800 hover:text-gray-600 transition-colors"
-              onClick={toggleDropdown}
-            >
-              {currentProject?.title || 'プロジェクト'} 
-              <ChevronDownIcon className="h-4 w-4" />
-            </button>
-            
-            {isDropdownOpen && (
-              <div className="absolute top-full left-0 mt-1 w-60 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-                <ul className="py-1">
-                  {projects.map(project => (
-                    <li key={project.id}>
-                      <button
-                        className={`w-full text-left px-3 py-2 text-sm ${currentProject?.id === project.id ? 'bg-gray-100 font-medium' : 'hover:bg-gray-50'}`}
-                        onClick={() => handleProjectSelect(project.id)}
-                      >
-                        {project.title}
-                      </button>
-                    </li>
-                  ))}
-                  
-                  <li className="border-t border-gray-100 mt-1">
-                    <button
-                      className="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-1"
-                      onClick={openCreateModal}
-                    >
-                      <PlusIcon className="h-4 w-4" />
-                      <span>新規プロジェクト作成</span>
-                    </button>
-                  </li>
-                </ul>
+          {projects.length > 0 ? (
+            <>
+              <div className="relative">
+                <button
+                  className="flex items-center gap-1 text-lg font-bold text-gray-800 hover:text-gray-600 transition-colors"
+                  onClick={toggleDropdown}
+                >
+                  {currentProject?.title || 'プロジェクト'} 
+                  <ChevronDownIcon className="h-4 w-4" />
+                </button>
+                
+                {isDropdownOpen && (
+                  <div className="absolute top-full left-0 mt-1 w-60 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                    <ul className="py-1">
+                      {projects.map(project => (
+                        <li key={project.id}>
+                          <button
+                            className={`w-full text-left px-3 py-2 text-sm ${currentProject?.id === project.id ? 'bg-gray-100 font-medium' : 'hover:bg-gray-50'}`}
+                            onClick={() => handleProjectSelect(project.id)}
+                          >
+                            {project.title}
+                          </button>
+                        </li>
+                      ))}
+                      
+                      <li className="border-t border-gray-100 mt-1">
+                        <button
+                          className="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-1"
+                          onClick={openCreateModal}
+                        >
+                          <PlusIcon className="h-4 w-4" />
+                          <span>新規プロジェクト作成</span>
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <span>{formatDate(currentProject?.startDate)} - {formatDate(currentProject?.endDate)}</span>
-            {remainingDays !== null && (
-              <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded">
-                残り{remainingDays}日
-              </span>
-            )}
-          </div>
+              
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <span>{formatDate(currentProject?.startDate)} - {formatDate(currentProject?.endDate)}</span>
+                {remainingDays !== null && (
+                  <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded">
+                    残り{remainingDays}日
+                  </span>
+                )}
+              </div>
+              
+              <div className="text-red-600 font-semibold text-sm">
+                PJ炎上リスク：50%
+              </div>
+            </>
+          ) : (
+            <div className="text-lg font-bold text-gray-800">
+              プロジェクト新規作成
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-4">
-          <div className="text-red-600 font-semibold text-sm">
-            PJ炎上リスク：50%
-          </div>
           {user && (
             <div className="px-3 py-1 text-sm bg-gray-100 rounded-lg flex items-center gap-1">
               <span className="font-medium">{user.name}</span>

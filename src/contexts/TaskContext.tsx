@@ -13,6 +13,7 @@ interface TaskContextType {
   resetTasks: () => void;
   resetTasksWithSchedule: () => void;
   addTask: (task: Task) => void;
+  clearAllTasks: () => void;
 }
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
@@ -73,6 +74,11 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
     setTasks(prevTasks => [...prevTasks, task]);
   };
 
+  // すべてのタスクをクリアする関数
+  const clearAllTasks = () => {
+    setTasks([]);
+  };
+
   return (
     <TaskContext.Provider value={{ 
       tasks, 
@@ -80,7 +86,8 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
       setTasks, 
       resetTasks, 
       resetTasksWithSchedule,
-      addTask 
+      addTask,
+      clearAllTasks 
     }}>
       {children}
     </TaskContext.Provider>

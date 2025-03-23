@@ -11,14 +11,29 @@ interface ProjectContextType {
   switchProject: (projectId: string) => void
   updateProject: (updatedProject: Project) => void
   createProject: (newProject: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => void
+  clearAllProjects: () => void
+  resetToDefaultProjects: () => void
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined)
 
+// デフォルトプロジェクトデータ
+const defaultProjects = projectsData as Project[]
+
 export function ProjectProvider({ children }: { children: ReactNode }) {
   // JSONデータをProject型として扱う
-  const [projects, setProjects] = useState<Project[]>(projectsData as Project[])
+  const [projects, setProjects] = useState<Project[]>(defaultProjects)
   const [currentProject, setCurrentProject] = useState<Project | null>(null)
+
+  // プロジェクトが空の場合の処理
+  useEffect(() => {
+    if (projects.length === 0) {
+      // デフォルトプロジェクトを復元するか新しいプロジェクトを作成する
+      // 自動作成はせず、ユーザーの操作を待つ
+      setCurrentProject(null)
+      localStorage.removeItem('currentProjectId')
+    }
+  }, [projects])
 
   // 初期化時に最初のプロジェクトを選択
   useEffect(() => {
@@ -74,6 +89,22 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('currentProjectId', generatedId)
   }
 
+  // すべてのプロジェクトをクリア
+  const clearAllProjects = () => {
+    setProjects([])
+    setCurrentProject(null)
+    localStorage.removeItem('currentProjectId')
+  }
+  
+  // デフォルトプロジェクトデータにリセット
+  const resetToDefaultProjects = () => {
+    setProjects(defaultProjects)
+    if (defaultProjects.length > 0) {
+      setCurrentProject(defaultProjects[0])
+      localStorage.setItem('currentProjectId', defaultProjects[0].id)
+    }
+  }
+
   return (
     <ProjectContext.Provider
       value={{
@@ -82,7 +113,9 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         setCurrentProject,
         switchProject,
         updateProject,
-        createProject
+        createProject,
+        clearAllProjects,
+        resetToDefaultProjects
       }}
     >
       {children}

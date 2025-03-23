@@ -9,6 +9,7 @@ import AdditionalTask from '@/components/AdditionalTask'
 import ProjectDetail from '@/components/ProjectDetail'
 import WeeklySchedule from '@/components/WeeklySchedule'
 import Auth from '@/components/Auth'
+import EmptyProjectState from '@/components/EmptyProjectState'
 import { useAuth } from '@/hooks/useAuth'
 import { Task } from '@/types/task'
 import { useTaskContext } from '@/contexts/TaskContext'
@@ -22,7 +23,7 @@ export default function Home() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null)
   const { filteredTasks, setTasks, addTask } = useTaskContext()
-  const { currentProject, updateProject } = useProjectContext()
+  const { currentProject, updateProject, projects } = useProjectContext()
 
   // タスク選択ハンドラーを修正
   const handleTaskSelect = (taskId: string, todoId?: string) => {
@@ -106,6 +107,23 @@ export default function Home() {
 
   if (!isAuthenticated) {
     return <Auth onLogin={login} />;
+  }
+
+  // プロジェクトが存在しない場合は専用画面を表示
+  if (projects.length === 0) {
+    return (
+      <div className="flex h-screen bg-gray-100">
+        <div className="flex-shrink-0">
+          <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        </div>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header onLogout={logout} user={user} />
+          <main className="flex-1 overflow-y-auto">
+            <EmptyProjectState />
+          </main>
+        </div>
+      </div>
+    );
   }
 
   // 選択されたタスクを取得（現在のプロジェクトのタスクから）
