@@ -1,16 +1,20 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import { Project } from '@/types/project'
 import { User } from '@/types/user'
+import { useProjectContext } from '@/contexts/ProjectContext'
+import { ChevronDownIcon } from '@heroicons/react/24/outline'
 
 interface HeaderProps {
   onLogout?: () => void
-  project?: Project
   user?: User | null
 }
 
-export default function Header({ onLogout, project, user }: HeaderProps) {
+export default function Header({ onLogout, user }: HeaderProps) {
+  const { currentProject, projects, switchProject } = useProjectContext()
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  
   const formatDate = (date: string | undefined) => {
     if (!date) return '未定'
     return new Date(date).toLocaleDateString('ja-JP', {
@@ -32,7 +36,7 @@ export default function Header({ onLogout, project, user }: HeaderProps) {
     return diffDays
   }
 
-  const remainingDays = project?.endDate ? calculateRemainingDays(project.endDate) : null
+  const remainingDays = currentProject?.endDate ? calculateRemainingDays(currentProject.endDate) : null
 
   // ユーザーロールの日本語表示
   const getRoleLabel = (role?: string) => {
@@ -46,13 +50,48 @@ export default function Header({ onLogout, project, user }: HeaderProps) {
     }
   }
 
+  const toggleDropdown = () => {
+    setIsDropdownOpen(!isDropdownOpen)
+  }
+
+  const handleProjectSelect = (projectId: string) => {
+    switchProject(projectId)
+    setIsDropdownOpen(false)
+  }
+
   return (
     <header className="bg-white border-b border-gray-200 py-2 px-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <h1 className="text-lg font-bold text-gray-800">{project?.title || 'プロジェクト'}</h1>
+          <div className="relative">
+            <button
+              className="flex items-center gap-1 text-lg font-bold text-gray-800 hover:text-gray-600 transition-colors"
+              onClick={toggleDropdown}
+            >
+              {currentProject?.title || 'プロジェクト'} 
+              <ChevronDownIcon className="h-4 w-4" />
+            </button>
+            
+            {isDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 w-60 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                <ul className="py-1">
+                  {projects.map(project => (
+                    <li key={project.id}>
+                      <button
+                        className={`w-full text-left px-3 py-2 text-sm ${currentProject?.id === project.id ? 'bg-gray-100 font-medium' : 'hover:bg-gray-50'}`}
+                        onClick={() => handleProjectSelect(project.id)}
+                      >
+                        {project.title}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+          
           <div className="flex items-center gap-2 text-sm text-gray-600">
-            <span>{formatDate(project?.startDate)} - {formatDate(project?.endDate)}</span>
+            <span>{formatDate(currentProject?.startDate)} - {formatDate(currentProject?.endDate)}</span>
             {remainingDays !== null && (
               <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded">
                 残り{remainingDays}日

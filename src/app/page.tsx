@@ -12,7 +12,7 @@ import Auth from '@/components/Auth'
 import { useAuth } from '@/hooks/useAuth'
 import { Task } from '@/types/task'
 import { useTaskContext } from '@/contexts/TaskContext'
-import { Project } from '@/types/project'
+import { useProjectContext } from '@/contexts/ProjectContext'
 import UserFilter from '@/components/UserFilter'
 import ResizablePanel from '@/components/layout/ResizablePanel'
 
@@ -22,16 +22,7 @@ export default function Home() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null)
   const { tasks, setTasks } = useTaskContext()
-  const [project, setProject] = useState<Project>({
-    id: '1',
-    title: 'プロジェクトA',
-    description: 'プロジェクトの説明文がここに入ります。',
-    startDate: '2025-03-01',
-    endDate: '2025-12-31',
-    phase: 'development',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  })
+  const { currentProject, updateProject } = useProjectContext()
 
   // タスク選択ハンドラーを修正
   const handleTaskSelect = (taskId: string, todoId?: string) => {
@@ -109,10 +100,6 @@ export default function Home() {
     });
   };
 
-  const handleProjectUpdate = (updatedProject: Project) => {
-    setProject(updatedProject)
-  }
-
   if (!isAuthenticated) {
     return <Auth onLogin={login} />;
   }
@@ -127,14 +114,16 @@ export default function Home() {
       <div className="flex-shrink-0 flex flex-col">
         <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
         <div className="p-2">
-          <ProjectDetail 
-            project={project} 
-            onUpdate={handleProjectUpdate} 
-          />
+          {currentProject && (
+            <ProjectDetail 
+              project={currentProject} 
+              onUpdate={updateProject} 
+            />
+          )}
         </div>
       </div>
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header onLogout={logout} project={project} user={user} />
+        <Header onLogout={logout} user={user} />
         <main className="flex-1 overflow-y-auto p-3">
           {/* ユーザーフィルター */}
           <div className="mb-3">
