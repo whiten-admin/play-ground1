@@ -10,12 +10,16 @@ import ProjectCreateModal from './ProjectCreateModal'
 interface HeaderProps {
   onLogout?: () => void
   user?: User | null
+  project?: Project
 }
 
-export default function Header({ onLogout, user }: HeaderProps) {
+export default function Header({ onLogout, user, project }: HeaderProps) {
   const { currentProject, projects, switchProject, createProject } = useProjectContext()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  
+  // projectプロパティが渡された場合はそちらを優先、なければcurrentProjectを使用
+  const displayProject = project || currentProject
   
   const formatDate = (date: string | undefined) => {
     if (!date) return '未定'
@@ -38,7 +42,7 @@ export default function Header({ onLogout, user }: HeaderProps) {
     return diffDays
   }
 
-  const remainingDays = currentProject?.endDate ? calculateRemainingDays(currentProject.endDate) : null
+  const remainingDays = displayProject?.endDate ? calculateRemainingDays(displayProject.endDate) : null
 
   // ユーザーロールの日本語表示
   const getRoleLabel = (role?: string) => {
@@ -82,7 +86,7 @@ export default function Header({ onLogout, user }: HeaderProps) {
                   className="flex items-center gap-1 text-lg font-bold text-gray-800 hover:text-gray-600 transition-colors"
                   onClick={toggleDropdown}
                 >
-                  {currentProject?.title || 'プロジェクト'} 
+                  {displayProject?.title || 'プロジェクト'} 
                   <ChevronDownIcon className="h-4 w-4" />
                 </button>
                 
@@ -92,7 +96,7 @@ export default function Header({ onLogout, user }: HeaderProps) {
                       {projects.map(project => (
                         <li key={project.id}>
                           <button
-                            className={`w-full text-left px-3 py-2 text-sm ${currentProject?.id === project.id ? 'bg-gray-100 font-medium' : 'hover:bg-gray-50'}`}
+                            className={`w-full text-left px-3 py-2 text-sm ${displayProject?.id === project.id ? 'bg-gray-100 font-medium' : 'hover:bg-gray-50'}`}
                             onClick={() => handleProjectSelect(project.id)}
                           >
                             {project.title}
@@ -115,7 +119,7 @@ export default function Header({ onLogout, user }: HeaderProps) {
               </div>
               
               <div className="flex items-center gap-2 text-sm text-gray-600">
-                <span>{formatDate(currentProject?.startDate)} - {formatDate(currentProject?.endDate)}</span>
+                <span>{formatDate(displayProject?.startDate)} - {formatDate(displayProject?.endDate)}</span>
                 {remainingDays !== null && (
                   <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded">
                     残り{remainingDays}日
