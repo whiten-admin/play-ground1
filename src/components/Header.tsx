@@ -4,7 +4,8 @@ import React, { useState } from 'react'
 import { Project } from '@/types/project'
 import { User } from '@/types/user'
 import { useProjectContext } from '@/contexts/ProjectContext'
-import { ChevronDownIcon } from '@heroicons/react/24/outline'
+import { ChevronDownIcon, PlusIcon } from '@heroicons/react/24/outline'
+import ProjectCreateModal from './ProjectCreateModal'
 
 interface HeaderProps {
   onLogout?: () => void
@@ -12,8 +13,9 @@ interface HeaderProps {
 }
 
 export default function Header({ onLogout, user }: HeaderProps) {
-  const { currentProject, projects, switchProject } = useProjectContext()
+  const { currentProject, projects, switchProject, createProject } = useProjectContext()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   
   const formatDate = (date: string | undefined) => {
     if (!date) return '未定'
@@ -58,6 +60,11 @@ export default function Header({ onLogout, user }: HeaderProps) {
     switchProject(projectId)
     setIsDropdownOpen(false)
   }
+  
+  const openCreateModal = () => {
+    setIsCreateModalOpen(true)
+    setIsDropdownOpen(false)
+  }
 
   return (
     <header className="bg-white border-b border-gray-200 py-2 px-4">
@@ -85,6 +92,16 @@ export default function Header({ onLogout, user }: HeaderProps) {
                       </button>
                     </li>
                   ))}
+                  
+                  <li className="border-t border-gray-100 mt-1">
+                    <button
+                      className="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-1"
+                      onClick={openCreateModal}
+                    >
+                      <PlusIcon className="h-4 w-4" />
+                      <span>新規プロジェクト作成</span>
+                    </button>
+                  </li>
                 </ul>
               </div>
             )}
@@ -121,6 +138,13 @@ export default function Header({ onLogout, user }: HeaderProps) {
           )}
         </div>
       </div>
+      
+      {/* プロジェクト作成モーダル */}
+      <ProjectCreateModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreateProject={createProject}
+      />
     </header>
   )
 } 

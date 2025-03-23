@@ -10,6 +10,7 @@ interface ProjectContextType {
   setCurrentProject: (project: Project) => void
   switchProject: (projectId: string) => void
   updateProject: (updatedProject: Project) => void
+  createProject: (newProject: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => void
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined)
@@ -56,6 +57,23 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // プロジェクト作成
+  const createProject = (newProject: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString()
+    const generatedId = `project-${Date.now()}`
+    
+    const project: Project = {
+      id: generatedId,
+      ...newProject,
+      createdAt: now,
+      updatedAt: now
+    }
+    
+    setProjects(prev => [...prev, project])
+    setCurrentProject(project)
+    localStorage.setItem('currentProjectId', generatedId)
+  }
+
   return (
     <ProjectContext.Provider
       value={{
@@ -63,7 +81,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         currentProject,
         setCurrentProject,
         switchProject,
-        updateProject
+        updateProject,
+        createProject
       }}
     >
       {children}
