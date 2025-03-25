@@ -650,7 +650,16 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
       <div className="bg-white rounded-lg shadow p-3 h-[90vh] flex flex-col">
         <div className="flex flex-col gap-2">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold text-gray-800">タスク一覧</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-bold text-gray-800">タスク一覧</h2>
+              <button
+                onClick={() => setIsCreatingTask(true)}
+                className="px-2 py-0.5 text-xs rounded flex items-center gap-1 bg-blue-500 text-white hover:bg-blue-600"
+              >
+                <IoAdd className="w-3 h-3" />
+                タスク追加
+              </button>
+            </div>
             <DragDropContext onDragEnd={handleDragEnd}>
               <Droppable droppableId="viewModeButtons" direction="horizontal">
                 {(provided) => (
@@ -698,13 +707,6 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
           {viewMode === 'list' && (
             <div className="flex justify-end border-b pb-2">
               <div className="flex gap-1 items-center">
-                <button
-                  onClick={() => setIsCreatingTask(true)}
-                  className="mr-auto px-2 py-0.5 text-xs rounded flex items-center gap-1 bg-blue-500 text-white hover:bg-blue-600"
-                >
-                  <IoAdd className="w-3 h-3" />
-                  タスク追加
-                </button>
                 <button
                   onClick={() => toggleSort('dueDate')}
                   className={`px-2 py-0.5 text-xs rounded flex items-center gap-1 ${
@@ -935,7 +937,7 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
                 onClick={() => onTaskSelect('')}
                 className="p-1 text-gray-500 hover:text-gray-700 mr-2"
               >
-                ← 一覧へ戻る
+                ←戻る
               </button>
               <div className="flex-1">
                 <h2 className="text-xl font-bold text-gray-800">{taskToDisplay.title}</h2>

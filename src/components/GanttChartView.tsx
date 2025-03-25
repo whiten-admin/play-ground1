@@ -553,20 +553,6 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
   return (
     <div className="overflow-x-auto relative">
       <div className="flex justify-between items-center mb-2">
-        <div className="flex items-center gap-2">
-          <ScheduleTodosButton 
-            onScheduleComplete={() => {
-              // 再レンダリングのトリガーになる処理を追加（必要であれば）
-            }} 
-          />
-          <button
-            onClick={() => setIsCreatingTask(true)}
-            className="px-2 py-0.5 text-xs rounded flex items-center gap-1 bg-blue-500 text-white hover:bg-blue-600"
-          >
-            <IoAdd className="w-3 h-3" />
-            タスク追加
-          </button>
-        </div>
       </div>
       <div className="flex">
         {/* 左側：タスク一覧（固定） */}
