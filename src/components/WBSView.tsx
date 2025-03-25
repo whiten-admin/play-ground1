@@ -25,7 +25,7 @@ export default function WBSView({ onTaskCreate, onTaskSelect, projectId }: WBSVi
     todos: [],
     priority: 0,
     startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0] // デフォルトで1週間後
+    endDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0]
   });
   const [newTaskTodos, setNewTaskTodos] = useState<Todo[]>([]);
   const [newTaskTodoText, setNewTaskTodoText] = useState('');
@@ -33,29 +33,120 @@ export default function WBSView({ onTaskCreate, onTaskSelect, projectId }: WBSVi
   const [newTaskSuggestedTodos, setNewTaskSuggestedTodos] = useState<{ text: string; estimatedHours: number }[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // 日付の位置を計算するユーティリティ関数
+  const getDatePosition = (date: Date, startDate: Date) => {
+    return Math.ceil(
+      (date.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+  };
+
+  // カレンダーの表示範囲を計算
+  const getCalendarRange = () => {
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+
+    // 現在月の3ヶ月前の1日を開始日に
+    const startDate = new Date(currentYear, currentMonth - 3, 1);
+    // 現在月の3ヶ月後の月末を終了日に
+    const endDate = new Date(currentYear, currentMonth + 4, 0); // 次の月の0日 = 当月の末日
+
+    return {
+      startDate,
+      endDate,
+      totalDays: Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+    };
+  };
+
+  const calendarRange = getCalendarRange();
+
+  // 今日の日付の位置を計算
+  const today = new Date();
+  const todayPosition = getDatePosition(today, calendarRange.startDate);
+
+  // 日付をフォーマットする関数
+  const formatDate = (date: Date) => {
+    return date.getDate().toString();
+  };
+
+  // 月を取得する関数
+  const getMonth = (date: Date) => {
+    return date.getMonth() + 1;
+  };
+
+  // 指定された日が月の1日かどうかを判定する関数
+  const isFirstDayOfMonth = (date: Date) => {
+    return date.getDate() === 1;
+  };
+
+  // 指定された日数分の日付配列を生成
+  const getDates = () => {
+    const dates = [];
+    const currentDate = new Date(calendarRange.startDate);
+    
+    while (currentDate <= calendarRange.endDate) {
+      dates.push(new Date(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    return dates;
+  };
+
   const getDaysBetween = (startDate: Date, endDate: Date) => {
     return Math.ceil(
       (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
     );
   };
 
-  const getDatePosition = (date: Date) => {
-    const startDate = new Date('2025-03-01'); // 基準日
-    return getDaysBetween(startDate, date);
-  };
-
-  // 今日の日付の位置を計算
-  const today = new Date();
-  const todayPosition = getDatePosition(today);
-
   // コンポーネントがマウントされた時に、今日の日付が左端に来るようにスクロール
   useEffect(() => {
-    if (containerRef.current) {
-      const columnWidth = containerRef.current.scrollWidth / 30; // 1日分の幅
-      const scrollPosition = (todayPosition - 4) * columnWidth; // 4日分左に余裕を持たせる
-      containerRef.current.scrollLeft = scrollPosition;
-    }
-  }, [todayPosition]);
+    console.log('Scroll effect triggered');
+    console.log('Container ref:', containerRef.current);
+    console.log('Today position:', todayPosition);
+    console.log('Calendar range:', calendarRange);
+
+    const scrollToToday = () => {
+      const container = containerRef.current;
+      if (!container) {
+        console.log('Container not found');
+        return;
+      }
+
+      console.log('Container dimensions:', {
+        scrollWidth: container.scrollWidth,
+        clientWidth: container.clientWidth,
+        scrollLeft: container.scrollLeft
+      });
+
+      // スクロール位置を計算（タスク一覧の幅を考慮）
+      const columnWidth = container.scrollWidth / calendarRange.totalDays;
+      const scrollPosition = (todayPosition - 1) * columnWidth - 450; // タスク一覧の幅を考慮
+
+      console.log('Calculated scroll position:', {
+        columnWidth,
+        scrollPosition,
+        totalDays: calendarRange.totalDays
+      });
+
+      // スクロールを実行
+      container.scrollTo({
+        left: Math.max(0, scrollPosition), // 負の値にならないように調整
+        behavior: 'instant'
+      });
+
+      // スクロール後の状態を確認
+      setTimeout(() => {
+        console.log('After scroll:', {
+          scrollLeft: container.scrollLeft,
+          expectedPosition: scrollPosition
+        });
+      }, 100);
+    };
+
+    // 少し遅延を入れて実行（DOMの更新を待つ）
+    const timer = setTimeout(scrollToToday, 100);
+    return () => clearTimeout(timer);
+  }, []); // 依存配列を空にして、マウント時のみ実行
 
   // 新しいタスクを作成する関数
   const handleCreateTask = () => {
@@ -380,10 +471,67 @@ export default function WBSView({ onTaskCreate, onTaskSelect, projectId }: WBSVi
     );
   };
 
+  // タスクバーコンポーネント
+  const TaskBar = ({ task, calendarRange }: { task: Task; calendarRange: { totalDays: number; startDate: Date } }) => {
+    const startDate = new Date(Math.min(...task.todos.map(todo => new Date(todo.startDate).getTime())));
+    const endDate = new Date(Math.max(...task.todos.map(todo => new Date(todo.endDate).getTime())));
+    
+    const taskStartPos = getDatePosition(startDate, calendarRange.startDate);
+    const taskEndPos = getDatePosition(endDate, calendarRange.startDate);
+    const taskWidth = (taskEndPos - taskStartPos + 1) * (100 / calendarRange.totalDays);
+    
+    const progress = task.todos.length > 0
+      ? (task.todos.filter(todo => todo.completed).length / task.todos.length) * 100
+      : 0;
+
+    return (
+      <div
+        className="absolute h-6 bg-gray-300 rounded top-3"
+        style={{
+          left: `${(taskStartPos - 1) * (100 / calendarRange.totalDays)}%`,
+          width: `${taskWidth}%`,
+          zIndex: 0
+        }}
+      >
+        <div
+          className="h-full bg-green-500 rounded"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    );
+  };
+
+  // TODOバーコンポーネント
+  const TodoBar = ({ todo, calendarRange }: { todo: Todo; calendarRange: { totalDays: number; startDate: Date } }) => {
+    const startDate = new Date(todo.startDate);
+    const endDate = new Date(todo.endDate);
+    
+    const startPos = getDatePosition(startDate, calendarRange.startDate);
+    const endPos = getDatePosition(endDate, calendarRange.startDate);
+    const width = (endPos - startPos + 1) * (100 / calendarRange.totalDays);
+
+    return (
+      <div
+        className="absolute h-6 bg-blue-100 rounded top-3"
+        style={{
+          left: `${(startPos - 1) * (100 / calendarRange.totalDays)}%`,
+          width: `${width}%`,
+          zIndex: 0
+        }}
+      >
+        <div
+          className="h-full bg-blue-500 rounded"
+          style={{
+            width: `${todo.completed ? 100 : 0}%`,
+          }}
+        />
+      </div>
+    );
+  };
+
   return (
-    <div className="overflow-x-auto relative" ref={containerRef}>
+    <div className="overflow-x-auto relative">
       <div className="flex justify-between items-center mb-2">
-        <h3 className="font-medium text-gray-700">WBS（Work Breakdown Structure）</h3>
         <div className="flex items-center gap-2">
           <ScheduleTodosButton 
             onScheduleComplete={() => {
@@ -399,168 +547,95 @@ export default function WBSView({ onTaskCreate, onTaskSelect, projectId }: WBSVi
           </button>
         </div>
       </div>
-      <div className="min-w-[1200px]">
-        {/* ヘッダー */}
-        <div className="flex border-b">
-          <div className="w-60 p-4 font-bold sticky left-0 bg-white z-10 flex justify-between items-center">
+      <div className="flex">
+        {/* 左側：タスク一覧（固定） */}
+        <div className="w-60 flex-shrink-0">
+          {/* タスク一覧のヘッダー */}
+          <div className="p-4 font-bold bg-white border-b sticky top-0 z-20">
             <span>タスク</span>
           </div>
-          <div className="flex-1 grid grid-cols-[repeat(30,1fr)] border-l relative">
-            {/* 過去の日付のオーバーレイ */}
-            <div
-              className="absolute top-0 left-0 h-full bg-gray-100/50"
-              style={{
-                width: `${(todayPosition - 1) * (100 / 30)}%`,
-                zIndex: 1
-              }}
-            />
-            {/* 今日の日付の縦線 */}
-            <div
-              className="absolute top-0 h-full w-px bg-red-500"
-              style={{
-                left: `${(todayPosition - 1) * (100 / 30)}%`,
-                zIndex: 2
-              }}
-            />
-            {Array.from({ length: 30 }, (_, i) => (
-              <div key={i} className="p-2 text-center text-sm border-r">
-                {i + 1}日
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* タスク一覧 */}
-        {tasks.map((task) => {
-          // 小タスクの開始日・終了日
-          const taskStartDate = new Date(
-            Math.min(
-              ...task.todos.map((todo) => new Date(todo.startDate).getTime())
-            )
-          );
-          const taskEndDate = new Date(
-            Math.max(
-              ...task.todos.map((todo) => new Date(todo.endDate).getTime())
-            )
-          );
-
-          // 親タスクのガントバー位置と幅
-          const taskStartPos = getDatePosition(taskStartDate);
-          const taskEndPos = getDatePosition(taskEndDate);
-          const taskWidth = (taskEndPos - taskStartPos + 1) * (100 / 30);
-
-          // 親タスクの進捗率を計算
-          const totalEstimatedHours = task.todos.reduce(
-            (sum, todo) => sum + todo.estimatedHours,
-            0
-          );
-          const completedHours = task.todos.reduce(
-            (sum, todo) => sum + (todo.completed ? todo.estimatedHours : 0),
-            0
-          );
-          const progress =
-            totalEstimatedHours > 0
-              ? (completedHours / totalEstimatedHours) * 100
-              : 0;
-
-          return (
+          {/* タスク一覧 */}
+          {tasks.map((task) => (
             <div key={task.id} className="border-b" onClick={() => onTaskSelect(task.id)}>
               {/* 親タスク */}
-              <div className="flex bg-gray-100 border-b">
-                <div className="w-60 p-4 font-medium sticky left-0 bg-gray-100 z-10">
-                  {task.title}
-                  <span className="text-xs text-gray-500 ml-2">
-                    {Math.round(progress)}%
-                  </span>
-                </div>
-                <div className="flex-1 relative">
-                  {/* 過去の日付のオーバーレイ */}
-                  <div
-                    className="absolute top-0 left-0 h-full bg-gray-100/50"
-                    style={{
-                      width: `${(todayPosition - 1) * (100 / 30)}%`,
-                      zIndex: 1
-                    }}
-                  />
-                  {/* 今日の日付の縦線 */}
-                  <div
-                    className="absolute top-0 h-full w-px bg-red-500"
-                    style={{
-                      left: `${(todayPosition - 1) * (100 / 30)}%`,
-                      zIndex: 2
-                    }}
-                  />
-                  {/* 親タスクの進捗バー */}
-                  <div
-                    className="absolute h-6 bg-gray-300 rounded"
-                    style={{
-                      left: `${(taskStartPos - 1) * (100 / 30)}%`,
-                      width: `${taskWidth}%`,
-                      zIndex: 0
-                    }}
-                  >
-                    <div
-                      className="h-full bg-green-500 rounded"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                </div>
+              <div className="p-4 font-medium bg-gray-100">
+                {task.title}
+                <span className="text-xs text-gray-500 ml-2">
+                  {Math.round(
+                    (task.todos.filter(todo => todo.completed).length / task.todos.length) * 100
+                  )}%
+                </span>
               </div>
+              {/* 小タスク */}
+              {task.todos.map((todo) => (
+                <div key={todo.id} className="p-4 text-sm bg-white">
+                  {todo.text}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
 
-              {/* 小タスク（todo） */}
-              {task.todos.map((todo) => {
-                const startDate = new Date(todo.startDate);
-                const endDate = new Date(todo.endDate);
-
-                const startPos = getDatePosition(startDate);
-                const endPos = getDatePosition(endDate);
-                const todoWidth = (endPos - startPos + 1) * (100 / 30);
-
-                return (
-                  <div key={todo.id} className="flex border-b">
-                    <div className="w-60 p-4 text-sm sticky left-0 bg-white z-10">{todo.text}</div>
-                    <div className="flex-1 relative">
-                      {/* 過去の日付のオーバーレイ */}
-                      <div
-                        className="absolute top-0 left-0 h-full bg-gray-100/50"
-                        style={{
-                          width: `${(todayPosition - 1) * (100 / 30)}%`,
-                          zIndex: 1
-                        }}
-                      />
-                      {/* 今日の日付の縦線 */}
-                      <div
-                        className="absolute top-0 h-full w-px bg-red-500"
-                        style={{
-                          left: `${(todayPosition - 1) * (100 / 30)}%`,
-                          zIndex: 2
-                        }}
-                      />
-                      {/* 小タスクの進捗バー */}
-                      <div
-                        className="absolute h-6 bg-blue-100 rounded"
-                        style={{
-                          left: `${(startPos - 1) * (100 / 30)}%`,
-                          width: `${todoWidth}%`,
-                          zIndex: 0
-                        }}
-                      >
-                        <div
-                          className="h-full bg-blue-500 rounded"
-                          style={{
-                            width: `${todo.completed ? 100 : 0}%`,
-                          }}
-                        />
+        {/* 右側：カレンダーとガントチャート（スクロール可能） */}
+        <div className="flex-1 overflow-x-auto" ref={containerRef}>
+          <div style={{ width: `${calendarRange.totalDays * 30}px` }}>
+            {/* カレンダーヘッダー */}
+            <div className="border-b sticky top-0 bg-white z-20">
+              <div className="grid" style={{ gridTemplateColumns: `repeat(${calendarRange.totalDays}, minmax(30px, 1fr))` }}>
+                {getDates().map((date, i) => (
+                  <div key={i} className="border-l text-center relative">
+                    {isFirstDayOfMonth(date) && (
+                      <div className="absolute -top-4 left-0 right-0 text-xs text-gray-500 z-30">
+                        {getMonth(date)}月
                       </div>
+                    )}
+                    <div className="py-2 text-sm">
+                      {formatDate(date)}
                     </div>
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </div>
-          );
-        })}
+
+            {/* ガントチャート本体 */}
+            <div className="relative">
+              {/* 過去の日付のオーバーレイ */}
+              <div
+                className="absolute top-0 left-0 h-full bg-gray-100/50"
+                style={{
+                  width: `${(todayPosition) * (100 / calendarRange.totalDays)}%`,
+                  zIndex: 1
+                }}
+              />
+              {/* 今日の日付の縦線 */}
+              <div
+                className="absolute top-0 h-full w-px bg-red-500"
+                style={{
+                  left: `${(todayPosition) * (100 / calendarRange.totalDays)}%`,
+                  zIndex: 2
+                }}
+              />
+
+              {/* タスクのガントチャート */}
+              {tasks.map((task) => (
+                <div key={task.id}>
+                  {/* 親タスク */}
+                  <div className="h-[52px] relative bg-gray-50">
+                    <TaskBar task={task} calendarRange={calendarRange} />
+                  </div>
+                  {/* 小タスク */}
+                  {task.todos.map((todo) => (
+                    <div key={todo.id} className="h-[52px] relative">
+                      <TodoBar todo={todo} calendarRange={calendarRange} />
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
-      
+
       {/* タスク作成フォーム */}
       {isCreatingTask && renderTaskCreationForm()}
     </div>

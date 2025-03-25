@@ -474,7 +474,6 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, projectId }
   return (
     <div className="overflow-x-auto relative">
       <div className="flex justify-between items-center mb-2">
-        <h3 className="font-medium text-gray-700">ガントチャート</h3>
         <div className="flex items-center gap-2">
           <ScheduleTodosButton 
             onScheduleComplete={() => {
