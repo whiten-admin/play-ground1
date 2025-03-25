@@ -7,6 +7,8 @@ import { IoAdd, IoBulb, IoTrash } from 'react-icons/io5';
 import { Task, Todo } from '@/types/task';
 import { suggestTodos } from '@/utils/openai';
 import ScheduleTodosButton from './ScheduleTodosButton';
+import { differenceInDays } from 'date-fns';
+import TaskCreationForm from './TaskCreationForm';
 
 interface WBSViewProps {
   onTaskCreate?: (newTask: Task) => void;
@@ -20,19 +22,6 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
   const { currentProject } = useProjectContext();
   const containerRef = useRef<HTMLDivElement>(null);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
-  const [newTask, setNewTask] = useState<Partial<Task>>({
-    title: '',
-    description: '',
-    todos: [],
-    priority: 0,
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0]
-  });
-  const [newTaskTodos, setNewTaskTodos] = useState<Todo[]>([]);
-  const [newTaskTodoText, setNewTaskTodoText] = useState('');
-  const [isGeneratingTodos, setIsGeneratingTodos] = useState(false);
-  const [newTaskSuggestedTodos, setNewTaskSuggestedTodos] = useState<{ text: string; estimatedHours: number }[]>([]);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(() => {
     // 初期状態で全てのタスクを開く
     const initialSet = new Set<string>();
@@ -316,26 +305,17 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
 
   // TODOのステータスを切り替える関数
   const toggleTodoStatus = (taskId: string, todoId: string) => {
-    console.log('toggleTodoStatus called with:', { taskId, todoId });
     const task = tasks.find(t => t.id === taskId);
-    if (!task) {
-      console.log('Task not found');
-      return;
-    }
-
-    console.log('Found task:', task.title);
-    console.log('Current todos:', task.todos);
+    if (!task) return;
 
     const updatedTodos = task.todos.map(todo => {
       if (todo.id === todoId) {
-        console.log('Toggling todo status for:', todo.text, 'from', todo.completed, 'to', !todo.completed);
         return { ...todo, completed: !todo.completed };
       }
       return todo;
     });
 
     const updatedTask = { ...task, todos: updatedTodos };
-    console.log('Calling onTaskUpdate with:', updatedTask);
     onTaskUpdate?.(updatedTask);
   };
 
@@ -349,257 +329,54 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
     );
   };
 
-  // タスク作成フォームをレンダリングする関数
-  const renderTaskCreationForm = () => {
+  // タスクバーコンポーネント
+  const TaskBar = ({ task, calendarRange }: { task: Task; calendarRange: { totalDays: number; startDate: Date } }) => {
+    const startDiff = differenceInDays(task.startDate, calendarRange.startDate);
+    const duration = differenceInDays(task.endDate, task.startDate) + 1;
+    const width = `${(duration / calendarRange.totalDays) * 100}%`;
+    const left = `${(startDiff / calendarRange.totalDays) * 100}%`;
+
+    // タスクの進捗状況を計算
+    const completedTodos = task.todos.filter(todo => todo.completed).length;
+    const progress = task.todos.length > 0 ? (completedTodos / task.todos.length) * 100 : 0;
+
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-          <h2 className="text-xl font-bold mb-4">新しいタスクを作成（WBS）</h2>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">タイトル</label>
-              <input
-                type="text"
-                value={newTask.title}
-                onChange={(e) => setNewTask({...newTask, title: e.target.value})}
-                className="w-full p-2 border rounded-md"
-                placeholder="タスクのタイトルを入力"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">説明</label>
-              <textarea
-                value={newTask.description}
-                onChange={(e) => setNewTask({...newTask, description: e.target.value})}
-                className="w-full p-2 border rounded-md h-24"
-                placeholder="タスクの説明を入力"
-              />
-            </div>
-            
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">開始日</label>
-                <input
-                  type="date"
-                  value={newTask.startDate}
-                  onChange={(e) => setNewTask({...newTask, startDate: e.target.value})}
-                  className="w-full p-2 border rounded-md"
-                />
-              </div>
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">終了日</label>
-                <input
-                  type="date"
-                  value={newTask.endDate}
-                  onChange={(e) => setNewTask({...newTask, endDate: e.target.value})}
-                  className="w-full p-2 border rounded-md"
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">優先度</label>
-              <select
-                value={newTask.priority}
-                onChange={(e) => setNewTask({...newTask, priority: Number(e.target.value)})}
-                className="w-full p-2 border rounded-md"
-              >
-                <option value={0}>低</option>
-                <option value={1}>中</option>
-                <option value={2}>高</option>
-              </select>
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-medium text-gray-700">TODOリスト</label>
-                <button
-                  onClick={handleSuggestNewTaskTodos}
-                  disabled={!newTask.title || isGeneratingTodos}
-                  className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${
-                    !newTask.title || isGeneratingTodos
-                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                      : 'bg-yellow-500 text-white hover:bg-yellow-600'
-                  }`}
-                  title="AIにTODOを提案してもらう"
-                >
-                  <IoBulb className="w-3 h-3" />
-                  AI提案
-                </button>
-              </div>
-              
-              <div className="space-y-2 mb-2">
-                {newTaskTodos.map((todo) => (
-                  <div key={todo.id} className="flex items-center justify-between bg-gray-50 p-2 rounded border">
-                    <div className="flex-1">
-                      <div className="text-sm text-gray-800">{todo.text}</div>
-                      <div className="text-xs text-gray-500">
-                        見積もり工数: {todo.estimatedHours}時間
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleRemoveNewTaskTodo(todo.id)}
-                      className="ml-2 text-red-500 hover:text-red-700"
-                    >
-                      <IoTrash className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="flex items-center">
-                <input
-                  type="text"
-                  value={newTaskTodoText}
-                  onChange={(e) => setNewTaskTodoText(e.target.value)}
-                  placeholder="新しいTODOを追加"
-                  className="flex-1 p-2 border rounded-l-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      handleAddNewTaskTodo();
-                    }
-                  }}
-                />
-                <button
-                  onClick={handleAddNewTaskTodo}
-                  disabled={!newTaskTodoText.trim()}
-                  className={`p-2 rounded-r-md ${
-                    !newTaskTodoText.trim()
-                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                      : 'bg-blue-500 text-white hover:bg-blue-600'
-                  }`}
-                >
-                  <IoAdd className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* AI提案のTODOリスト */}
-            {isGeneratingTodos && (
-              <div className="text-center py-4">
-                <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-yellow-500"></div>
-                <p className="mt-2 text-sm text-gray-600">TODOを生成中...</p>
-              </div>
-            )}
-
-            {newTaskSuggestedTodos.length > 0 && (
-              <div className="p-3 bg-yellow-50 rounded-lg">
-                <h4 className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                  <IoBulb className="w-4 h-4" />
-                  AIからのTODO提案
-                </h4>
-                <div className="space-y-2">
-                  {newTaskSuggestedTodos.map((suggestion, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between bg-white p-2 rounded border border-yellow-200"
-                    >
-                      <div className="flex-1">
-                        <div className="text-sm text-gray-800">{suggestion.text}</div>
-                        <div className="text-xs text-gray-500">
-                          見積もり工数: {suggestion.estimatedHours}時間
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleAddSuggestedNewTaskTodo(suggestion)}
-                        className="ml-2 px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-                        title="このTODOを採用"
-                      >
-                        採用
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <div className="flex justify-end gap-2 mt-6">
-            <button
-              onClick={() => {
-                setIsCreatingTask(false);
-                setNewTaskTodos([]);
-                setNewTaskTodoText('');
-                setNewTaskSuggestedTodos([]);
-              }}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800"
-            >
-              キャンセル
-            </button>
-            <button
-              onClick={handleCreateTask}
-              disabled={!newTask.title}
-              className={`px-4 py-2 rounded-md ${
-                !newTask.title
-                  ? 'bg-gray-300 cursor-not-allowed'
-                  : 'bg-blue-500 text-white hover:bg-blue-600'
-              }`}
-            >
-              作成
-            </button>
+      <div
+        className="absolute h-4 top-2 bg-blue-500 rounded"
+        style={{
+          width,
+          left,
+        }}
+      >
+        <div className="h-full relative">
+          <div className="absolute inset-0 bg-blue-200 rounded overflow-hidden">
+            <div
+              className="h-full bg-blue-500"
+              style={{ width: `${progress}%` }}
+            />
           </div>
         </div>
       </div>
     );
   };
 
-  // タスクバーコンポーネント
-  const TaskBar = ({ task, calendarRange }: { task: Task; calendarRange: { totalDays: number; startDate: Date } }) => {
-    const startDate = new Date(Math.min(...task.todos.map(todo => new Date(todo.startDate).getTime())));
-    const endDate = new Date(Math.max(...task.todos.map(todo => new Date(todo.endDate).getTime())));
-    
-    const taskStartPos = getDatePosition(startDate, calendarRange.startDate);
-    const taskEndPos = getDatePosition(endDate, calendarRange.startDate);
-    const taskWidth = (taskEndPos - taskStartPos + 1) * (100 / calendarRange.totalDays);
-    
-    const progress = task.todos.length > 0
-      ? (task.todos.filter(todo => todo.completed).length / task.todos.length) * 100
-      : 0;
-
-    return (
-      <div
-        className="absolute h-4 bg-gray-300 rounded top-2"
-        style={{
-          left: `${(taskStartPos - 1) * (100 / calendarRange.totalDays)}%`,
-          width: `${taskWidth}%`,
-          zIndex: 0
-        }}
-      >
-        <div
-          className="h-full bg-green-500 rounded"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
-    );
-  };
-
   // TODOバーコンポーネント
   const TodoBar = ({ todo, calendarRange }: { todo: Todo; calendarRange: { totalDays: number; startDate: Date } }) => {
-    const startDate = new Date(todo.startDate);
-    const endDate = new Date(todo.endDate);
-    
-    const startPos = getDatePosition(startDate, calendarRange.startDate);
-    const endPos = getDatePosition(endDate, calendarRange.startDate);
-    const width = (endPos - startPos + 1) * (100 / calendarRange.totalDays);
+    const startDiff = differenceInDays(todo.startDate, calendarRange.startDate);
+    const duration = differenceInDays(todo.endDate, todo.startDate) + 1;
+    const width = `${(duration / calendarRange.totalDays) * 100}%`;
+    const left = `${(startDiff / calendarRange.totalDays) * 100}%`;
 
     return (
       <div
-        className="absolute h-4 bg-blue-100 rounded top-2"
+        className={`absolute h-4 top-2 rounded ${
+          todo.completed ? 'bg-green-500' : 'bg-gray-300'
+        }`}
         style={{
-          left: `${(startPos - 1) * (100 / calendarRange.totalDays)}%`,
-          width: `${width}%`,
-          zIndex: 0
+          width,
+          left,
         }}
-      >
-        <div
-          className="h-full bg-blue-500 rounded"
-          style={{
-            width: `${todo.completed ? 100 : 0}%`,
-          }}
-        />
-      </div>
+      />
     );
   };
 
@@ -731,7 +508,17 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
       </div>
 
       {/* タスク作成フォーム */}
-      {isCreatingTask && renderTaskCreationForm()}
+      {isCreatingTask && (
+        <TaskCreationForm
+          onCancel={() => setIsCreatingTask(false)}
+          onTaskCreate={(task) => {
+            onTaskCreate?.(task);
+            setIsCreatingTask(false);
+          }}
+          projectId={projectId || currentProject?.id}
+          title="新しいタスクを作成"
+        />
+      )}
     </div>
   );
 }

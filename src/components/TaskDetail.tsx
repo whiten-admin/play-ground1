@@ -14,6 +14,7 @@ import UserAssignSelect from './UserAssignSelect'
 import { User } from '@/types/user'
 import { useFilterContext } from '@/contexts/FilterContext'
 import { useProjectContext } from '@/contexts/ProjectContext'
+import TaskCreationForm from './TaskCreationForm'
 
 type ViewMode = 'list' | 'kanban' | 'gantt'
 
@@ -456,194 +457,6 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
     setNewTaskSuggestedTodos(prev => prev.filter(todo => todo.text !== suggestion.text))
   }
 
-  // タスク作成フォームをレンダリングする関数
-  const renderTaskCreationForm = () => {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-          <h2 className="text-xl font-bold mb-4">新しいタスクを作成</h2>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">タイトル</label>
-              <input
-                type="text"
-                value={newTask.title}
-                onChange={(e) => setNewTask({...newTask, title: e.target.value})}
-                className="w-full p-2 border rounded-md"
-                placeholder="タスクのタイトルを入力"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">説明</label>
-              <textarea
-                value={newTask.description}
-                onChange={(e) => setNewTask({...newTask, description: e.target.value})}
-                className="w-full p-2 border rounded-md h-24"
-                placeholder="タスクの説明を入力"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">優先度</label>
-              <select
-                value={newTask.priority}
-                onChange={(e) => setNewTask({...newTask, priority: Number(e.target.value)})}
-                className="w-full p-2 border rounded-md"
-              >
-                <option value={0}>低</option>
-                <option value={1}>中</option>
-                <option value={2}>高</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">担当者</label>
-              <UserAssignSelect
-                assigneeIds={newTask.assigneeIds || []}
-                onAssigneeChange={(newAssigneeIds) => {
-                  setNewTask({
-                    ...newTask,
-                    assigneeIds: newAssigneeIds
-                  });
-                }}
-              />
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-medium text-gray-700">TODOリスト</label>
-                <button
-                  onClick={handleSuggestNewTaskTodos}
-                  disabled={!newTask.title || isGeneratingTodos}
-                  className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${
-                    !newTask.title || isGeneratingTodos
-                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                      : 'bg-yellow-500 text-white hover:bg-yellow-600'
-                  }`}
-                  title="AIにTODOを提案してもらう"
-                >
-                  <IoBulb className="w-3 h-3" />
-                  AI提案
-                </button>
-              </div>
-              
-              <div className="space-y-2 mb-2">
-                {newTaskTodos.map((todo) => (
-                  <div key={todo.id} className="flex items-center justify-between bg-gray-50 p-2 rounded border">
-                    <div className="flex-1">
-                      <div className="text-sm text-gray-800">{todo.text}</div>
-                      <div className="text-xs text-gray-500">
-                        見積もり工数: {todo.estimatedHours}時間
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleRemoveNewTaskTodo(todo.id)}
-                      className="ml-2 text-red-500 hover:text-red-700"
-                    >
-                      <IoTrash className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="flex items-center">
-                <input
-                  type="text"
-                  value={newTaskTodoText}
-                  onChange={(e) => setNewTaskTodoText(e.target.value)}
-                  placeholder="新しいTODOを追加"
-                  className="flex-1 p-2 border rounded-l-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      handleAddNewTaskTodo();
-                    }
-                  }}
-                />
-                <button
-                  onClick={handleAddNewTaskTodo}
-                  disabled={!newTaskTodoText.trim()}
-                  className={`p-2 rounded-r-md ${
-                    !newTaskTodoText.trim()
-                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                      : 'bg-blue-500 text-white hover:bg-blue-600'
-                  }`}
-                >
-                  <IoAdd className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* AI提案のTODOリスト */}
-            {isGeneratingTodos && (
-              <div className="text-center py-4">
-                <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-yellow-500"></div>
-                <p className="mt-2 text-sm text-gray-600">TODOを生成中...</p>
-              </div>
-            )}
-
-            {newTaskSuggestedTodos.length > 0 && (
-              <div className="p-3 bg-yellow-50 rounded-lg">
-                <h4 className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                  <IoBulb className="w-4 h-4" />
-                  AIからのTODO提案
-                </h4>
-                <div className="space-y-2">
-                  {newTaskSuggestedTodos.map((suggestion, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between bg-white p-2 rounded border border-yellow-200"
-                    >
-                      <div className="flex-1">
-                        <div className="text-sm text-gray-800">{suggestion.text}</div>
-                        <div className="text-xs text-gray-500">
-                          見積もり工数: {suggestion.estimatedHours}時間
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleAddSuggestedNewTaskTodo(suggestion)}
-                        className="ml-2 px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-                        title="このTODOを採用"
-                      >
-                        採用
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <div className="flex justify-end gap-2 mt-6">
-            <button
-              onClick={() => {
-                setIsCreatingTask(false);
-                setNewTaskTodos([]);
-                setNewTaskTodoText('');
-                setNewTaskSuggestedTodos([]);
-              }}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800"
-            >
-              キャンセル
-            </button>
-            <button
-              onClick={handleCreateTask}
-              disabled={!newTask.title}
-              className={`px-4 py-2 rounded-md ${
-                !newTask.title
-                  ? 'bg-gray-300 cursor-not-allowed'
-                  : 'bg-blue-500 text-white hover:bg-blue-600'
-              }`}
-            >
-              作成
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   // タスク一覧表示のレンダリング
   const renderTaskList = () => {
     return (
@@ -830,377 +643,288 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
             />
           )}
         </div>
-
-        {/* タスク作成フォーム */}
-        {isCreatingTask && renderTaskCreationForm()}
       </div>
     )
   }
 
-  if (!selectedTask) {
-    return renderTaskList()
-  }
-
-  const taskToDisplay = editedTask || selectedTask
-
-  // TODOの提案を取得
-  const handleSuggestTodos = async () => {
-    if (!taskToDisplay) return
-
-    try {
-      setIsSuggestingTodos(true)
-      setErrorMessage(null)
-      const suggestions = await suggestTodos(
-        taskToDisplay.title,
-        taskToDisplay.description,
-        taskToDisplay.todos.map(todo => todo.text)
-      )
-      setSuggestedTodos(suggestions)
-    } catch (error) {
-      console.error('Error getting todo suggestions:', error)
-      setErrorMessage(error instanceof Error ? error.message : 'TODOの提案中にエラーが発生しました。')
-      setSuggestedTodos([])
-    } finally {
-      setIsSuggestingTodos(false)
-    }
-  }
-
-  // 提案されたTODOを追加
-  const handleAddSuggestedTodo = (suggestion: { text: string; estimatedHours: number }) => {
-    if (!editedTask && selectedTask) {
-      setEditedTask(selectedTask)
-    }
-
-    const taskToUpdate = editedTask || selectedTask
-    if (taskToUpdate) {
-      const today = new Date()
-      const formattedDate = today.toISOString().split('T')[0] // YYYY-MM-DD形式
-      
-      const newTodo: Todo = {
-        id: `todo-${Date.now()}`,
-        text: suggestion.text,
-        completed: false,
-        startDate: formattedDate,
-        endDate: formattedDate,
-        dueDate: new Date(),
-        estimatedHours: suggestion.estimatedHours,
-        assigneeIds: []
-      }
-      
-      const updatedTodos = [...taskToUpdate.todos, newTodo];
-      
-      // タスク全体のアサイン情報を更新
-      const updatedAssigneeIds = updateTaskAssignees(updatedTodos, taskToUpdate);
-      
-      const updatedTask = {
-        ...taskToUpdate,
-        todos: updatedTodos,
-        assigneeIds: updatedAssigneeIds
-      }
-      
-      setEditedTask(updatedTask)
-      onTaskUpdate?.(updatedTask)
-
-      // 追加したTODOを提案リストから削除
-      setSuggestedTodos(prev => prev.filter(todo => todo.text !== suggestion.text))
-    }
-  }
-
   return (
-    <div className="bg-white rounded-lg shadow p-6 h-full">
-      <div className="flex justify-between items-center mb-4 group">
-        <div className="flex-1 flex items-center gap-2">
-          {editState.title ? (
-            <>
-              <input
-                type="text"
-                value={taskToDisplay.title}
-                onChange={handleTitleChange}
-                className="text-xl font-bold text-gray-800 w-full border-b border-gray-300 focus:border-blue-500 focus:outline-none"
-              />
-              <button
-                onClick={() => handleSave('title')}
-                className="p-1 text-green-600 hover:text-green-700"
-              >
-                <IoSave className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => handleCancel('title')}
-                className="p-1 text-red-600 hover:text-red-700"
-              >
-                <IoClose className="w-5 h-5" />
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => onTaskSelect('')}
-                className="p-1 text-gray-500 hover:text-gray-700 mr-2"
-              >
-                ←戻る
-              </button>
-              <div className="flex-1">
-                <h2 className="text-xl font-bold text-gray-800">{taskToDisplay.title}</h2>
-                <div className="mt-1 flex items-center gap-2">
-                  <div className="text-sm text-gray-500">
-                    進捗率: {calculateProgress(taskToDisplay.todos)}%
-                  </div>
-                  <div className="flex-1 h-2 bg-gray-200 rounded-full">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${calculateProgress(taskToDisplay.todos)}%`,
-                        background: `linear-gradient(to right, rgb(219, 234, 254), rgb(37, 99, 235))`
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="ml-2 flex items-center">
-                <div className="text-sm mr-4">
-                  <span className="text-gray-500 mr-1">担当:</span>
-                  <div className="text-sm text-gray-600">
-                    {selectedTask?.assigneeIds && selectedTask.assigneeIds.length > 0 
-                      ? getUserNamesByIds(selectedTask.assigneeIds)
-                      : '担当者なし'
-                    }
-                  </div>
-                </div>
-                {!editState.title && (
-                  <button
-                    onClick={() => toggleEdit('title')}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-gray-600"
-                  >
-                    <IoPencil className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      <div className="mb-4 group">
-        {editState.description ? (
-          <div className="flex gap-2">
-            <textarea
-              value={taskToDisplay.description}
-              onChange={handleDescriptionChange}
-              className="w-full h-24 p-2 text-gray-600 border rounded-md focus:border-blue-500 focus:outline-none"
-            />
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={() => handleSave('description')}
-                className="p-1 text-green-600 hover:text-green-700"
-              >
-                <IoSave className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => handleCancel('description')}
-                className="p-1 text-red-600 hover:text-red-700"
-              >
-                <IoClose className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex gap-2">
-            <p className="flex-1 text-gray-600 whitespace-pre-wrap">{taskToDisplay.description}</p>
-            <button
-              onClick={() => toggleEdit('description')}
-              className="p-1 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-gray-600 self-start"
-            >
-              <IoPencil className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-3">
-        {taskToDisplay.todos.map((todo) => (
-          <div 
-            key={todo.id} 
-            className={`flex items-center group ${
-              selectedTodoId === todo.id ? 'bg-blue-50 border border-blue-200 rounded-lg p-2 -ml-2' : 'p-2 -ml-2'
-            }`}
-          >
-            <input
-              type="checkbox"
-              checked={todo.completed}
-              onChange={() => handleTodoStatusChange(todo.id)}
-              className="w-5 h-5 mr-3"
-            />
-            {editState.todos[todo.id] ? (
-              <div className="flex-1 flex items-center gap-2">
-                <div className="flex-1 space-y-2">
+    <div className="h-full">
+      {selectedTask ? (
+        /* タスク詳細の表示 */
+        <div className="bg-white rounded-lg p-6 h-full flex flex-col">
+          <div className="flex justify-between items-center mb-4 group">
+            <div className="flex-1 flex items-center gap-2">
+              {editState.title ? (
+                <>
                   <input
                     type="text"
-                    value={todo.text}
-                    onChange={(e) => handleTodoTextChange(todo.id, e.target.value)}
-                    className="w-full text-gray-800 border-b border-gray-300 focus:border-blue-500 focus:outline-none"
+                    value={selectedTask.title}
+                    onChange={handleTitleChange}
+                    className="text-xl font-bold text-gray-800 w-full border-b border-gray-300 focus:border-blue-500 focus:outline-none"
                   />
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-500">見積もり工数:</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.5"
-                      value={todo.estimatedHours}
-                      onChange={(e) => handleEstimatedHoursChange(todo.id, parseFloat(e.target.value) || 0)}
-                      className="w-20 text-sm border-b border-gray-300 focus:border-blue-500 focus:outline-none"
-                    />
-                    <span className="text-sm text-gray-500">時間</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleSave(todo.id, true)}
-                  className="p-1 text-green-600 hover:text-green-700"
-                >
-                  <IoSave className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => handleCancel(todo.id, true)}
-                  className="p-1 text-red-600 hover:text-red-700"
-                >
-                  <IoClose className="w-5 h-5" />
-                </button>
-              </div>
-            ) : (
-              <div className="flex-1 flex items-center gap-2">
-                <div className="flex-1">
-                  <span className={`text-gray-800 ${todo.completed ? 'line-through text-gray-500' : ''}`}>
-                    {todo.text}
-                  </span>
-                  <div className="text-xs text-gray-500 mt-1 space-y-1">
-                    <div>期日: {format(todo.dueDate, 'yyyy年M月d日', { locale: ja })}</div>
-                    <div>見積もり工数: {todo.estimatedHours}時間</div>
-                    <div className="flex items-center gap-1">
-                      <span>担当:</span>
-                      <UserAssignSelect
-                        assigneeIds={todo.assigneeIds || []}
-                        onAssigneeChange={(newAssigneeIds) => {
-                          // TODOの担当者を更新
-                          const updatedTodo = { ...todo, assigneeIds: newAssigneeIds };
-                          
-                          // タスクのTODOリストを更新
-                          const updatedTodos = taskToDisplay.todos.map(t => 
-                            t.id === todo.id ? updatedTodo : t
-                          );
-                          
-                          // タスク全体のアサイン情報を更新
-                          const updatedAssigneeIds = updateTaskAssignees(updatedTodos, taskToDisplay);
-                          
-                          // 全体のタスク情報を更新
-                          const updatedTask = {
-                            ...taskToDisplay,
-                            todos: updatedTodos,
-                            assigneeIds: updatedAssigneeIds
-                          };
-                          
-                          if (editedTask) {
-                            setEditedTask(updatedTask);
-                          }
-                          onTaskUpdate?.(updatedTask);
-                        }}
-                        size="sm"
-                      />
+                  <button
+                    onClick={() => handleSave('title')}
+                    className="p-1 text-green-600 hover:text-green-700"
+                  >
+                    <IoSave className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => handleCancel('title')}
+                    className="p-1 text-red-600 hover:text-red-700"
+                  >
+                    <IoClose className="w-5 h-5" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => onTaskSelect('')}
+                    className="p-1 text-gray-500 hover:text-gray-700 mr-2"
+                  >
+                    ←戻る
+                  </button>
+                  <div className="flex-1">
+                    <h2 className="text-xl font-bold text-gray-800">{selectedTask.title}</h2>
+                    <div className="mt-1 flex items-center gap-2">
+                      <div className="text-sm text-gray-500">
+                        進捗率: {calculateProgress(selectedTask.todos)}%
+                      </div>
+                      <div className="flex-1 h-2 bg-gray-200 rounded-full">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${calculateProgress(selectedTask.todos)}%`,
+                            background: `linear-gradient(to right, rgb(219, 234, 254), rgb(37, 99, 235))`
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
+                  <div className="ml-2 flex items-center">
+                    <div className="text-sm mr-4">
+                      <span className="text-gray-500 mr-1">担当:</span>
+                      <div className="text-sm text-gray-600">
+                        {selectedTask.assigneeIds && selectedTask.assigneeIds.length > 0 
+                          ? getUserNamesByIds(selectedTask.assigneeIds)
+                          : '担当者なし'
+                        }
+                      </div>
+                    </div>
+                    {!editState.title && (
+                      <button
+                        onClick={() => toggleEdit('title')}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-gray-600"
+                      >
+                        <IoPencil className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="mb-4 group">
+            {editState.description ? (
+              <div className="flex gap-2">
+                <textarea
+                  value={selectedTask.description}
+                  onChange={handleDescriptionChange}
+                  className="w-full h-24 p-2 text-gray-600 border rounded-md focus:border-blue-500 focus:outline-none"
+                />
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() => handleSave('description')}
+                    className="p-1 text-green-600 hover:text-green-700"
+                  >
+                    <IoSave className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => handleCancel('description')}
+                    className="p-1 text-red-600 hover:text-red-700"
+                  >
+                    <IoClose className="w-5 h-5" />
+                  </button>
                 </div>
-                <div className="flex gap-2 opacity-0 group-hover:opacity-100">
-                  <button
-                    onClick={() => toggleEdit(todo.id, true)}
-                    className="p-1 text-gray-400 hover:text-gray-600"
-                  >
-                    <IoPencil className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteTodo(todo.id)}
-                    className="p-1 text-red-500 hover:text-red-600"
-                  >
-                    <IoTrash className="w-4 h-4" />
-                  </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <p className="flex-1 text-gray-600 whitespace-pre-wrap">{selectedTask.description}</p>
+                <button
+                  onClick={() => toggleEdit('description')}
+                  className="p-1 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-gray-600 self-start"
+                >
+                  <IoPencil className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            {selectedTask.todos.map((todo) => (
+              <div 
+                key={todo.id} 
+                className={`flex items-center group ${
+                  selectedTodoId === todo.id ? 'bg-blue-50 border border-blue-200 rounded-lg p-2 -ml-2' : 'p-2 -ml-2'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={todo.completed}
+                  onChange={() => handleTodoStatusChange(todo.id)}
+                  className="w-5 h-5 mr-3"
+                />
+                {editState.todos[todo.id] ? (
+                  <div className="flex-1 flex items-center gap-2">
+                    <div className="flex-1 space-y-2">
+                      <input
+                        type="text"
+                        value={todo.text}
+                        onChange={(e) => handleTodoTextChange(todo.id, e.target.value)}
+                        className="w-full text-gray-800 border-b border-gray-300 focus:border-blue-500 focus:outline-none"
+                      />
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm text-gray-500">見積もり工数:</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          value={todo.estimatedHours}
+                          onChange={(e) => handleEstimatedHoursChange(todo.id, parseFloat(e.target.value) || 0)}
+                          className="w-20 text-sm border-b border-gray-300 focus:border-blue-500 focus:outline-none"
+                        />
+                        <span className="text-sm text-gray-500">時間</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleSave(todo.id, true)}
+                      className="p-1 text-green-600 hover:text-green-700"
+                    >
+                      <IoSave className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleCancel(todo.id, true)}
+                      className="p-1 text-red-600 hover:text-red-700"
+                    >
+                      <IoClose className="w-5 h-5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex-1 flex items-center gap-2">
+                    <div className="flex-1">
+                      <span className={`text-gray-800 ${todo.completed ? 'line-through text-gray-500' : ''}`}>
+                        {todo.text}
+                      </span>
+                      <div className="text-xs text-gray-500 mt-1 space-y-1">
+                        <div>期日: {format(todo.dueDate, 'yyyy年M月d日', { locale: ja })}</div>
+                        <div>見積もり工数: {todo.estimatedHours}時間</div>
+                        <div className="flex items-center gap-1">
+                          <span>担当:</span>
+                          <UserAssignSelect
+                            assigneeIds={todo.assigneeIds || []}
+                            onAssigneeChange={(newAssigneeIds) => {
+                              // TODOの担当者を更新
+                              const updatedTodo = { ...todo, assigneeIds: newAssigneeIds };
+                              
+                              // タスクのTODOリストを更新
+                              const updatedTodos = selectedTask.todos.map(t => 
+                                t.id === todo.id ? updatedTodo : t
+                              );
+                              
+                              // タスク全体のアサイン情報を更新
+                              const updatedAssigneeIds = updateTaskAssignees(updatedTodos, selectedTask);
+                              
+                              // 全体のタスク情報を更新
+                              const updatedTask = {
+                                ...selectedTask,
+                                todos: updatedTodos,
+                                assigneeIds: updatedAssigneeIds
+                              };
+                              
+                              if (editedTask) {
+                                setEditedTask(updatedTask);
+                              }
+                              onTaskUpdate?.(updatedTask);
+                            }}
+                            size="sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100">
+                      <button
+                        onClick={() => toggleEdit(todo.id, true)}
+                        className="p-1 text-gray-400 hover:text-gray-600"
+                      >
+                        <IoPencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTodo(todo.id)}
+                        className="p-1 text-red-500 hover:text-red-600"
+                      >
+                        <IoTrash className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            <div className="flex items-center mt-4">
+              <input
+                type="text"
+                value={newTodoText}
+                onChange={(e) => setNewTodoText(e.target.value)}
+                placeholder="新しいTODOを追加"
+                className="flex-1 p-2 border rounded-md focus:border-blue-500 focus:outline-none"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleAddTodo()
+                  }
+                }}
+              />
+              <button
+                onClick={handleAddTodo}
+                className="ml-2 p-2 text-blue-500 hover:text-blue-600"
+              >
+                <IoAdd className="w-5 h-5" />
+              </button>
+            </div>
+
+            {errorMessage && (
+              <div className="mt-4 p-4 bg-red-50 rounded-lg">
+                <div className="text-sm text-red-600">
+                  {errorMessage}
                 </div>
               </div>
             )}
           </div>
-        ))}
-
-        <div className="flex items-center mt-4">
-          <input
-            type="text"
-            value={newTodoText}
-            onChange={(e) => setNewTodoText(e.target.value)}
-            placeholder="新しいTODOを追加"
-            className="flex-1 p-2 border rounded-md focus:border-blue-500 focus:outline-none"
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                handleAddTodo()
-              }
-            }}
-          />
-          <button
-            onClick={handleAddTodo}
-            className="ml-2 p-2 text-blue-500 hover:text-blue-600"
-          >
-            <IoAdd className="w-5 h-5" />
-          </button>
-          <button
-            onClick={handleSuggestTodos}
-            disabled={isSuggestingTodos}
-            className={`ml-2 p-2 ${
-              isSuggestingTodos 
-                ? 'text-gray-400 cursor-not-allowed' 
-                : 'text-yellow-500 hover:text-yellow-600'
-            }`}
-            title={`AIにTODOを提案してもらう (本日の使用回数: ${getApiUsageCount()}/${DAILY_LIMIT}回)`}
-          >
-            <IoBulb className="w-5 h-5" />
-          </button>
         </div>
-
-        {errorMessage && (
-          <div className="mt-4 p-4 bg-red-50 rounded-lg">
-            <div className="text-sm text-red-600">
-              {errorMessage}
-            </div>
-          </div>
-        )}
-
-        {suggestedTodos.length > 0 && (
-          <div className="mt-4 p-4 bg-yellow-50 rounded-lg">
-            <h4 className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
-              <IoBulb className="w-4 h-4" />
-              AIからのTODO提案
-            </h4>
-            <div className="space-y-2">
-              {suggestedTodos.map((suggestion, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between bg-white p-2 rounded border border-yellow-200"
-                >
-                  <div className="flex-1">
-                    <div className="text-sm text-gray-800">{suggestion.text}</div>
-                    <div className="text-xs text-gray-500">
-                      見積もり工数: {suggestion.estimatedHours}時間
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleAddSuggestedTodo(suggestion)}
-                    className="ml-2 px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-                    title="このTODOを採用"
-                  >
-                    採用
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      ) : (
+        /* タスクが選択されていない場合はタスク一覧を表示 */
+        renderTaskList()
+      )}
 
       {/* タスク作成フォーム */}
-      {isCreatingTask && renderTaskCreationForm()}
+      {isCreatingTask && (
+        <TaskCreationForm
+          onCancel={() => {
+            setIsCreatingTask(false);
+            setNewTaskTodos([]);
+            setNewTaskTodoText('');
+            setNewTaskSuggestedTodos([]);
+          }}
+          onTaskCreate={(task) => {
+            onTaskCreate?.(task);
+            setIsCreatingTask(false);
+            setNewTaskTodos([]);
+            setNewTaskTodoText('');
+            setNewTaskSuggestedTodos([]);
+          }}
+          projectId={currentProject?.id}
+          title="新しいタスクを作成"
+        />
+      )}
     </div>
   )
 } 
