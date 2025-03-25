@@ -7,7 +7,7 @@ import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { suggestTodos } from '@/utils/openai'
 import KanbanView from './KanbanView'
-import WBSView from './WBSView'
+import GanttChartView from './GanttChartView'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { getUserNameById, getUserNamesByIds, getAllUsers } from '@/utils/userUtils'
 import UserAssignSelect from './UserAssignSelect'
@@ -820,7 +820,7 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
           )}
 
           {viewMode === 'gantt' && (
-            <WBSView
+            <GanttChartView
               onTaskSelect={onTaskSelect}
               onTaskCreate={onTaskCreate}
               projectId={currentProject?.id || ''}

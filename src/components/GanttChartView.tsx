@@ -8,13 +8,13 @@ import { Task, Todo } from '@/types/task';
 import { suggestTodos } from '@/utils/openai';
 import ScheduleTodosButton from './ScheduleTodosButton';
 
-interface WBSViewProps {
+interface GanttChartViewProps {
   onTaskCreate?: (newTask: Task) => void;
   onTaskSelect: (taskId: string) => void;
   projectId?: string;
 }
 
-export default function WBSView({ onTaskCreate, onTaskSelect, projectId }: WBSViewProps) {
+export default function GanttChartView({ onTaskCreate, onTaskSelect, projectId }: GanttChartViewProps) {
   const { tasks } = useTaskContext();
   const { currentProject } = useProjectContext();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -189,7 +189,7 @@ export default function WBSView({ onTaskCreate, onTaskSelect, projectId }: WBSVi
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-          <h2 className="text-xl font-bold mb-4">新しいタスクを作成（WBS）</h2>
+          <h2 className="text-xl font-bold mb-4">新しいタスクを作成（ガントチャート）</h2>
           
           <div className="space-y-4">
             <div>
@@ -383,7 +383,7 @@ export default function WBSView({ onTaskCreate, onTaskSelect, projectId }: WBSVi
   return (
     <div className="overflow-x-auto relative" ref={containerRef}>
       <div className="flex justify-between items-center mb-2">
-        <h3 className="font-medium text-gray-700">WBS（Work Breakdown Structure）</h3>
+        <h3 className="font-medium text-gray-700">ガントチャート</h3>
         <div className="flex items-center gap-2">
           <ScheduleTodosButton 
             onScheduleComplete={() => {
@@ -565,4 +565,4 @@ export default function WBSView({ onTaskCreate, onTaskSelect, projectId }: WBSVi
       {isCreatingTask && renderTaskCreationForm()}
     </div>
   );
-}
+} 
