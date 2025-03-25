@@ -339,6 +339,16 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
     onTaskUpdate?.(updatedTask);
   };
 
+  // 指定された日が今日かどうかを判定する関数
+  const isToday = (date: Date) => {
+    const today = new Date();
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    );
+  };
+
   // タスク作成フォームをレンダリングする関数
   const renderTaskCreationForm = () => {
     return (
@@ -680,7 +690,7 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
                         {getMonth(date)}月
                       </div>
                     )}
-                    <div className="py-2 text-sm">
+                    <div className={`py-2 text-sm ${isToday(date) ? 'text-blue-600 font-bold' : ''}`}>
                       {formatDate(date)}
                     </div>
                   </div>

@@ -470,6 +470,16 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
     return date.getDate() === 1;
   };
 
+  // 指定された日が今日かどうかを判定する関数
+  const isToday = (date: Date) => {
+    const today = new Date();
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    );
+  };
+
   // 指定された日数分の日付配列を生成
   const getDates = () => {
     const dates = [];
@@ -628,7 +638,7 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
                         {getMonth(date)}月
                       </div>
                     )}
-                    <div className="py-2 text-sm">
+                    <div className={`py-2 text-sm ${isToday(date) ? 'text-blue-600 font-bold' : ''}`}>
                       {formatDate(date)}
                     </div>
                   </div>
