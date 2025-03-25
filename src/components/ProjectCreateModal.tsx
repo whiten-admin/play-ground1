@@ -434,6 +434,8 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject }:
                 </label>
                 <p className="text-sm text-gray-500 mb-3">
                   プロジェクト計画書やテキストを入力すると、自動的にプロジェクト情報を抽出します。
+                  <br />
+                  <span className="text-xs text-red-500">※現在開発中のため機能しません</span>
                 </p>
                 
                 {/* エラーメッセージ */}
