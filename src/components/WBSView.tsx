@@ -560,7 +560,7 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
 
     return (
       <div
-        className="absolute h-6 bg-gray-300 rounded top-3"
+        className="absolute h-4 bg-gray-300 rounded top-2"
         style={{
           left: `${(taskStartPos - 1) * (100 / calendarRange.totalDays)}%`,
           width: `${taskWidth}%`,
@@ -586,7 +586,7 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
 
     return (
       <div
-        className="absolute h-6 bg-blue-100 rounded top-3"
+        className="absolute h-4 bg-blue-100 rounded top-2"
         style={{
           left: `${(startPos - 1) * (100 / calendarRange.totalDays)}%`,
           width: `${width}%`,
@@ -605,21 +605,14 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
 
   return (
     <div className="overflow-x-auto relative">
-      <div className="flex justify-between items-center mb-2">
-        <div className="flex items-center gap-2">
-          <ScheduleTodosButton 
-            onScheduleComplete={() => {
-              // 再レンダリングのトリガーになる処理を追加（必要であれば）
-            }} 
-          />
-          <button
-            onClick={() => setIsCreatingTask(true)}
-            className="px-2 py-0.5 text-xs rounded flex items-center gap-1 bg-blue-500 text-white hover:bg-blue-600"
-          >
-            <IoAdd className="w-3 h-3" />
-            タスク追加
-          </button>
-        </div>
+      <div className="p-2">
+        <button
+          onClick={() => setIsCreatingTask(true)}
+          className="px-2 py-0.5 text-xs rounded flex items-center gap-1 bg-blue-500 text-white hover:bg-blue-600"
+        >
+          <IoAdd className="w-3 h-3" />
+          タスク追加
+        </button>
       </div>
       <div className="flex">
         {/* 左側：タスク一覧（固定） */}
@@ -633,16 +626,16 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
             <div key={task.id} className="border-b">
               {/* 親タスク */}
               <div 
-                className="p-4 font-medium bg-gray-100 flex items-center justify-between cursor-pointer hover:bg-gray-200"
+                className="h-8 font-medium bg-gray-100 flex items-center justify-between cursor-pointer hover:bg-gray-200"
                 onClick={() => toggleTask(task.id)}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 px-4">
                   <span className={`transform transition-transform ${expandedTasks.has(task.id) ? 'rotate-90' : ''}`}>
                     ▶
                   </span>
                   <span>{task.title}</span>
                 </div>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-gray-500 px-4">
                   {Math.round(
                     (task.todos.filter(todo => todo.completed).length / task.todos.length) * 100
                   )}%
@@ -652,7 +645,7 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
               {expandedTasks.has(task.id) && task.todos.map((todo) => (
                 <div 
                   key={todo.id} 
-                  className="p-4 text-sm bg-white hover:bg-gray-50 flex items-center gap-2"
+                  className="h-8 text-sm bg-white hover:bg-gray-50 flex items-center gap-2 px-4"
                 >
                   <label className="flex items-center gap-2 w-full">
                     <input
@@ -682,7 +675,7 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
           <div style={{ width: `${calendarRange.totalDays * 30}px` }}>
             {/* カレンダーヘッダー */}
             <div className="border-b sticky top-0 bg-white z-20">
-              <div className="grid" style={{ gridTemplateColumns: `repeat(${calendarRange.totalDays}, minmax(30px, 1fr))` }}>
+              <div className="grid pt-5" style={{ gridTemplateColumns: `repeat(${calendarRange.totalDays +1}, minmax(30px, 1fr))` }}>
                 {getDates().map((date, i) => (
                   <div key={i} className="border-l text-center relative">
                     {isFirstDayOfMonth(date) && (
@@ -721,12 +714,12 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
               {tasks.map((task) => (
                 <div key={task.id}>
                   {/* 親タスク */}
-                  <div className="h-[52px] relative bg-gray-50">
+                  <div className="h-8 relative bg-gray-50">
                     <TaskBar task={task} calendarRange={calendarRange} />
                   </div>
                   {/* 小タスク */}
                   {expandedTasks.has(task.id) && task.todos.map((todo) => (
-                    <div key={todo.id} className="h-[52px] relative">
+                    <div key={todo.id} className="h-8 relative">
                       <TodoBar todo={todo} calendarRange={calendarRange} />
                     </div>
                   ))}
