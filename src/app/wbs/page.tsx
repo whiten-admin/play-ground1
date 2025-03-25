@@ -60,11 +60,7 @@ export default function WBSPage() {
           <Header onLogout={logout} user={user} project={project} />
           <main className="flex-1 overflow-y-auto p-6">
             <div className="bg-white rounded-lg shadow">
-              <div className="p-6 border-b">
-                <h1 className="text-2xl font-bold">
-                  WBS（Work Breakdown Structure）
-                </h1>
-              </div>
+
               <WBSView 
                 onTaskSelect={handleTaskSelect}
                 onTaskCreate={handleTaskCreate}

@@ -647,7 +647,7 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
   // タスク一覧表示のレンダリング
   const renderTaskList = () => {
     return (
-      <div className="bg-white rounded-lg shadow p-6 h-[90vh] flex flex-col">
+      <div className="bg-white rounded-lg shadow p-3 h-[90vh] flex flex-col">
         <div className="flex flex-col gap-2">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-bold text-gray-800">タスク一覧</h2>
@@ -680,7 +680,7 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
                               {button.icon}
                             </button>
                             {index === 0 && (
-                              <div className="absolute -top-5 left-1/2 transform -translate-x-1/2">
+                              <div className="absolute -bottom-5 left-1/2 transform -translate-x-1/2">
                                 <span className="text-xs text-gray-500">Default</span>
                               </div>
                             )}
