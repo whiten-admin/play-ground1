@@ -72,12 +72,53 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, projectId }
 
   // コンポーネントがマウントされた時に、今日の日付が左端に来るようにスクロール
   useEffect(() => {
-    if (containerRef.current) {
-      const columnWidth = containerRef.current.scrollWidth / 30; // 1日分の幅
-      const scrollPosition = (todayPosition - 4) * columnWidth; // 4日分左に余裕を持たせる
-      containerRef.current.scrollLeft = scrollPosition;
-    }
-  }, [todayPosition]);
+    console.log('Scroll effect triggered');
+    console.log('Container ref:', containerRef.current);
+    console.log('Today position:', todayPosition);
+    console.log('Calendar range:', calendarRange);
+
+    const scrollToToday = () => {
+      const container = containerRef.current;
+      if (!container) {
+        console.log('Container not found');
+        return;
+      }
+
+      console.log('Container dimensions:', {
+        scrollWidth: container.scrollWidth,
+        clientWidth: container.clientWidth,
+        scrollLeft: container.scrollLeft
+      });
+
+      // スクロール位置を計算（タスク一覧の幅を考慮）
+      const columnWidth = container.scrollWidth / calendarRange.totalDays;
+      const scrollPosition = (todayPosition - 1) * columnWidth - 450; // タスク一覧の幅（w-60 = 240px）を引く
+
+      console.log('Calculated scroll position:', {
+        columnWidth,
+        scrollPosition,
+        totalDays: calendarRange.totalDays
+      });
+
+      // スクロールを実行
+      container.scrollTo({
+        left: Math.max(0, scrollPosition), // 負の値にならないように調整
+        behavior: 'instant'
+      });
+
+      // スクロール後の状態を確認
+      setTimeout(() => {
+        console.log('After scroll:', {
+          scrollLeft: container.scrollLeft,
+          expectedPosition: scrollPosition
+        });
+      }, 100);
+    };
+
+    // 少し遅延を入れて実行（DOMの更新を待つ）
+    const timer = setTimeout(scrollToToday, 100);
+    return () => clearTimeout(timer);
+  }, []); // 依存配列を空にして、マウント時のみ実行
 
   // 新しいタスクを作成する関数
   const handleCreateTask = () => {
@@ -431,7 +472,7 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, projectId }
   };
 
   return (
-    <div className="overflow-x-auto relative" ref={containerRef}>
+    <div className="overflow-x-auto relative">
       <div className="flex justify-between items-center mb-2">
         <h3 className="font-medium text-gray-700">ガントチャート</h3>
         <div className="flex items-center gap-2">
@@ -479,11 +520,11 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, projectId }
         </div>
 
         {/* 右側：カレンダーとガントチャート（スクロール可能） */}
-        <div className="flex-1 overflow-x-auto">
-          <div className="min-w-max">
+        <div className="flex-1 overflow-x-auto" ref={containerRef}>
+          <div style={{ width: `${calendarRange.totalDays * 30}px` }}>
             {/* カレンダーヘッダー */}
             <div className="border-b sticky top-0 bg-white z-20">
-              <div className="grid pt-4" style={{ gridTemplateColumns: `repeat(${calendarRange.totalDays + 1}, minmax(30px, 1fr))` }}>
+              <div className="grid pt-4" style={{ gridTemplateColumns: `repeat(${calendarRange.totalDays +1}, minmax(30px, 1fr))` }}>
                 {getDates().map((date, i) => (
                   <div key={i} className="border-l text-center relative">
                     {isFirstDayOfMonth(date) && (
