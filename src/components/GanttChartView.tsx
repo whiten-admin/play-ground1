@@ -15,8 +15,7 @@ interface GanttChartViewProps {
 }
 
 // 日付の位置を計算するユーティリティ関数
-const getDatePosition = (date: Date) => {
-  const startDate = new Date('2025-03-01'); // 基準日
+const getDatePosition = (date: Date, startDate: Date) => {
   return Math.ceil(
     (date.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
   );
@@ -47,9 +46,29 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, projectId }
     );
   };
 
+  // カレンダーの表示範囲を計算
+  const getCalendarRange = () => {
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+
+    // 現在月の3ヶ月前の1日を開始日に
+    const startDate = new Date(currentYear, currentMonth - 3, 1);
+    // 現在月の3ヶ月後の月末を終了日に
+    const endDate = new Date(currentYear, currentMonth + 4, 0); // 次の月の0日 = 当月の末日
+
+    return {
+      startDate,
+      endDate,
+      totalDays: Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+    };
+  };
+
+  const calendarRange = getCalendarRange();
+
   // 今日の日付の位置を計算
   const today = new Date();
-  const todayPosition = getDatePosition(today);
+  const todayPosition = getDatePosition(today, calendarRange.startDate);
 
   // コンポーネントがマウントされた時に、今日の日付が左端に来るようにスクロール
   useEffect(() => {
@@ -383,26 +402,6 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, projectId }
     );
   };
 
-  // カレンダーの表示範囲を計算
-  const getCalendarRange = () => {
-    const today = new Date();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-
-    // 現在月の3ヶ月前の1日を開始日に
-    const startDate = new Date(currentYear, currentMonth - 3, 1);
-    // 現在月の3ヶ月後の月末を終了日に
-    const endDate = new Date(currentYear, currentMonth + 4, 0); // 次の月の0日 = 当月の末日
-
-    return {
-      startDate,
-      endDate,
-      totalDays: Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-    };
-  };
-
-  const calendarRange = getCalendarRange();
-
   // 日付をフォーマットする関数
   const formatDate = (date: Date) => {
     return date.getDate().toString();
@@ -546,12 +545,12 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, projectId }
 }
 
 // タスクバーコンポーネント
-const TaskBar = ({ task, calendarRange }: { task: Task; calendarRange: { totalDays: number } }) => {
+const TaskBar = ({ task, calendarRange }: { task: Task; calendarRange: { totalDays: number; startDate: Date } }) => {
   const startDate = new Date(Math.min(...task.todos.map(todo => new Date(todo.startDate).getTime())));
   const endDate = new Date(Math.max(...task.todos.map(todo => new Date(todo.endDate).getTime())));
   
-  const taskStartPos = getDatePosition(startDate);
-  const taskEndPos = getDatePosition(endDate);
+  const taskStartPos = getDatePosition(startDate, calendarRange.startDate);
+  const taskEndPos = getDatePosition(endDate, calendarRange.startDate);
   const taskWidth = (taskEndPos - taskStartPos + 1) * (100 / calendarRange.totalDays);
   
   const progress = task.todos.length > 0
@@ -576,12 +575,12 @@ const TaskBar = ({ task, calendarRange }: { task: Task; calendarRange: { totalDa
 };
 
 // TODOバーコンポーネント
-const TodoBar = ({ todo, calendarRange }: { todo: Todo; calendarRange: { totalDays: number } }) => {
+const TodoBar = ({ todo, calendarRange }: { todo: Todo; calendarRange: { totalDays: number; startDate: Date } }) => {
   const startDate = new Date(todo.startDate);
   const endDate = new Date(todo.endDate);
   
-  const startPos = getDatePosition(startDate);
-  const endPos = getDatePosition(endDate);
+  const startPos = getDatePosition(startDate, calendarRange.startDate);
+  const endPos = getDatePosition(endDate, calendarRange.startDate);
   const width = (endPos - startPos + 1) * (100 / calendarRange.totalDays);
 
   return (
