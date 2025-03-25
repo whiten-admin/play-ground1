@@ -823,6 +823,7 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
             <GanttChartView
               onTaskSelect={onTaskSelect}
               onTaskCreate={onTaskCreate}
+              onTaskUpdate={onTaskUpdate}
               projectId={currentProject?.id || ''}
             />
           )}

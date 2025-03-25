@@ -11,10 +11,11 @@ import ScheduleTodosButton from './ScheduleTodosButton';
 interface WBSViewProps {
   onTaskCreate?: (newTask: Task) => void;
   onTaskSelect: (taskId: string) => void;
+  onTaskUpdate?: (updatedTask: Task) => void;
   projectId?: string;
 }
 
-export default function WBSView({ onTaskCreate, onTaskSelect, projectId }: WBSViewProps) {
+export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, projectId }: WBSViewProps) {
   const { tasks } = useTaskContext();
   const { currentProject } = useProjectContext();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -311,6 +312,31 @@ export default function WBSView({ onTaskCreate, onTaskSelect, projectId }: WBSVi
     
     // 追加したTODOを提案リストから削除
     setNewTaskSuggestedTodos(prev => prev.filter(todo => todo.text !== suggestion.text));
+  };
+
+  // TODOのステータスを切り替える関数
+  const toggleTodoStatus = (taskId: string, todoId: string) => {
+    console.log('toggleTodoStatus called with:', { taskId, todoId });
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) {
+      console.log('Task not found');
+      return;
+    }
+
+    console.log('Found task:', task.title);
+    console.log('Current todos:', task.todos);
+
+    const updatedTodos = task.todos.map(todo => {
+      if (todo.id === todoId) {
+        console.log('Toggling todo status for:', todo.text, 'from', todo.completed, 'to', !todo.completed);
+        return { ...todo, completed: !todo.completed };
+      }
+      return todo;
+    });
+
+    const updatedTask = { ...task, todos: updatedTodos };
+    console.log('Calling onTaskUpdate with:', updatedTask);
+    onTaskUpdate?.(updatedTask);
   };
 
   // タスク作成フォームをレンダリングする関数
@@ -616,13 +642,25 @@ export default function WBSView({ onTaskCreate, onTaskSelect, projectId }: WBSVi
               {expandedTasks.has(task.id) && task.todos.map((todo) => (
                 <div 
                   key={todo.id} 
-                  className="p-4 text-sm bg-white cursor-pointer hover:bg-gray-50"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onTaskSelect(task.id);
-                  }}
+                  className="p-4 text-sm bg-white hover:bg-gray-50 flex items-center gap-2"
                 >
-                  {todo.text}
+                  <label className="flex items-center gap-2 w-full">
+                    <input
+                      type="checkbox"
+                      checked={todo.completed}
+                      onChange={() => toggleTodoStatus(task.id, todo.id)}
+                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                    />
+                    <span 
+                      className="flex-1 cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTaskSelect(task.id);
+                      }}
+                    >
+                      {todo.text}
+                    </span>
+                  </label>
                 </div>
               ))}
             </div>

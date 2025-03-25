@@ -11,6 +11,7 @@ import ScheduleTodosButton from './ScheduleTodosButton';
 interface GanttChartViewProps {
   onTaskCreate?: (newTask: Task) => void;
   onTaskSelect: (taskId: string) => void;
+  onTaskUpdate?: (updatedTask: Task) => void;
   projectId?: string;
 }
 
@@ -21,7 +22,7 @@ const getDatePosition = (date: Date, startDate: Date) => {
   );
 };
 
-export default function GanttChartView({ onTaskCreate, onTaskSelect, projectId }: GanttChartViewProps) {
+export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdate, projectId }: GanttChartViewProps) {
   const { tasks } = useTaskContext();
   const { currentProject } = useProjectContext();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -509,6 +510,36 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, projectId }
     });
   }, [tasks]);
 
+  // TODOのステータスを切り替える関数
+  const toggleTodoStatus = (taskId: string, todoId: string) => {
+    console.log('GanttChart: toggleTodoStatus called with:', { taskId, todoId });
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) {
+      console.log('GanttChart: Task not found');
+      return;
+    }
+
+    console.log('GanttChart: Found task:', task.title);
+    console.log('GanttChart: Current todos:', task.todos);
+
+    const updatedTodos = task.todos.map(todo => {
+      if (todo.id === todoId) {
+        console.log('GanttChart: Toggling todo status for:', todo.text, 'from', todo.completed, 'to', !todo.completed);
+        return { ...todo, completed: !todo.completed };
+      }
+      return todo;
+    });
+
+    const updatedTask = { ...task, todos: updatedTodos };
+    console.log('GanttChart: Calling onTaskUpdate with:', updatedTask);
+    if (onTaskUpdate) {
+      console.log('GanttChart: onTaskUpdate exists, calling it');
+      onTaskUpdate(updatedTask);
+    } else {
+      console.log('GanttChart: onTaskUpdate is undefined or null');
+    }
+  };
+
   return (
     <div className="overflow-x-auto relative">
       <div className="flex justify-between items-center mb-2">
@@ -558,13 +589,26 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, projectId }
               {expandedTasks.has(task.id) && task.todos.map((todo) => (
                 <div 
                   key={todo.id} 
-                  className="p-4 text-sm bg-white cursor-pointer hover:bg-gray-50"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onTaskSelect(task.id);
-                  }}
+                  className="p-4 text-sm bg-white hover:bg-gray-50 flex items-center gap-2"
                 >
-                  {todo.text}
+                  <input
+                    type="checkbox"
+                    checked={todo.completed}
+                    onChange={(e) => {
+                      toggleTodoStatus(task.id, todo.id);
+                    }}
+                    readOnly
+                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                  />
+                  <span 
+                    className="flex-1 cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTaskSelect(task.id);
+                    }}
+                  >
+                    {todo.text}
+                  </span>
                 </div>
               ))}
             </div>

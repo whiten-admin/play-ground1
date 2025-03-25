@@ -9,11 +9,14 @@ import { useAuth } from '@/hooks/useAuth'
 import { Project } from '@/types/project'
 import ProjectDetail from '@/components/ProjectDetail'
 import { FilterProvider } from '@/contexts/FilterContext'
+import { Task } from '@/types/task'
+import { useTaskContext } from '@/contexts/TaskContext'
 
 export default function WBSPage() {
   const { isAuthenticated, user, login, logout } = useAuth()
   const [activeTab, setActiveTab] = useState('wbs')
   const [selectedTaskId, setSelectedTaskId] = useState<string>('')
+  const { setTasks } = useTaskContext()
   const [project, setProject] = useState<Project>({
     id: '1',
     title: 'プロジェクトA',
@@ -33,6 +36,16 @@ export default function WBSPage() {
   // タスク作成処理
   const handleTaskCreate = (taskData: any) => {
     console.log('Task created', taskData)
+  }
+
+  // タスク更新処理
+  const handleTaskUpdate = (updatedTask: Task) => {
+    console.log('WBS: handleTaskUpdate called with:', updatedTask);
+    setTasks((prevTasks) => {
+      const updated = prevTasks.map((task) => (task.id === updatedTask.id ? updatedTask : task));
+      console.log('WBS: tasks after update:', updated);
+      return updated;
+    });
   }
 
   // プロジェクト更新処理
@@ -64,6 +77,7 @@ export default function WBSPage() {
               <WBSView 
                 onTaskSelect={handleTaskSelect}
                 onTaskCreate={handleTaskCreate}
+                onTaskUpdate={handleTaskUpdate}
                 projectId={project.id}
               />
             </div>
