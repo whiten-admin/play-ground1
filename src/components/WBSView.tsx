@@ -32,6 +32,44 @@ export default function WBSView({ onTaskCreate, onTaskSelect, projectId }: WBSVi
   const [isGeneratingTodos, setIsGeneratingTodos] = useState(false);
   const [newTaskSuggestedTodos, setNewTaskSuggestedTodos] = useState<{ text: string; estimatedHours: number }[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(() => {
+    // 初期状態で全てのタスクを開く
+    const initialSet = new Set<string>();
+    tasks.forEach(task => {
+      const completionRate = (task.todos.filter(todo => todo.completed).length / task.todos.length) * 100;
+      if (completionRate < 100) {
+        initialSet.add(task.id);
+      }
+    });
+    return initialSet;
+  });
+
+  // タスクの開閉状態を切り替える関数
+  const toggleTask = (taskId: string) => {
+    setExpandedTasks(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(taskId)) {
+        newSet.delete(taskId);
+      } else {
+        newSet.add(taskId);
+      }
+      return newSet;
+    });
+  };
+
+  // タスクの完了率が変更されたときに開閉状態を更新
+  useEffect(() => {
+    setExpandedTasks(prev => {
+      const newSet = new Set(prev);
+      tasks.forEach(task => {
+        const completionRate = (task.todos.filter(todo => todo.completed).length / task.todos.length) * 100;
+        if (completionRate === 100) {
+          newSet.delete(task.id);
+        }
+      });
+      return newSet;
+    });
+  }, [tasks]);
 
   // 日付の位置を計算するユーティリティ関数
   const getDatePosition = (date: Date, startDate: Date) => {
@@ -556,19 +594,34 @@ export default function WBSView({ onTaskCreate, onTaskSelect, projectId }: WBSVi
           </div>
           {/* タスク一覧 */}
           {tasks.map((task) => (
-            <div key={task.id} className="border-b" onClick={() => onTaskSelect(task.id)}>
+            <div key={task.id} className="border-b">
               {/* 親タスク */}
-              <div className="p-4 font-medium bg-gray-100">
-                {task.title}
-                <span className="text-xs text-gray-500 ml-2">
+              <div 
+                className="p-4 font-medium bg-gray-100 flex items-center justify-between cursor-pointer hover:bg-gray-200"
+                onClick={() => toggleTask(task.id)}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`transform transition-transform ${expandedTasks.has(task.id) ? 'rotate-90' : ''}`}>
+                    ▶
+                  </span>
+                  <span>{task.title}</span>
+                </div>
+                <span className="text-xs text-gray-500">
                   {Math.round(
                     (task.todos.filter(todo => todo.completed).length / task.todos.length) * 100
                   )}%
                 </span>
               </div>
               {/* 小タスク */}
-              {task.todos.map((todo) => (
-                <div key={todo.id} className="p-4 text-sm bg-white">
+              {expandedTasks.has(task.id) && task.todos.map((todo) => (
+                <div 
+                  key={todo.id} 
+                  className="p-4 text-sm bg-white cursor-pointer hover:bg-gray-50"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTaskSelect(task.id);
+                  }}
+                >
                   {todo.text}
                 </div>
               ))}
@@ -624,7 +677,7 @@ export default function WBSView({ onTaskCreate, onTaskSelect, projectId }: WBSVi
                     <TaskBar task={task} calendarRange={calendarRange} />
                   </div>
                   {/* 小タスク */}
-                  {task.todos.map((todo) => (
+                  {expandedTasks.has(task.id) && task.todos.map((todo) => (
                     <div key={todo.id} className="h-[52px] relative">
                       <TodoBar todo={todo} calendarRange={calendarRange} />
                     </div>
