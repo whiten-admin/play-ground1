@@ -1,0 +1,32 @@
+[
+  {
+    "id": "1",
+    "title": "ECサイト構築",
+    "description": "プロジェクトの説明文がここに入ります。",
+    "startDate": "2025-03-01",
+    "endDate": "2025-12-31",
+    "phase": "development",
+    "createdAt": "2023-03-01T00:00:00.000Z",
+    "updatedAt": "2023-03-01T00:00:00.000Z"
+  },
+  {
+    "id": "2",
+    "title": "海外への販路拡大プロジェクト",
+    "description": "新規開発プロジェクト",
+    "startDate": "2025-04-01",
+    "endDate": "2025-09-30",
+    "phase": "planning",
+    "createdAt": "2023-03-02T00:00:00.000Z",
+    "updatedAt": "2023-03-02T00:00:00.000Z"
+  },
+  {
+    "id": "3",
+    "title": "コーポレートサイトの保守運用",
+    "description": "機能改善プロジェクト",
+    "startDate": "2025-05-15",
+    "endDate": "2025-08-15",
+    "phase": "design",
+    "createdAt": "2023-03-03T00:00:00.000Z",
+    "updatedAt": "2023-03-03T00:00:00.000Z"
+  }
+] 

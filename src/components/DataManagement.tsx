@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import { useTaskContext } from '@/contexts/TaskContext';
+import { useProjectContext } from '@/contexts/ProjectContext';
 import { exportTasksAsJson, importTasksFromJson } from '@/utils/seedDataUtils';
 
 export default function DataManagement() {
-  const { tasks, setTasks, resetTasks } = useTaskContext();
+  const { tasks, setTasks, resetTasks, clearAllTasks } = useTaskContext();
+  const { clearAllProjects, resetToDefaultProjects } = useProjectContext();
   const [importData, setImportData] = useState('');
   const [message, setMessage] = useState<{text: string, type: 'success' | 'error'} | null>(null);
 
@@ -62,11 +64,22 @@ export default function DataManagement() {
     }
   };
 
-  // データをリセット
+  // データをリセット（タスクとプロジェクト両方）
   const handleReset = () => {
-    if (window.confirm('本当にデータをリセットしますか？この操作は元に戻せません。')) {
+    if (window.confirm('本当にタスクとプロジェクトのデータを初期状態にリセットしますか？この操作は元に戻せません。')) {
       resetTasks();
-      setMessage({ text: 'データを初期状態にリセットしました', type: 'success' });
+      resetToDefaultProjects();
+      setMessage({ text: 'タスクとプロジェクトのデータを初期状態にリセットしました', type: 'success' });
+      setTimeout(() => setMessage(null), 3000);
+    }
+  };
+  
+  // データをすべてクリア（タスクとプロジェクト両方）
+  const handleClearAll = () => {
+    if (window.confirm('本当にすべてのタスクとプロジェクトのデータをクリアしますか？この操作は元に戻せません。')) {
+      clearAllTasks();
+      clearAllProjects();
+      setMessage({ text: 'すべてのタスクとプロジェクトのデータをクリアしました', type: 'success' });
       setTimeout(() => setMessage(null), 3000);
     }
   };
@@ -108,17 +121,31 @@ export default function DataManagement() {
       )}
       
       <div className="flex flex-col gap-4">
-        {/* リセットボタン */}
-        <div>
-          <button
-            onClick={handleReset}
-            className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
-          >
-            初期データにリセット
-          </button>
-          <p className="text-xs text-gray-500 mt-1">
-            注意: すべてのタスクデータが初期状態に戻ります
-          </p>
+        {/* リセットとクリアのボタン */}
+        <div className="flex gap-4">
+          <div>
+            <button
+              onClick={handleReset}
+              className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
+            >
+              初期データにリセット
+            </button>
+            <p className="text-xs text-gray-500 mt-1">
+              タスクとプロジェクトのデータが初期状態に戻ります
+            </p>
+          </div>
+          
+          <div>
+            <button
+              onClick={handleClearAll}
+              className="bg-red-700 text-white px-4 py-2 rounded hover:bg-red-800 transition-colors"
+            >
+              データを全てクリア
+            </button>
+            <p className="text-xs text-gray-500 mt-1">
+              すべてのタスクとプロジェクトのデータが削除されます
+            </p>
+          </div>
         </div>
         
         {/* エクスポートボタン */}

@@ -24,4 +24,5 @@ export interface Task {
   isNew?: boolean;
   priority?: number;  // 0: 低, 1: 中, 2: 高
   assigneeIds?: string[]; // タスク全体の担当者IDの配列
+  projectId: string; // タスクが属するプロジェクトのID
 }

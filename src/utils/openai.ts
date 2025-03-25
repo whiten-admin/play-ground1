@@ -216,4 +216,94 @@ ${fileContent}`
       throw new Error('ファイルからの情報抽出中にエラーが発生しました。')
     }
   }
+}
+
+export async function generateProjectTasks(projectInfo: {
+  title: string;
+  description: string;
+  startDate?: string;
+  endDate?: string;
+  phase?: string;
+}) {
+  if (!checkApiLimit()) {
+    throw new Error(`1日のAPI使用回数制限（${DAILY_LIMIT}回）を超えました。明日までお待ちください。`)
+  }
+
+  if (!process.env.NEXT_PUBLIC_OPENAI_API_KEY) {
+    throw new Error('OpenAI APIキーが設定されていません。')
+  }
+
+  // プロジェクトの開始日と終了日を取得
+  let startDate = projectInfo.startDate || new Date().toISOString().split('T')[0];
+  let endDate = projectInfo.endDate;
+  
+  // 終了日が設定されていない場合は、開始日から30日後を設定
+  if (!endDate) {
+    const end = new Date(startDate);
+    end.setDate(end.getDate() + 30);
+    endDate = end.toISOString().split('T')[0];
+  }
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      temperature: 0.7,
+      max_tokens: 1500,
+      messages: [
+        {
+          role: "system",
+          content: "あなたはプロジェクト計画のエキスパートです。プロジェクト情報を元に、適切なタスクとTODOを生成してください。"
+        },
+        {
+          role: "user",
+          content: `以下のプロジェクト情報を元に、プロジェクト期間内（${startDate}から${endDate}まで）のタスクとTODOを生成してください。
+プロジェクト名: ${projectInfo.title}
+説明: ${projectInfo.description}
+フェーズ: ${projectInfo.phase || 'planning'}
+
+タスクは期間内に均等に分散させ、各タスクには複数のTODOを含めてください。
+優先度は0（低）、1（中）、2（高）で設定してください。
+
+以下のJSON形式で返してください:
+
+{
+  "tasks": [
+    {
+      "title": "タスク名",
+      "description": "タスクの説明",
+      "startDate": "YYYY-MM-DD",
+      "endDate": "YYYY-MM-DD",
+      "priority": 1,
+      "todos": [
+        {
+          "text": "TODO内容",
+          "estimatedHours": 2
+        }
+      ]
+    }
+  ]
+}`
+        }
+      ],
+      response_format: { type: "json_object" }
+    })
+
+    if (!completion.choices[0].message.content) {
+      throw new Error('応答が空です。')
+    }
+
+    incrementApiUsage()
+    return JSON.parse(completion.choices[0].message.content)
+  } catch (error: any) {
+    console.error('Error generating project tasks:', error)
+    
+    // エラーメッセージの判定
+    if (error?.status === 429) {
+      throw new Error('OpenAI APIのリクエスト制限に達しました。しばらく待ってから再試行してください。')
+    } else if (error?.status === 401) {
+      throw new Error('OpenAI APIキーが無効です。APIキーを確認してください。')
+    } else {
+      throw new Error('タスク生成中にエラーが発生しました: ' + (error.message || '不明なエラー'))
+    }
+  }
 } 

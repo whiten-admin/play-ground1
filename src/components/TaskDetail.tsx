@@ -13,6 +13,7 @@ import { getUserNameById, getUserNamesByIds, getAllUsers } from '@/utils/userUti
 import UserAssignSelect from './UserAssignSelect'
 import { User } from '@/types/user'
 import { useFilterContext } from '@/contexts/FilterContext'
+import { useProjectContext } from '@/contexts/ProjectContext'
 
 type ViewMode = 'list' | 'kanban' | 'gantt'
 
@@ -111,6 +112,8 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
     
     return false;
   });
+
+  const { currentProject } = useProjectContext()
 
   // 編集モードの切り替え
   const toggleEdit = (field: 'title' | 'description' | string, isEditingTodo: boolean = false) => {
@@ -342,10 +345,18 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
 
   // 新規タスクを作成する関数
   const handleCreateTask = () => {
-    if (!newTask.title) return
+    if (!newTask.title || !currentProject) return
 
     // タスク全体のアサイン情報を更新
-    const assigneeIds = updateTaskAssignees(newTaskTodos, { id: '', title: '', description: '', todos: newTaskTodos, startDate: '', endDate: '' });
+    const assigneeIds = updateTaskAssignees(newTaskTodos, { 
+      id: '', 
+      title: '', 
+      description: '', 
+      todos: newTaskTodos, 
+      startDate: '', 
+      endDate: '',
+      projectId: currentProject.id 
+    });
 
     const taskToCreate: Task = {
       id: `task-${Date.now()}`,
@@ -355,7 +366,8 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
       startDate: newTask.startDate || new Date().toISOString().split('T')[0],
       endDate: newTask.endDate || new Date().toISOString().split('T')[0],
       priority: newTask.priority || 0,
-      assigneeIds: assigneeIds
+      assigneeIds: assigneeIds,
+      projectId: currentProject.id
     }
 
     onTaskCreate?.(taskToCreate)
@@ -796,18 +808,22 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
           )}
 
           {viewMode === 'kanban' && (
-            <KanbanView
-              tasks={sortTasks(filteredTasks)}
-              onTaskSelect={onTaskSelect}
-              onTaskUpdate={onTaskUpdate}
-              onTaskCreate={onTaskCreate}
-            />
+            <div className="flex-1 overflow-x-auto">
+              <KanbanView 
+                tasks={sortTasks(filteredTasks)} 
+                projectId={currentProject?.id || ''} 
+                onTaskSelect={onTaskSelect}
+                onTaskUpdate={onTaskUpdate}
+                onTaskCreate={onTaskCreate}
+              />
+            </div>
           )}
 
           {viewMode === 'gantt' && (
             <WBSView
               onTaskSelect={onTaskSelect}
               onTaskCreate={onTaskCreate}
+              projectId={currentProject?.id || ''}
             />
           )}
         </div>

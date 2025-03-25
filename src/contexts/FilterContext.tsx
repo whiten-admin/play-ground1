@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface FilterContextType {
   currentUserId: string;
@@ -18,22 +19,41 @@ interface FilterContextType {
 const FilterContext = createContext<FilterContextType | undefined>(undefined);
 
 export const FilterProvider = ({ children }: { children: ReactNode }) => {
-  const [currentUserId, setCurrentUserId] = useState<string>("taro"); // 仮のユーザーID
+  const { user } = useAuth();
+  const [currentUserId, setCurrentUserId] = useState<string>("");
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [showUnassigned, setShowUnassigned] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const initializedRef = useRef<boolean>(false);
   
-  // 初期化時に自分のIDを選択状態にする
+  // ログインユーザーのIDを設定
   useEffect(() => {
-    setSelectedUserIds([currentUserId]);
-  }, [currentUserId]);
+    if (user && user.id) {
+      // 前のユーザーと違う場合はリセット
+      if (currentUserId && currentUserId !== user.id) {
+        setSelectedUserIds([]);
+        initializedRef.current = false;
+      }
+      setCurrentUserId(user.id);
+    } else {
+      // ログアウト時は全てリセット
+      setCurrentUserId("");
+      setSelectedUserIds([]);
+      initializedRef.current = false;
+    }
+  }, [user, currentUserId]);
+  
+  // 初期化時のみ自分のIDを選択状態にする
+  useEffect(() => {
+    if (currentUserId && selectedUserIds.length === 0 && !initializedRef.current) {
+      setSelectedUserIds([currentUserId]);
+      initializedRef.current = true;
+    }
+  }, [currentUserId, selectedUserIds]);
   
   // ユーザー選択の切り替え
   const toggleUserSelection = (userId: string) => {
     if (selectedUserIds.includes(userId)) {
-      // 自分自身は常に選択状態にする
-      if (userId === currentUserId) return;
-      
       setSelectedUserIds(prev => prev.filter(id => id !== userId));
     } else {
       setSelectedUserIds(prev => [...prev, userId]);

@@ -9,29 +9,22 @@ import AdditionalTask from '@/components/AdditionalTask'
 import ProjectDetail from '@/components/ProjectDetail'
 import WeeklySchedule from '@/components/WeeklySchedule'
 import Auth from '@/components/Auth'
+import EmptyProjectState from '@/components/EmptyProjectState'
 import { useAuth } from '@/hooks/useAuth'
 import { Task } from '@/types/task'
 import { useTaskContext } from '@/contexts/TaskContext'
-import { Project } from '@/types/project'
+import { useProjectContext } from '@/contexts/ProjectContext'
 import UserFilter from '@/components/UserFilter'
 import ResizablePanel from '@/components/layout/ResizablePanel'
+import { FilterProvider } from '@/contexts/FilterContext'
 
 export default function Home() {
   const { isAuthenticated, user, login, logout } = useAuth()
   const [activeTab, setActiveTab] = useState('todo')
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null)
-  const { tasks, setTasks } = useTaskContext()
-  const [project, setProject] = useState<Project>({
-    id: '1',
-    title: 'プロジェクトA',
-    description: 'プロジェクトの説明文がここに入ります。',
-    startDate: '2025-03-01',
-    endDate: '2025-12-31',
-    phase: 'development',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  })
+  const { filteredTasks, setTasks, addTask } = useTaskContext()
+  const { currentProject, updateProject, projects } = useProjectContext()
 
   // タスク選択ハンドラーを修正
   const handleTaskSelect = (taskId: string, todoId?: string) => {
@@ -56,7 +49,11 @@ export default function Home() {
 
   // タスクの作成処理
   const handleTaskCreate = (newTask: Task) => {
-    setTasks((prevTasks) => [...prevTasks, newTask]);
+    // プロジェクトIDを設定
+    if (currentProject) {
+      newTask.projectId = currentProject.id;
+    }
+    addTask(newTask);
   };
 
   // TODOの完了状態を更新
@@ -109,84 +106,101 @@ export default function Home() {
     });
   };
 
-  const handleProjectUpdate = (updatedProject: Project) => {
-    setProject(updatedProject)
-  }
-
   if (!isAuthenticated) {
     return <Auth onLogin={login} />;
   }
 
-  // 選択されたタスクを取得
+  // プロジェクトが存在しない場合は専用画面を表示
+  if (projects.length === 0) {
+    return (
+      <div className="flex h-screen bg-gray-100">
+        <div className="flex-shrink-0">
+          <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        </div>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header onLogout={logout} user={user} />
+          <main className="flex-1 overflow-y-auto">
+            <EmptyProjectState />
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // 選択されたタスクを取得（現在のプロジェクトのタスクから）
   const selectedTask = selectedTaskId
-    ? tasks.find((task) => task.id === selectedTaskId) || null
+    ? filteredTasks.find((task) => task.id === selectedTaskId) || null
     : null;
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <div className="flex-shrink-0 flex flex-col">
-        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-        <div className="p-2">
-          <ProjectDetail 
-            project={project} 
-            onUpdate={handleProjectUpdate} 
-          />
+    <FilterProvider>
+      <div className="flex h-screen bg-gray-100">
+        <div className="flex-shrink-0 flex flex-col">
+          <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+          <div className="p-2">
+            {currentProject && (
+              <ProjectDetail 
+                project={currentProject} 
+                onUpdate={updateProject} 
+              />
+            )}
+          </div>
+        </div>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header onLogout={logout} user={user} />
+          <main className="flex-1 overflow-y-auto p-3">
+            {/* ユーザーフィルター */}
+            <div className="mb-3">
+              <UserFilter />
+            </div>
+            
+            <ResizablePanel
+              leftPanel={
+                <div className="space-y-3">
+                  <div className="text-sm">
+                    <TodayTodo
+                      tasks={filteredTasks}
+                      selectedTaskId={selectedTaskId}
+                      selectedTodoId={selectedTodoId}
+                      onTaskSelect={handleTodoSelect}
+                      onTodoStatusChange={handleTodoStatusChange}
+                    />
+                  </div>
+                  <div className="text-sm">
+                    <WeeklySchedule
+                      tasks={filteredTasks}
+                      onTaskSelect={handleTaskSelect}
+                      onTodoUpdate={handleTodoUpdate}
+                      selectedTodoId={selectedTodoId}
+                    />
+                  </div>
+                </div>
+              }
+              rightPanel={
+                <div className="space-y-3">
+                  <div className="text-sm">
+                    <TaskDetail
+                      selectedTask={selectedTask}
+                      selectedTodoId={selectedTodoId}
+                      onTaskUpdate={handleTaskUpdate}
+                      tasks={filteredTasks}
+                      onTaskSelect={handleTaskSelect}
+                      onTaskCreate={handleTaskCreate}
+                    />
+                  </div>
+                  <div className="text-sm">
+                    <AdditionalTask />
+                  </div>
+                </div>
+              }
+              defaultLeftWidth={450}
+              minLeftWidth={300}
+              maxLeftWidth={800}
+              storageKey="todoAppPanelWidth"
+            />
+          </main>
         </div>
       </div>
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header onLogout={logout} project={project} user={user} />
-        <main className="flex-1 overflow-y-auto p-3">
-          {/* ユーザーフィルター */}
-          <div className="mb-3">
-            <UserFilter />
-          </div>
-          
-          <ResizablePanel
-            leftPanel={
-              <div className="space-y-3">
-                <div className="text-sm">
-                  <TodayTodo
-                    tasks={tasks}
-                    selectedTaskId={selectedTaskId}
-                    selectedTodoId={selectedTodoId}
-                    onTaskSelect={handleTodoSelect}
-                    onTodoStatusChange={handleTodoStatusChange}
-                  />
-                </div>
-                <div className="text-sm">
-                  <WeeklySchedule
-                    tasks={tasks}
-                    onTaskSelect={handleTaskSelect}
-                    onTodoUpdate={handleTodoUpdate}
-                    selectedTodoId={selectedTodoId}
-                  />
-                </div>
-              </div>
-            }
-            rightPanel={
-              <div className="space-y-3">
-                <div className="text-sm">
-                  <TaskDetail
-                    selectedTask={selectedTask}
-                    selectedTodoId={selectedTodoId}
-                    onTaskUpdate={handleTaskUpdate}
-                    tasks={tasks}
-                    onTaskSelect={handleTaskSelect}
-                    onTaskCreate={handleTaskCreate}
-                  />
-                </div>
-                <div className="text-sm">
-                  <AdditionalTask />
-                </div>
-              </div>
-            }
-            defaultLeftWidth={450}
-            minLeftWidth={300}
-            maxLeftWidth={800}
-            storageKey="todoAppPanelWidth"
-          />
-        </main>
-      </div>
-    </div>
+    </FilterProvider>
   );
 }

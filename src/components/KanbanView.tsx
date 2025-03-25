@@ -11,6 +11,7 @@ interface KanbanViewProps {
   onTaskSelect: (taskId: string) => void;
   onTaskUpdate?: (updatedTask: Task) => void;
   onTaskCreate?: (newTask: Task) => void;
+  projectId: string;
 }
 
 type KanbanColumn = {
@@ -19,7 +20,7 @@ type KanbanColumn = {
   tasks: Task[];
 };
 
-export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCreate }: KanbanViewProps) {
+export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCreate, projectId }: KanbanViewProps) {
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [creatingInColumn, setCreatingInColumn] = useState<string | null>(null);
   const [newTask, setNewTask] = useState<Partial<Task>>({
@@ -111,7 +112,7 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
     onTaskUpdate?.(updatedTask);
   };
 
-  // 新しいタスクを作成する関数
+  // 新規タスク作成
   const handleCreateTask = () => {
     if (!newTask.title || !creatingInColumn) return;
 
@@ -122,7 +123,9 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
       todos: newTaskTodos.length > 0 ? newTaskTodos : getDefaultTodosForColumn(creatingInColumn),
       startDate: newTask.startDate || new Date().toISOString().split('T')[0],
       endDate: newTask.endDate || new Date().toISOString().split('T')[0],
-      priority: newTask.priority || 0
+      priority: newTask.priority || 0,
+      assigneeIds: [],
+      projectId: projectId
     };
 
     onTaskCreate?.(taskToCreate);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useTaskContext } from '@/contexts/TaskContext';
+import { useProjectContext } from '@/contexts/ProjectContext';
 import { useEffect, useRef, useState } from 'react';
 import { IoAdd, IoBulb, IoTrash } from 'react-icons/io5';
 import { Task, Todo } from '@/types/task';
@@ -10,10 +11,12 @@ import ScheduleTodosButton from './ScheduleTodosButton';
 interface WBSViewProps {
   onTaskCreate?: (newTask: Task) => void;
   onTaskSelect: (taskId: string) => void;
+  projectId?: string;
 }
 
-export default function WBSView({ onTaskCreate, onTaskSelect }: WBSViewProps) {
+export default function WBSView({ onTaskCreate, onTaskSelect, projectId }: WBSViewProps) {
   const { tasks } = useTaskContext();
+  const { currentProject } = useProjectContext();
   const containerRef = useRef<HTMLDivElement>(null);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [newTask, setNewTask] = useState<Partial<Task>>({
@@ -60,6 +63,9 @@ export default function WBSView({ onTaskCreate, onTaskSelect }: WBSViewProps) {
 
     const startDate = newTask.startDate || new Date().toISOString().split('T')[0];
     const endDate = newTask.endDate || new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0];
+    
+    // プロジェクトIDを取得（propsのprojectIdまたはcurrentProjectから）
+    const taskProjectId = projectId || (currentProject?.id || '');
 
     const taskToCreate: Task = {
       id: `task-${Date.now()}`,
@@ -68,7 +74,8 @@ export default function WBSView({ onTaskCreate, onTaskSelect }: WBSViewProps) {
       todos: newTaskTodos.length > 0 ? newTaskTodos : getDefaultTodos(startDate, endDate),
       startDate: startDate,
       endDate: endDate,
-      priority: newTask.priority || 0
+      priority: newTask.priority || 0,
+      projectId: taskProjectId
     };
 
     onTaskCreate?.(taskToCreate);
