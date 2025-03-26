@@ -148,7 +148,7 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
 
       // スクロール位置を計算（タスク一覧の幅を考慮）
       const columnWidth = container.scrollWidth / calendarRange.totalDays;
-      const scrollPosition = (todayPosition - 1) * columnWidth - 450; // タスク一覧の幅を考慮
+      const scrollPosition = (todayPosition - 1) * columnWidth - 500; // タスク一覧の幅を考慮（w-[600px]）
 
       console.log('Calculated scroll position:', {
         columnWidth,
@@ -266,17 +266,21 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
       </div>
       <div className="flex">
         {/* 左側：タスク一覧（固定） */}
-        <div className="w-60 flex-shrink-0">
+        <div className="w-[500px] flex-shrink-0">
           {/* タスク一覧のヘッダー */}
-          <div className="p-4 font-bold bg-white border-b sticky top-0 z-20">
+          <div className="grid grid-cols-[2.5fr,0.5fr,0.5fr,0.5fr,0.5fr] text-xs gap-2 p-2 font-bold bg-white border-b sticky top-0 z-20">
             <span>タスク</span>
+            <span>担当者</span>
+            <span>予定工数</span>
+            <span>実績工数</span>
+            <span>状態</span>
           </div>
           {/* タスク一覧 */}
           {tasks.map((task) => (
             <div key={task.id} className="border-b">
               {/* 親タスク */}
               <div 
-                className="h-8 font-medium bg-gray-100 flex items-center justify-between cursor-pointer hover:bg-gray-200"
+                className="h-8 font-medium bg-gray-100 grid grid-cols-[2.5fr,0.5fr,0.5fr,0.5fr,0.5fr] gap-2 items-center cursor-pointer hover:bg-gray-200"
                 onClick={() => toggleTask(task.id)}
               >
                 <div className="flex items-center gap-2 px-4">
@@ -285,35 +289,66 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
                   </span>
                   <span>{task.title}</span>
                 </div>
-                <span className="text-xs text-gray-500 px-4">
-                  {Math.round(
-                    (task.todos.filter(todo => todo.completed).length / task.todos.length) * 100
-                  )}%
-                </span>
+                <div className="text-xs text-gray-700">
+                  {task.assigneeIds?.length ? `${task.assigneeIds.length}人` : '-'}
+                </div>
+                <div className="text-xs text-gray-700">
+                  {task.todos.reduce((sum, todo) => sum + (todo.estimatedHours || 0), 0)}h
+                </div>
+                <div className="text-xs text-gray-700">
+                  {task.todos.reduce((sum, todo) => sum + (todo.actualHours || 0), 0)}h
+                </div>
+                <div className="text-xs">
+                  {(() => {
+                    const progress = task.todos.length > 0 
+                      ? Math.round((task.todos.filter(todo => todo.completed).length / task.todos.length) * 100)
+                      : 0;
+                    if (progress === 0) return <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded">未着手</span>;
+                    if (progress === 100) return <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded">完了</span>;
+                    return <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">進行中</span>;
+                  })()}
+                </div>
               </div>
               {/* 小タスク */}
               {expandedTasks.has(task.id) && task.todos.map((todo) => (
                 <div 
                   key={todo.id} 
-                  className="h-8 text-sm bg-white hover:bg-gray-50 flex items-center gap-2 px-4"
+                  className="h-8 text-sm bg-white hover:bg-gray-50 grid grid-cols-[2.5fr,0.5fr,0.5fr,0.5fr,0.5fr] gap-2 items-center"
                 >
-                  <label className="flex items-center gap-2 w-full">
-                    <input
-                      type="checkbox"
-                      checked={todo.completed}
-                      onChange={() => toggleTodoStatus(task.id, todo.id)}
-                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                    />
-                    <span 
-                      className="flex-1 cursor-pointer"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onTaskSelect(task.id);
-                      }}
-                    >
-                      {todo.text}
-                    </span>
-                  </label>
+                  <div className="flex items-center gap-2 px-4">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={todo.completed}
+                        onChange={() => toggleTodoStatus(task.id, todo.id)}
+                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      />
+                      <span 
+                        className="cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onTaskSelect(task.id);
+                        }}
+                      >
+                        {todo.text}
+                      </span>
+                    </label>
+                  </div>
+                  <div className="text-xs text-gray-700">
+                    {todo.assigneeIds?.length ? `${todo.assigneeIds.length}人` : '-'}
+                  </div>
+                  <div className="text-xs text-gray-700">
+                    {todo.estimatedHours || 0}h
+                  </div>
+                  <div className="text-xs text-gray-700">
+                    {todo.actualHours || 0}h
+                  </div>
+                  <div className="text-xs">
+                    {todo.completed 
+                      ? <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded">完了</span>
+                      : <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded">未完了</span>
+                    }
+                  </div>
                 </div>
               ))}
             </div>
@@ -321,7 +356,7 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
         </div>
 
         {/* 右側：カレンダーとガントチャート（スクロール可能） */}
-        <div className="flex-1 overflow-x-auto" ref={containerRef}>
+        <div className="flex-1 overflow-x-auto -mt-6" ref={containerRef}>
           <div style={{ width: `${calendarRange.totalDays * 30}px` }}>
             {/* カレンダーヘッダー */}
             <div className="border-b sticky top-0 bg-white z-20">
