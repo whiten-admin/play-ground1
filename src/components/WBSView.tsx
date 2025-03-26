@@ -10,6 +10,7 @@ import ScheduleTodosButton from './ScheduleTodosButton';
 import { differenceInDays } from 'date-fns';
 import TaskCreationForm from './TaskCreationForm';
 import TaskDetail from './TaskDetail';
+import ScheduleDiffView from './ScheduleDiffView';
 
 interface WBSViewProps {
   onTaskCreate?: (newTask: Task) => void;
@@ -38,6 +39,14 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
     });
     return initialSet;
   });
+  const [scheduleChanges, setScheduleChanges] = useState<Array<{
+    taskId: string;
+    taskTitle: string;
+    todoId: string;
+    todoTitle: string;
+    oldDate: string;
+    newDate: string;
+  }>>([]);
 
   // タスクを開始日でソートする関数
   const sortTasksByStartDate = (tasksToSort: Task[]): Task[] => {
@@ -334,28 +343,57 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
   const optimizeSchedule = () => {
     const MAX_HOURS_PER_DAY = 8;
     const updatedTasks = [...tasks];
+    const changes: typeof scheduleChanges = [];
 
     // タスクを開始日でソート
     updatedTasks.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
 
+    // 担当者ごとの工数を管理するマップ
+    const assigneeHours = new Map<string, Map<string, number>>();
+
     // 各タスクのTODOを最適化
     updatedTasks.forEach(task => {
       let currentDate = new Date(task.startDate);
-      let currentHours = 0;
-
+      
       task.todos.forEach(todo => {
         const todoHours = todo.estimatedHours || 1;
+        const oldDate = todo.startDate;
         
-        // 1日の最大工数を超える場合、翌日に移動
-        if (currentHours + todoHours > MAX_HOURS_PER_DAY) {
+        // 担当者ごとの工数を計算
+        const assigneeId = todo.assigneeIds?.[0] || 'unassigned';
+        if (!assigneeHours.has(currentDate.toISOString().split('T')[0])) {
+          assigneeHours.set(currentDate.toISOString().split('T')[0], new Map());
+        }
+        let currentAssigneeHours = assigneeHours.get(currentDate.toISOString().split('T')[0])!;
+        const totalHours = (currentAssigneeHours.get(assigneeId) || 0) + todoHours;
+
+        // 担当者の1日の最大工数を超える場合、翌日に移動
+        if (totalHours > MAX_HOURS_PER_DAY) {
           currentDate.setDate(currentDate.getDate() + 1);
-          currentHours = 0;
+          // 新しい日付の工数を初期化
+          if (!assigneeHours.has(currentDate.toISOString().split('T')[0])) {
+            assigneeHours.set(currentDate.toISOString().split('T')[0], new Map());
+          }
+          currentAssigneeHours = assigneeHours.get(currentDate.toISOString().split('T')[0])!;
         }
 
         // TODOの開始日と終了日を更新
-        todo.startDate = currentDate.toISOString().split('T')[0];
-        todo.endDate = currentDate.toISOString().split('T')[0];
-        currentHours += todoHours;
+        const newDate = currentDate.toISOString().split('T')[0];
+        if (oldDate !== newDate) {
+          changes.push({
+            taskId: task.id,
+            taskTitle: task.title,
+            todoId: todo.id,
+            todoTitle: todo.text,
+            oldDate,
+            newDate
+          });
+        }
+        todo.startDate = newDate;
+        todo.endDate = newDate;
+
+        // 担当者の工数を更新
+        currentAssigneeHours.set(assigneeId, (currentAssigneeHours.get(assigneeId) || 0) + todoHours);
       });
 
       // タスクの終了日を最後のTODOの日付に更新
@@ -365,18 +403,48 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
       }
     });
 
+    // 変更がある場合のみ差分表示を表示
+    if (changes.length > 0) {
+      setScheduleChanges(changes);
+    } else {
+      setNotification({
+        message: 'スケジュールの最適化が完了しました（変更なし）',
+        type: 'success'
+      });
+      setTimeout(() => {
+        setNotification(null);
+      }, 3000);
+    }
+  };
+
+  // 変更を適用する関数
+  const applyScheduleChanges = () => {
+    const updatedTasks = [...tasks];
+    
+    scheduleChanges.forEach(change => {
+      const task = updatedTasks.find(t => t.id === change.taskId);
+      if (task) {
+        const todo = task.todos.find(t => t.id === change.todoId);
+        if (todo) {
+          todo.startDate = change.newDate;
+          todo.endDate = change.newDate;
+        }
+      }
+    });
+
     // 更新されたタスクを保存
     updatedTasks.forEach(task => {
       onTaskUpdate?.(task);
     });
 
+    // 差分表示を閉じる
+    setScheduleChanges([]);
+    
     // 通知を表示
     setNotification({
       message: 'スケジュールの最適化が完了しました',
       type: 'success'
     });
-
-    // 3秒後に通知を消す
     setTimeout(() => {
       setNotification(null);
     }, 3000);
@@ -391,6 +459,16 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
         } text-white`}>
           {notification.message}
         </div>
+      )}
+
+      {/* 差分表示 */}
+      {scheduleChanges.length > 0 && (
+        <ScheduleDiffView
+          changes={scheduleChanges}
+          onApprove={applyScheduleChanges}
+          onCancel={() => setScheduleChanges([])}
+          tasks={tasks}
+        />
       )}
       <div className="overflow-x-auto relative">
         <div className="p-2 flex">
