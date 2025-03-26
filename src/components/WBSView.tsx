@@ -38,6 +38,19 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
     return initialSet;
   });
 
+  // タスクを開始日でソートする関数
+  const sortTasksByStartDate = (tasksToSort: Task[]): Task[] => {
+    return [...tasksToSort].sort((a, b) => {
+      // 開始日でソート（開始日が早い順）
+      const aStartDate = new Date(a.startDate).getTime();
+      const bStartDate = new Date(b.startDate).getTime();
+      return aStartDate - bStartDate;
+    });
+  };
+
+  // ソートされたタスクリスト
+  const sortedTasks = sortTasksByStartDate(tasks);
+
   // タスクの開閉状態を切り替える関数
   const toggleTask = (taskId: string) => {
     setExpandedTasks(prev => {
@@ -339,7 +352,7 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
             <span>状態</span>
           </div>
           {/* タスク一覧 */}
-          {tasks.map((task) => (
+          {sortedTasks.map((task) => (
             <div key={task.id} className="border-b">
               {/* 親タスク */}
               <div 
@@ -487,7 +500,7 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
               />
 
               {/* タスクのガントチャート */}
-              {tasks.map((task) => (
+              {sortedTasks.map((task) => (
                 <div key={task.id}>
                   {/* 親タスク */}
                   <div className="h-8 relative bg-gray-50">
@@ -532,15 +545,17 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
                 <IoClose className="w-6 h-6" />
               </button>
             </div>
-            <div>
+            <div className="flex-1 overflow-y-auto p-4">
               <TaskDetail
-                selectedTask={tasks.find(t => t.id === selectedTaskId) || null}
+                selectedTask={sortedTasks.find(t => t.id === selectedTaskId) || null}
                 selectedTodoId={selectedTodoId}
                 onTaskUpdate={handleTaskUpdate}
-                tasks={tasks}
+                tasks={sortedTasks}
                 onTaskSelect={handleShowTaskDetail}
                 onTaskCreate={onTaskCreate}
               />
+              {/* 下部の余白確保用 */}
+              <div className="h-16"></div>
             </div>
           </div>
         </div>

@@ -52,6 +52,19 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
     return initialSet;
   });
 
+  // タスクを開始日でソートする関数
+  const sortTasksByStartDate = (tasksToSort: Task[]): Task[] => {
+    return [...tasksToSort].sort((a, b) => {
+      // 開始日でソート（開始日が早い順）
+      const aStartDate = new Date(a.startDate).getTime();
+      const bStartDate = new Date(b.startDate).getTime();
+      return aStartDate - bStartDate;
+    });
+  };
+
+  // ソートされたタスクリスト
+  const sortedTasks = sortTasksByStartDate(tasks);
+
   const getDaysBetween = (startDate: Date, endDate: Date) => {
     return Math.ceil(
       (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
@@ -523,15 +536,15 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
   // TODOのステータスを切り替える関数
   const toggleTodoStatus = (taskId: string, todoId: string) => {
     console.log('GanttChart: toggleTodoStatus called with:', { taskId, todoId });
-    const task = tasks.find(t => t.id === taskId);
+    
+    // タスクを検索
+    const task = sortedTasks.find(t => t.id === taskId);
     if (!task) {
-      console.log('GanttChart: Task not found');
+      console.log('GanttChart: Task not found:', taskId);
       return;
     }
-
-    console.log('GanttChart: Found task:', task.title);
-    console.log('GanttChart: Current todos:', task.todos);
-
+    
+    // TODOのステータスを更新
     const updatedTodos = task.todos.map(todo => {
       if (todo.id === todoId) {
         console.log('GanttChart: Toggling todo status for:', todo.text, 'from', todo.completed, 'to', !todo.completed);
@@ -539,15 +552,11 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
       }
       return todo;
     });
-
+    
+    // タスクを更新
     const updatedTask = { ...task, todos: updatedTodos };
-    console.log('GanttChart: Calling onTaskUpdate with:', updatedTask);
-    if (onTaskUpdate) {
-      console.log('GanttChart: onTaskUpdate exists, calling it');
-      onTaskUpdate(updatedTask);
-    } else {
-      console.log('GanttChart: onTaskUpdate is undefined or null');
-    }
+    console.log('GanttChart: Updated task:', updatedTask);
+    onTaskUpdate?.(updatedTask);
   };
 
   return (
@@ -562,7 +571,7 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
             <span>タスク</span>
           </div>
           {/* タスク一覧 */}
-          {tasks.map((task) => (
+          {sortedTasks.map((task) => (
             <div key={task.id} className="border-b">
               {/* 親タスク */}
               <div 
@@ -652,7 +661,7 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
               />
 
               {/* タスクのガントチャート */}
-              {tasks.map((task) => (
+              {sortedTasks.map((task) => (
                 <div key={task.id}>
                   {/* 親タスク */}
                   <div className="h-8 relative bg-gray-50">
