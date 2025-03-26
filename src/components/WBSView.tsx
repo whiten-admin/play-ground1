@@ -3,7 +3,7 @@
 import { useTaskContext } from '@/contexts/TaskContext';
 import { useProjectContext } from '@/contexts/ProjectContext';
 import { useEffect, useRef, useState } from 'react';
-import { IoAdd, IoBulb, IoTrash, IoClose } from 'react-icons/io5';
+import { IoAdd, IoBulb, IoTrash, IoClose, IoCalendar } from 'react-icons/io5';
 import { Task, Todo } from '@/types/task';
 import { suggestTodos } from '@/utils/openai';
 import ScheduleTodosButton from './ScheduleTodosButton';
@@ -329,243 +329,291 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
     );
   };
 
+  // スケジュール最適化の関数
+  const optimizeSchedule = () => {
+    const MAX_HOURS_PER_DAY = 8;
+    const updatedTasks = [...tasks];
+
+    // タスクを開始日でソート
+    updatedTasks.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+
+    // 各タスクのTODOを最適化
+    updatedTasks.forEach(task => {
+      let currentDate = new Date(task.startDate);
+      let currentHours = 0;
+
+      task.todos.forEach(todo => {
+        const todoHours = todo.estimatedHours || 1;
+        
+        // 1日の最大工数を超える場合、翌日に移動
+        if (currentHours + todoHours > MAX_HOURS_PER_DAY) {
+          currentDate.setDate(currentDate.getDate() + 1);
+          currentHours = 0;
+        }
+
+        // TODOの開始日と終了日を更新
+        todo.startDate = currentDate.toISOString().split('T')[0];
+        todo.endDate = currentDate.toISOString().split('T')[0];
+        currentHours += todoHours;
+      });
+
+      // タスクの終了日を最後のTODOの日付に更新
+      const lastTodo = task.todos[task.todos.length - 1];
+      if (lastTodo) {
+        task.endDate = lastTodo.endDate;
+      }
+    });
+
+    // 更新されたタスクを保存
+    updatedTasks.forEach(task => {
+      onTaskUpdate?.(task);
+    });
+  };
+
   return (
-    <div className="overflow-x-auto relative">
-      <div className="p-2">
-        <button
-          onClick={() => setIsCreatingTask(true)}
-          className="px-2 py-0.5 text-xs rounded flex items-center gap-1 bg-blue-500 text-white hover:bg-blue-600"
-        >
-          <IoAdd className="w-3 h-3" />
-          タスク追加
-        </button>
-      </div>
-      <div className="flex">
-        {/* 左側：タスク一覧（固定） */}
-        <div className="w-[500px] flex-shrink-0">
-          {/* タスク一覧のヘッダー */}
-          <div className="grid grid-cols-[2.5fr,0.5fr,0.5fr,0.5fr,0.5fr] text-xs gap-2 p-2 font-bold bg-white border-b sticky top-0 z-20">
-            <span>タスク</span>
-            <span>担当者</span>
-            <span>予定工数</span>
-            <span>実績工数</span>
-            <span>状態</span>
-          </div>
-          {/* タスク一覧 */}
-          {sortedTasks.map((task) => (
-            <div key={task.id} className="border-b">
-              {/* 親タスク */}
-              <div 
-                className="h-8 font-medium bg-gray-100 grid grid-cols-[2.5fr,0.5fr,0.5fr,0.5fr,0.5fr] gap-2 items-center cursor-pointer hover:bg-gray-200"
-                onClick={() => toggleTask(task.id)}
-              >
-                <div className="flex items-center gap-2 px-4 overflow-hidden">
-                  <span className={`transform transition-transform flex-shrink-0 ${expandedTasks.has(task.id) ? 'rotate-90' : ''}`}>
-                    ▶
-                  </span>
-                  <span className="truncate">{task.title}</span>
-                </div>
-                <div className="text-xs text-gray-700">
-                  {task.assigneeIds?.length ? `${task.assigneeIds.length}人` : '-'}
-                </div>
-                <div className="text-xs text-gray-700 flex items-center">
-                  <span>
-                    {task.todos.reduce((sum, todo) => sum + (todo.estimatedHours || 0), 0)}
-                  </span>
-                  <span className="ml-1">h</span>
-                </div>
-                <div className="text-xs text-gray-700 flex items-center">
-                  <span>
-                    {task.todos.reduce((sum, todo) => sum + (todo.actualHours || 0), 0)}
-                  </span>
-                  <span className="ml-1">h</span>
-                </div>
-                <div className="text-xs">
-                  {(() => {
-                    const progress = task.todos.length > 0 
-                      ? Math.round((task.todos.filter(todo => todo.completed).length / task.todos.length) * 100)
-                      : 0;
-                    if (progress === 0) return <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded">未着手</span>;
-                    if (progress === 100) return <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded">完了</span>;
-                    return <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">進行中</span>;
-                  })()}
-                </div>
-              </div>
-              {/* 小タスク */}
-              {expandedTasks.has(task.id) && task.todos.map((todo) => (
+      <div className="overflow-x-auto relative">
+        <div className="p-2 flex">
+          <button
+            onClick={() => setIsCreatingTask(true)}
+            className="px-2 py-1 text-xs rounded flex items-center gap-1 bg-blue-500 text-white hover:bg-blue-600"
+          >
+            <IoAdd className="w-3 h-3" />
+            タスク追加
+          </button>
+          <button
+            onClick={optimizeSchedule}
+            className="flex items-center gap-2 px-4 py-1 bg-green-500 text-white rounded-md hover:bg-green-600 transition-color ml-2 text-xs"
+          >
+            <IoCalendar className="w-5 h-5" />
+            スケジュール最適化
+          </button>
+        </div>
+        <div className="flex">
+          {/* 左側：タスク一覧（固定） */}
+          <div className="w-[500px] flex-shrink-0">
+            {/* タスク一覧のヘッダー */}
+            <div className="grid grid-cols-[2.5fr,0.5fr,0.5fr,0.5fr,0.5fr] text-xs gap-2 p-2 font-bold bg-white border-b sticky top-0 z-20">
+              <span>タスク</span>
+              <span>担当者</span>
+              <span>予定工数</span>
+              <span>実績工数</span>
+              <span>状態</span>
+            </div>
+            {/* タスク一覧 */}
+            {sortedTasks.map((task) => (
+              <div key={task.id} className="border-b">
+                {/* 親タスク */}
                 <div 
-                  key={todo.id} 
-                  className="h-8 text-sm bg-white hover:bg-gray-50 grid grid-cols-[2.5fr,0.5fr,0.5fr,0.5fr,0.5fr] gap-2 items-center"
+                  className="h-8 font-medium bg-gray-100 grid grid-cols-[2.5fr,0.5fr,0.5fr,0.5fr,0.5fr] gap-2 items-center cursor-pointer hover:bg-gray-200"
+                  onClick={() => toggleTask(task.id)}
                 >
                   <div className="flex items-center gap-2 px-4 overflow-hidden">
-                    <label className="flex items-center gap-2 overflow-hidden">
-                      <input
-                        type="checkbox"
-                        checked={todo.completed}
-                        onChange={() => toggleTodoStatus(task.id, todo.id)}
-                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 flex-shrink-0"
-                      />
-                      <span 
-                        className="cursor-pointer truncate"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleShowTaskDetail(task.id, todo.id);
-                        }}
-                      >
-                        {todo.text}
-                      </span>
-                    </label>
+                    <span className={`transform transition-transform flex-shrink-0 ${expandedTasks.has(task.id) ? 'rotate-90' : ''}`}>
+                      ▶
+                    </span>
+                    <span className="truncate">{task.title}</span>
                   </div>
                   <div className="text-xs text-gray-700">
-                    {todo.assigneeIds?.length ? `${todo.assigneeIds.length}人` : '-'}
+                    {task.assigneeIds?.length ? `${task.assigneeIds.length}人` : '-'}
                   </div>
                   <div className="text-xs text-gray-700 flex items-center">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.5"
-                      className="w-full p-0.5 text-center border border-gray-300 rounded"
-                      value={todo.estimatedHours || 0}
-                      onChange={(e) => {
-                        const value = validateHourInput(e.target.value);
-                        updateTodoHours(task.id, todo.id, 'estimatedHours', value);
-                      }}
-                    />
+                    <span>
+                      {task.todos.reduce((sum, todo) => sum + (todo.estimatedHours || 0), 0)}
+                    </span>
                     <span className="ml-1">h</span>
                   </div>
                   <div className="text-xs text-gray-700 flex items-center">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.5"
-                      className="w-full p-0.5 text-center border border-gray-300 rounded"
-                      value={todo.actualHours || 0}
-                      onChange={(e) => {
-                        const value = validateHourInput(e.target.value);
-                        updateTodoHours(task.id, todo.id, 'actualHours', value);
-                      }}
-                    />
+                    <span>
+                      {task.todos.reduce((sum, todo) => sum + (todo.actualHours || 0), 0)}
+                    </span>
                     <span className="ml-1">h</span>
                   </div>
                   <div className="text-xs">
-                    {todo.completed 
-                      ? <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded">完了</span>
-                      : <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded">未完了</span>
-                    }
+                    {(() => {
+                      const progress = task.todos.length > 0 
+                        ? Math.round((task.todos.filter(todo => todo.completed).length / task.todos.length) * 100)
+                        : 0;
+                      if (progress === 0) return <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded">未着手</span>;
+                      if (progress === 100) return <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded">完了</span>;
+                      return <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">進行中</span>;
+                    })()}
                   </div>
                 </div>
-              ))}
-            </div>
-          ))}
-        </div>
-
-        {/* 右側：カレンダーとガントチャート（スクロール可能） */}
-        <div className="flex-1 overflow-x-auto -mt-6" ref={containerRef}>
-          <div style={{ width: `${calendarRange.totalDays * 30}px` }}>
-            {/* カレンダーヘッダー */}
-            <div className="border-b sticky top-0 bg-white z-20">
-              <div className="grid pt-5" style={{ gridTemplateColumns: `repeat(${calendarRange.totalDays +1}, minmax(30px, 1fr))` }}>
-                {getDates().map((date, i) => (
-                  <div key={i} className="border-l text-center relative">
-                    {isFirstDayOfMonth(date) && (
-                      <div className="absolute -top-4 left-0 right-0 text-xs text-gray-500 z-30">
-                        {getMonth(date)}月
-                      </div>
-                    )}
-                    <div className={`py-2 text-sm ${isToday(date) ? 'text-blue-600 font-bold' : ''}`}>
-                      {formatDate(date)}
+                {/* 小タスク */}
+                {expandedTasks.has(task.id) && task.todos.map((todo) => (
+                  <div 
+                    key={todo.id} 
+                    className="h-8 text-sm bg-white hover:bg-gray-50 grid grid-cols-[2.5fr,0.5fr,0.5fr,0.5fr,0.5fr] gap-2 items-center"
+                  >
+                    <div className="flex items-center gap-2 px-4 overflow-hidden">
+                      <label className="flex items-center gap-2 overflow-hidden">
+                        <input
+                          type="checkbox"
+                          checked={todo.completed}
+                          onChange={() => toggleTodoStatus(task.id, todo.id)}
+                          className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 flex-shrink-0"
+                        />
+                        <span 
+                          className="cursor-pointer truncate"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleShowTaskDetail(task.id, todo.id);
+                          }}
+                        >
+                          {todo.text}
+                        </span>
+                      </label>
+                    </div>
+                    <div className="text-xs text-gray-700">
+                      {todo.assigneeIds?.length ? `${todo.assigneeIds.length}人` : '-'}
+                    </div>
+                    <div className="text-xs text-gray-700 flex items-center">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        className="w-full p-0.5 text-center border border-gray-300 rounded"
+                        value={todo.estimatedHours || 0}
+                        onChange={(e) => {
+                          const value = validateHourInput(e.target.value);
+                          updateTodoHours(task.id, todo.id, 'estimatedHours', value);
+                        }}
+                      />
+                      <span className="ml-1">h</span>
+                    </div>
+                    <div className="text-xs text-gray-700 flex items-center">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        className="w-full p-0.5 text-center border border-gray-300 rounded"
+                        value={todo.actualHours || 0}
+                        onChange={(e) => {
+                          const value = validateHourInput(e.target.value);
+                          updateTodoHours(task.id, todo.id, 'actualHours', value);
+                        }}
+                      />
+                      <span className="ml-1">h</span>
+                    </div>
+                    <div className="text-xs">
+                      {todo.completed 
+                        ? <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded">完了</span>
+                        : <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded">未完了</span>
+                      }
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            ))}
+          </div>
 
-            {/* ガントチャート本体 */}
-            <div className="relative">
-              {/* 過去の日付のオーバーレイ */}
-              <div
-                className="absolute top-0 left-0 h-full bg-gray-100/50"
-                style={{
-                  width: `${(todayPosition) * (100 / calendarRange.totalDays)}%`,
-                  zIndex: 1
-                }}
-              />
-              {/* 今日の日付の縦線 */}
-              <div
-                className="absolute top-0 h-full w-px bg-red-500"
-                style={{
-                  left: `${(todayPosition) * (100 / calendarRange.totalDays)}%`,
-                  zIndex: 2
-                }}
-              />
-
-              {/* タスクのガントチャート */}
-              {sortedTasks.map((task) => (
-                <div key={task.id}>
-                  {/* 親タスク */}
-                  <div className="h-8 relative bg-gray-50">
-                    <TaskBar task={task} calendarRange={calendarRange} />
-                  </div>
-                  {/* 小タスク */}
-                  {expandedTasks.has(task.id) && task.todos.map((todo) => (
-                    <div key={todo.id} className="h-8 relative">
-                      <TodoBar todo={todo} calendarRange={calendarRange} />
+          {/* 右側：カレンダーとガントチャート（スクロール可能） */}
+          <div className="flex-1 overflow-x-auto -mt-6" ref={containerRef}>
+            <div style={{ width: `${calendarRange.totalDays * 30}px` }}>
+              {/* カレンダーヘッダー */}
+              <div className="border-b sticky top-0 bg-white z-20">
+                <div className="grid pt-5" style={{ gridTemplateColumns: `repeat(${calendarRange.totalDays +1}, minmax(30px, 1fr))` }}>
+                  {getDates().map((date, i) => (
+                    <div key={i} className="border-l text-center relative">
+                      {isFirstDayOfMonth(date) && (
+                        <div className="absolute -top-4 left-0 right-0 text-xs text-gray-500 z-30">
+                          {getMonth(date)}月
+                        </div>
+                      )}
+                      <div className={`py-2 text-sm ${isToday(date) ? 'text-blue-600 font-bold' : ''}`}>
+                        {formatDate(date)}
+                      </div>
                     </div>
                   ))}
                 </div>
-              ))}
+              </div>
+
+              {/* ガントチャート本体 */}
+              <div className="relative">
+                {/* 過去の日付のオーバーレイ */}
+                <div
+                  className="absolute top-0 left-0 h-full bg-gray-100/50"
+                  style={{
+                    width: `${(todayPosition) * (100 / calendarRange.totalDays)}%`,
+                    zIndex: 1
+                  }}
+                />
+                {/* 今日の日付の縦線 */}
+                <div
+                  className="absolute top-0 h-full w-px bg-red-500"
+                  style={{
+                    left: `${(todayPosition) * (100 / calendarRange.totalDays)}%`,
+                    zIndex: 2
+                  }}
+                />
+
+                {/* タスクのガントチャート */}
+                {sortedTasks.map((task) => (
+                  <div key={task.id}>
+                    {/* 親タスク */}
+                    <div className="h-8 relative bg-gray-50">
+                      <TaskBar task={task} calendarRange={calendarRange} />
+                    </div>
+                    {/* 小タスク */}
+                    {expandedTasks.has(task.id) && task.todos.map((todo) => (
+                      <div key={todo.id} className="h-8 relative">
+                        <TodoBar todo={todo} calendarRange={calendarRange} />
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* タスク作成フォーム */}
-      {isCreatingTask && (
-        <TaskCreationForm
-          onCancel={() => setIsCreatingTask(false)}
-          onTaskCreate={(task) => {
-            onTaskCreate?.(task);
-            // 新しく作成したタスクのアコーディオンを自動的に開く
-            setExpandedTasks(prev => {
-              const newSet = new Set(prev);
-              newSet.add(task.id);
-              return newSet;
-            });
-            setIsCreatingTask(false);
-          }}
-          projectId={projectId || currentProject?.id}
-          title="新しいタスクを作成"
-        />
-      )}
+        {/* タスク作成フォーム */}
+        {isCreatingTask && (
+          <TaskCreationForm
+            onCancel={() => setIsCreatingTask(false)}
+            onTaskCreate={(task) => {
+              onTaskCreate?.(task);
+              // 新しく作成したタスクのアコーディオンを自動的に開く
+              setExpandedTasks(prev => {
+                const newSet = new Set(prev);
+                newSet.add(task.id);
+                return newSet;
+              });
+              setIsCreatingTask(false);
+            }}
+            projectId={projectId || currentProject?.id}
+            title="新しいタスクを作成"
+          />
+        )}
 
-      {/* タスク詳細モーダル */}
-      {isTaskDetailModalOpen && selectedTaskId && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-11/12 max-w-4xl h-[85vh] overflow-scroll">
-            <div className="p-4 border-b flex justify-between items-center shrink-0">
-              <h2 className="text-xl font-bold">タスク詳細</h2>
-              <button 
-                onClick={handleCloseTaskDetail}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <IoClose className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4">
-              <TaskDetail
-                selectedTask={sortedTasks.find(t => t.id === selectedTaskId) || null}
-                selectedTodoId={selectedTodoId}
-                onTaskUpdate={handleTaskUpdate}
-                tasks={sortedTasks}
-                onTaskSelect={handleShowTaskDetail}
-                onTaskCreate={onTaskCreate}
-              />
-              {/* 下部の余白確保用 */}
-              <div className="h-16"></div>
+        {/* タスク詳細モーダル */}
+        {isTaskDetailModalOpen && selectedTaskId && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg w-11/12 max-w-4xl h-[85vh] overflow-scroll">
+              <div className="p-4 border-b flex justify-between items-center shrink-0">
+                <h2 className="text-xl font-bold">タスク詳細</h2>
+                <button 
+                  onClick={handleCloseTaskDetail}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <IoClose className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                <TaskDetail
+                  selectedTask={sortedTasks.find(t => t.id === selectedTaskId) || null}
+                  selectedTodoId={selectedTodoId}
+                  onTaskUpdate={handleTaskUpdate}
+                  tasks={sortedTasks}
+                  onTaskSelect={handleShowTaskDetail}
+                  onTaskCreate={onTaskCreate}
+                />
+                {/* 下部の余白確保用 */}
+                <div className="h-16"></div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
     </div>
   );
 }
