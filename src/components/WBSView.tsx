@@ -192,6 +192,46 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
     onTaskUpdate?.(updatedTask);
   };
 
+  // 工数を更新する関数
+  const updateTaskHours = (taskId: string, field: 'estimatedHours' | 'actualHours', value: number) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    // すべてのTODOの指定されたフィールドを更新
+    const updatedTodos = task.todos.map(todo => ({
+      ...todo,
+      [field]: field === 'estimatedHours' 
+        ? (task.todos.length > 0 ? value / task.todos.length : 0) // 予定工数は均等に分配
+        : (todo.completed ? value / task.todos.filter(t => t.completed).length : 0) // 実績工数は完了したTODOのみに分配
+    }));
+
+    const updatedTask = { ...task, todos: updatedTodos };
+    onTaskUpdate?.(updatedTask);
+  };
+
+  // TODOの工数を更新する関数
+  const updateTodoHours = (taskId: string, todoId: string, field: 'estimatedHours' | 'actualHours', value: number) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const updatedTodos = task.todos.map(todo => {
+      if (todo.id === todoId) {
+        return { ...todo, [field]: value };
+      }
+      return todo;
+    });
+
+    const updatedTask = { ...task, todos: updatedTodos };
+    onTaskUpdate?.(updatedTask);
+  };
+
+  // 入力検証を行う関数
+  const validateHourInput = (value: string): number => {
+    const numValue = parseFloat(value);
+    if (isNaN(numValue) || numValue < 0) return 0;
+    return numValue;
+  };
+
   // 指定された日が今日かどうかを判定する関数
   const isToday = (date: Date) => {
     const today = new Date();
@@ -292,11 +332,17 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
                 <div className="text-xs text-gray-700">
                   {task.assigneeIds?.length ? `${task.assigneeIds.length}人` : '-'}
                 </div>
-                <div className="text-xs text-gray-700">
-                  {task.todos.reduce((sum, todo) => sum + (todo.estimatedHours || 0), 0)}h
+                <div className="text-xs text-gray-700 flex items-center">
+                  <span>
+                    {task.todos.reduce((sum, todo) => sum + (todo.estimatedHours || 0), 0)}
+                  </span>
+                  <span className="ml-1">h</span>
                 </div>
-                <div className="text-xs text-gray-700">
-                  {task.todos.reduce((sum, todo) => sum + (todo.actualHours || 0), 0)}h
+                <div className="text-xs text-gray-700 flex items-center">
+                  <span>
+                    {task.todos.reduce((sum, todo) => sum + (todo.actualHours || 0), 0)}
+                  </span>
+                  <span className="ml-1">h</span>
                 </div>
                 <div className="text-xs">
                   {(() => {
@@ -337,11 +383,33 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
                   <div className="text-xs text-gray-700">
                     {todo.assigneeIds?.length ? `${todo.assigneeIds.length}人` : '-'}
                   </div>
-                  <div className="text-xs text-gray-700">
-                    {todo.estimatedHours || 0}h
+                  <div className="text-xs text-gray-700 flex items-center">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      className="w-full p-0.5 text-center border border-gray-300 rounded"
+                      value={todo.estimatedHours || 0}
+                      onChange={(e) => {
+                        const value = validateHourInput(e.target.value);
+                        updateTodoHours(task.id, todo.id, 'estimatedHours', value);
+                      }}
+                    />
+                    <span className="ml-1">h</span>
                   </div>
-                  <div className="text-xs text-gray-700">
-                    {todo.actualHours || 0}h
+                  <div className="text-xs text-gray-700 flex items-center">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      className="w-full p-0.5 text-center border border-gray-300 rounded"
+                      value={todo.actualHours || 0}
+                      onChange={(e) => {
+                        const value = validateHourInput(e.target.value);
+                        updateTodoHours(task.id, todo.id, 'actualHours', value);
+                      }}
+                    />
+                    <span className="ml-1">h</span>
                   </div>
                   <div className="text-xs">
                     {todo.completed 
