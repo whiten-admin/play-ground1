@@ -26,6 +26,7 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
   const [isTaskDetailModalOpen, setIsTaskDetailModalOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(() => {
     // 初期状態で全てのタスクを開く
     const initialSet = new Set<string>();
@@ -368,9 +369,29 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
     updatedTasks.forEach(task => {
       onTaskUpdate?.(task);
     });
+
+    // 通知を表示
+    setNotification({
+      message: 'スケジュールの最適化が完了しました',
+      type: 'success'
+    });
+
+    // 3秒後に通知を消す
+    setTimeout(() => {
+      setNotification(null);
+    }, 3000);
   };
 
   return (
+    <div className="space-y-4">
+      {/* 通知 */}
+      {notification && (
+        <div className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
+          notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+        } text-white`}>
+          {notification.message}
+        </div>
+      )}
       <div className="overflow-x-auto relative">
         <div className="p-2 flex">
           <button
@@ -614,6 +635,7 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
             </div>
           </div>
         )}
+      </div>
     </div>
   );
 }
