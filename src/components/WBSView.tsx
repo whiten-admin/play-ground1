@@ -283,11 +283,11 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
                 className="h-8 font-medium bg-gray-100 grid grid-cols-[2.5fr,0.5fr,0.5fr,0.5fr,0.5fr] gap-2 items-center cursor-pointer hover:bg-gray-200"
                 onClick={() => toggleTask(task.id)}
               >
-                <div className="flex items-center gap-2 px-4">
-                  <span className={`transform transition-transform ${expandedTasks.has(task.id) ? 'rotate-90' : ''}`}>
+                <div className="flex items-center gap-2 px-4 overflow-hidden">
+                  <span className={`transform transition-transform flex-shrink-0 ${expandedTasks.has(task.id) ? 'rotate-90' : ''}`}>
                     ▶
                   </span>
-                  <span>{task.title}</span>
+                  <span className="truncate">{task.title}</span>
                 </div>
                 <div className="text-xs text-gray-700">
                   {task.assigneeIds?.length ? `${task.assigneeIds.length}人` : '-'}
@@ -315,16 +315,16 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
                   key={todo.id} 
                   className="h-8 text-sm bg-white hover:bg-gray-50 grid grid-cols-[2.5fr,0.5fr,0.5fr,0.5fr,0.5fr] gap-2 items-center"
                 >
-                  <div className="flex items-center gap-2 px-4">
-                    <label className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 px-4 overflow-hidden">
+                    <label className="flex items-center gap-2 overflow-hidden">
                       <input
                         type="checkbox"
                         checked={todo.completed}
                         onChange={() => toggleTodoStatus(task.id, todo.id)}
-                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 flex-shrink-0"
                       />
                       <span 
-                        className="cursor-pointer"
+                        className="cursor-pointer truncate"
                         onClick={(e) => {
                           e.stopPropagation();
                           onTaskSelect(task.id);
