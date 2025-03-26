@@ -3,12 +3,13 @@
 import { useTaskContext } from '@/contexts/TaskContext';
 import { useProjectContext } from '@/contexts/ProjectContext';
 import { useEffect, useRef, useState } from 'react';
-import { IoAdd, IoBulb, IoTrash } from 'react-icons/io5';
+import { IoAdd, IoBulb, IoTrash, IoClose } from 'react-icons/io5';
 import { Task, Todo } from '@/types/task';
 import { suggestTodos } from '@/utils/openai';
 import ScheduleTodosButton from './ScheduleTodosButton';
 import { differenceInDays } from 'date-fns';
 import TaskCreationForm from './TaskCreationForm';
+import TaskDetail from './TaskDetail';
 
 interface WBSViewProps {
   onTaskCreate?: (newTask: Task) => void;
@@ -22,6 +23,9 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
   const { currentProject } = useProjectContext();
   const containerRef = useRef<HTMLDivElement>(null);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [isTaskDetailModalOpen, setIsTaskDetailModalOpen] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(() => {
     // 初期状態で全てのタスクを開く
     const initialSet = new Set<string>();
@@ -189,6 +193,25 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
     });
 
     const updatedTask = { ...task, todos: updatedTodos };
+    onTaskUpdate?.(updatedTask);
+  };
+
+  // タスク詳細を表示する関数
+  const handleShowTaskDetail = (taskId: string, todoId?: string) => {
+    setSelectedTaskId(taskId);
+    setSelectedTodoId(todoId || null);
+    setIsTaskDetailModalOpen(true);
+  };
+
+  // タスク詳細モーダルを閉じる関数
+  const handleCloseTaskDetail = () => {
+    setIsTaskDetailModalOpen(false);
+    setSelectedTaskId(null);
+    setSelectedTodoId(null);
+  };
+
+  // タスクの更新ハンドラー
+  const handleTaskUpdate = (updatedTask: Task) => {
     onTaskUpdate?.(updatedTask);
   };
 
@@ -373,7 +396,7 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
                         className="cursor-pointer truncate"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onTaskSelect(task.id);
+                          handleShowTaskDetail(task.id, todo.id);
                         }}
                       >
                         {todo.text}
@@ -494,6 +517,33 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
           projectId={projectId || currentProject?.id}
           title="新しいタスクを作成"
         />
+      )}
+
+      {/* タスク詳細モーダル */}
+      {isTaskDetailModalOpen && selectedTaskId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-11/12 max-w-4xl h-[85vh] overflow-scroll">
+            <div className="p-4 border-b flex justify-between items-center shrink-0">
+              <h2 className="text-xl font-bold">タスク詳細</h2>
+              <button 
+                onClick={handleCloseTaskDetail}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <IoClose className="w-6 h-6" />
+              </button>
+            </div>
+            <div>
+              <TaskDetail
+                selectedTask={tasks.find(t => t.id === selectedTaskId) || null}
+                selectedTodoId={selectedTodoId}
+                onTaskUpdate={handleTaskUpdate}
+                tasks={tasks}
+                onTaskSelect={handleShowTaskDetail}
+                onTaskCreate={onTaskCreate}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
