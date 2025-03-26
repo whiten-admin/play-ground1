@@ -167,6 +167,12 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
     };
 
     onTaskCreate?.(taskToCreate);
+    // 新しく作成したタスクのアコーディオンを自動的に開く
+    setExpandedTasks(prev => {
+      const newSet = new Set(prev);
+      newSet.add(taskToCreate.id);
+      return newSet;
+    });
     setIsCreatingTask(false);
     setNewTask({
       title: '',

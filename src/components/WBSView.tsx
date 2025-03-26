@@ -525,6 +525,12 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
           onCancel={() => setIsCreatingTask(false)}
           onTaskCreate={(task) => {
             onTaskCreate?.(task);
+            // 新しく作成したタスクのアコーディオンを自動的に開く
+            setExpandedTasks(prev => {
+              const newSet = new Set(prev);
+              newSet.add(task.id);
+              return newSet;
+            });
             setIsCreatingTask(false);
           }}
           projectId={projectId || currentProject?.id}
