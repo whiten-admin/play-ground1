@@ -9,11 +9,14 @@ import { useAuth } from '@/hooks/useAuth'
 import { Project } from '@/types/project'
 import ProjectDetail from '@/components/ProjectDetail'
 import { FilterProvider } from '@/contexts/FilterContext'
+import { Task } from '@/types/task'
+import { useTaskContext } from '@/contexts/TaskContext'
 
 export default function WBSPage() {
   const { isAuthenticated, user, login, logout } = useAuth()
   const [activeTab, setActiveTab] = useState('wbs')
   const [selectedTaskId, setSelectedTaskId] = useState<string>('')
+  const { setTasks } = useTaskContext()
   const [project, setProject] = useState<Project>({
     id: '1',
     title: 'プロジェクトA',
@@ -33,6 +36,16 @@ export default function WBSPage() {
   // タスク作成処理
   const handleTaskCreate = (taskData: any) => {
     console.log('Task created', taskData)
+  }
+
+  // タスク更新処理
+  const handleTaskUpdate = (updatedTask: Task) => {
+    console.log('WBS: handleTaskUpdate called with:', updatedTask);
+    setTasks((prevTasks) => {
+      const updated = prevTasks.map((task) => (task.id === updatedTask.id ? updatedTask : task));
+      console.log('WBS: tasks after update:', updated);
+      return updated;
+    });
   }
 
   // プロジェクト更新処理
@@ -60,14 +73,11 @@ export default function WBSPage() {
           <Header onLogout={logout} user={user} project={project} />
           <main className="flex-1 overflow-y-auto p-6">
             <div className="bg-white rounded-lg shadow">
-              <div className="p-6 border-b">
-                <h1 className="text-2xl font-bold">
-                  WBS（Work Breakdown Structure）
-                </h1>
-              </div>
+
               <WBSView 
                 onTaskSelect={handleTaskSelect}
                 onTaskCreate={handleTaskCreate}
+                onTaskUpdate={handleTaskUpdate}
                 projectId={project.id}
               />
             </div>

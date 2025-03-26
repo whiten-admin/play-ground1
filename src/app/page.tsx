@@ -42,9 +42,12 @@ export default function Home() {
 
   // タスクの更新処理
   const handleTaskUpdate = (updatedTask: Task) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) => (task.id === updatedTask.id ? updatedTask : task))
-    );
+    console.log('Home: handleTaskUpdate called with:', updatedTask);
+    setTasks((prevTasks) => {
+      const updated = prevTasks.map((task) => (task.id === updatedTask.id ? updatedTask : task));
+      console.log('Home: tasks after update:', updated);
+      return updated;
+    });
   };
 
   // タスクの作成処理
