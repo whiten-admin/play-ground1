@@ -871,25 +871,128 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
             ))}
 
             <div className="flex items-center mt-4">
-              <input
-                type="text"
-                value={newTodoText}
-                onChange={(e) => setNewTodoText(e.target.value)}
-                placeholder="新しいTODOを追加"
-                className="flex-1 p-2 border rounded-md focus:border-blue-500 focus:outline-none"
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleAddTodo()
+              <div className="flex-1 flex">
+                <input
+                  type="text"
+                  value={newTodoText}
+                  onChange={(e) => setNewTodoText(e.target.value)}
+                  placeholder="新しいTODOを追加"
+                  className="flex-1 p-2 border rounded-l-md focus:border-blue-500 focus:outline-none"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleAddTodo()
+                    }
+                  }}
+                />
+                <button
+                  onClick={handleAddTodo}
+                  className="p-2 text-white bg-blue-500 hover:bg-blue-600 rounded-r-md"
+                >
+                  <IoAdd className="w-5 h-5" />
+                </button>
+              </div>
+              <button
+                onClick={async () => {
+                  try {
+                    setIsSuggestingTodos(true);
+                    const suggestions = await suggestTodos(
+                      selectedTask.title,
+                      selectedTask.description,
+                      selectedTask.todos.map(todo => todo.text)
+                    );
+                    setSuggestedTodos(suggestions);
+                  } catch (error) {
+                    console.error('Error getting todo suggestions:', error);
+                    setErrorMessage(error instanceof Error ? error.message : 'TODOの提案中にエラーが発生しました。');
+                  } finally {
+                    setIsSuggestingTodos(false);
                   }
                 }}
-              />
-              <button
-                onClick={handleAddTodo}
-                className="ml-2 p-2 text-blue-500 hover:text-blue-600"
+                disabled={isSuggestingTodos}
+                className={`ml-2 p-2 rounded-md flex items-center gap-1 ${
+                  isSuggestingTodos
+                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    : 'bg-yellow-500 text-white hover:bg-yellow-600'
+                }`}
+                title="AIにTODOを提案してもらう"
               >
-                <IoAdd className="w-5 h-5" />
+                <IoBulb className="w-5 h-5" />
+                <span className="hidden sm:inline">AI提案</span>
               </button>
             </div>
+
+            {/* AI提案中のローディング表示 */}
+            {isSuggestingTodos && (
+              <div className="mt-4 p-4 bg-yellow-50 rounded-lg flex items-center justify-center">
+                <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-yellow-500 mr-3"></div>
+                <p className="text-yellow-700">AIがTODOを提案中...</p>
+              </div>
+            )}
+
+            {/* AI提案のTODOリスト */}
+            {suggestedTodos.length > 0 && (
+              <div className="mt-4 p-4 bg-yellow-50 rounded-lg">
+                <h4 className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                  <IoBulb className="w-4 h-4 text-yellow-600" />
+                  AIからのTODO提案
+                </h4>
+                <div className="space-y-2">
+                  {suggestedTodos.map((suggestion, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between bg-white p-2 rounded border border-yellow-200"
+                    >
+                      <div className="flex-1">
+                        <div className="text-sm text-gray-800">{suggestion.text}</div>
+                        <div className="text-xs text-gray-500">
+                          見積もり工数: {suggestion.estimatedHours}時間
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (!editedTask) return;
+                          
+                          const today = new Date();
+                          const formattedDate = today.toISOString().split('T')[0]; // YYYY-MM-DD形式
+                          
+                          const newTodo: Todo = {
+                            id: `todo-${Date.now()}`,
+                            text: suggestion.text,
+                            completed: false,
+                            startDate: formattedDate,
+                            endDate: formattedDate,
+                            dueDate: new Date(),
+                            estimatedHours: suggestion.estimatedHours,
+                            assigneeIds: []
+                          };
+                          
+                          const updatedTodos = [...editedTask.todos, newTodo];
+                          
+                          // タスク全体のアサイン情報を更新
+                          const updatedAssigneeIds = updateTaskAssignees(updatedTodos, editedTask);
+                          
+                          const updatedTask = {
+                            ...editedTask,
+                            todos: updatedTodos,
+                            assigneeIds: updatedAssigneeIds
+                          };
+                          
+                          setEditedTask(updatedTask);
+                          onTaskUpdate?.(updatedTask);
+                          
+                          // 追加したTODOを提案リストから削除
+                          setSuggestedTodos(prev => prev.filter((_, i) => i !== index));
+                        }}
+                        className="ml-2 px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                        title="このTODOを採用"
+                      >
+                        採用
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {errorMessage && (
               <div className="mt-4 p-4 bg-red-50 rounded-lg">

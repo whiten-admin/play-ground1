@@ -16,7 +16,7 @@ export default function WBSPage() {
   const { isAuthenticated, user, login, logout } = useAuth()
   const [activeTab, setActiveTab] = useState('wbs')
   const [selectedTaskId, setSelectedTaskId] = useState<string>('')
-  const { setTasks } = useTaskContext()
+  const { setTasks, addTask } = useTaskContext()
   const [project, setProject] = useState<Project>({
     id: '1',
     title: 'プロジェクトA',
@@ -34,8 +34,14 @@ export default function WBSPage() {
   }
 
   // タスク作成処理
-  const handleTaskCreate = (taskData: any) => {
-    console.log('Task created', taskData)
+  const handleTaskCreate = (newTask: Task) => {
+    console.log('Task created', newTask)
+    // プロジェクトIDを設定
+    if (!newTask.projectId && project) {
+      newTask.projectId = project.id;
+    }
+    // TaskContextのaddTask関数を使用してタスクを追加
+    addTask(newTask);
   }
 
   // タスク更新処理
