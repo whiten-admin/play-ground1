@@ -78,7 +78,9 @@ export default function Home() {
     );
   };
 
-  const handleTodoUpdate = (todoId: string, taskId: string, newDate: Date) => {
+  const handleTodoUpdate = (todoId: string, taskId: string, newDate: Date, isPlannedDate?: boolean) => {
+    console.log('Home: handleTodoUpdate called with:', { todoId, taskId, newDate, isPlannedDate });
+    
     setTasks((prevTasks) => {
       const updatedTasks = prevTasks.map((task) => {
         if (task.id === taskId) {
@@ -87,17 +89,26 @@ export default function Home() {
             todos: task.todos.map((todo) => {
               if (todo.id === todoId) {
                 // 既存のTODOの日付と時間を更新
-                const updatedDueDate = new Date(newDate);
+                const updatedDate = new Date(newDate);
                 // 時間を保持
-                updatedDueDate.setHours(newDate.getHours());
-                updatedDueDate.setMinutes(0);
-                updatedDueDate.setSeconds(0);
-                updatedDueDate.setMilliseconds(0);
+                updatedDate.setHours(newDate.getHours());
+                updatedDate.setMinutes(0);
+                updatedDate.setSeconds(0);
+                updatedDate.setMilliseconds(0);
 
-                return {
-                  ...todo,
-                  dueDate: updatedDueDate,
-                };
+                if (isPlannedDate) {
+                  // 着手予定日を更新
+                  return {
+                    ...todo,
+                    plannedStartDate: updatedDate
+                  };
+                } else {
+                  // 期日を更新
+                  return {
+                    ...todo,
+                    dueDate: updatedDate
+                  };
+                }
               }
               return todo;
             }),
@@ -105,6 +116,8 @@ export default function Home() {
         }
         return task;
       });
+      
+      console.log('Home: tasks after update:', updatedTasks);
       return updatedTasks;
     });
   };
@@ -175,6 +188,7 @@ export default function Home() {
                       onTaskSelect={handleTaskSelect}
                       onTodoUpdate={handleTodoUpdate}
                       selectedTodoId={selectedTodoId}
+                      onTaskUpdate={handleTaskUpdate}
                     />
                   </div>
                 </div>
