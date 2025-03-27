@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { format } from 'date-fns'
+import { ja } from 'date-fns/locale'
 import { Task } from '@/types/task'
 import { BUSINESS_HOURS } from '@/utils/constants'
 import { useFilterContext } from '@/contexts/FilterContext'
@@ -13,6 +14,17 @@ interface WeeklyScheduleDndProps {
   onTaskSelect: (taskId: string, todoId?: string) => void
   onTodoUpdate?: (todoId: string, taskId: string, newDate: Date, isPlannedDate?: boolean) => void
   selectedTodoId?: string | null
+  onCalendarClick: (e: React.MouseEvent<HTMLDivElement>, day: Date, hour: number) => void
+  isCreatingTodo: boolean
+  newTodoDate: Date | null
+  newTodoTaskId: string | null
+  newTodoText: string
+  newTodoEstimatedHours: number
+  onNewTodoTaskIdChange: (taskId: string) => void
+  onNewTodoTextChange: (text: string) => void
+  onNewTodoEstimatedHoursChange: (hours: number) => void
+  onCancelCreateTodo: () => void
+  onCreateTodo: (taskId: string) => void
 }
 
 interface TodoWithMeta {
@@ -39,6 +51,17 @@ export default function WeeklyScheduleDnd({
   onTaskSelect,
   onTodoUpdate,
   selectedTodoId,
+  onCalendarClick,
+  isCreatingTodo,
+  newTodoDate,
+  newTodoTaskId,
+  newTodoText,
+  newTodoEstimatedHours,
+  onNewTodoTaskIdChange,
+  onNewTodoTextChange,
+  onNewTodoEstimatedHoursChange,
+  onCancelCreateTodo,
+  onCreateTodo
 }: WeeklyScheduleDndProps) {
   const [mounted, setMounted] = useState(false)
   const [todos, setTodos] = useState<Map<string, TodoWithMeta[]>>(new Map())
@@ -438,6 +461,7 @@ export default function WeeklyScheduleDnd({
                 className={`h-12 border-t border-l relative ${
                   hour === BUSINESS_HOURS.BREAK_START ? 'bg-gray-200' : ''
                 }`}
+                onClick={(e) => onCalendarClick(e, day, hour)}
               >
                 {hour === BUSINESS_HOURS.BREAK_START && (
                   <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-500 font-medium z-10">
@@ -505,6 +529,83 @@ export default function WeeklyScheduleDnd({
           })}
         </div>
       ))}
+
+      {/* TODO作成モーダル */}
+      {isCreatingTodo && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold mb-4">新しいTODOを作成</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  日付
+                </label>
+                <div className="text-sm text-gray-600">
+                  {newTodoDate ? format(newTodoDate, 'yyyy年M月d日 (E) HH:mm', { locale: ja }) : ''}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  タスク
+                </label>
+                <select
+                  value={newTodoTaskId || ''}
+                  onChange={(e) => onNewTodoTaskIdChange(e.target.value)}
+                  className="w-full p-2 border rounded-md"
+                >
+                  <option value="">タスクを選択</option>
+                  {tasks.map((task) => (
+                    <option key={task.id} value={task.id}>
+                      {task.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  TODO名
+                </label>
+                <input
+                  type="text"
+                  value={newTodoText}
+                  onChange={(e) => onNewTodoTextChange(e.target.value)}
+                  className="w-full p-2 border rounded-md"
+                  placeholder="TODOの名前を入力"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  見積もり工数（時間）
+                </label>
+                <input
+                  type="number"
+                  min="0.1"
+                  step="0.1"
+                  value={newTodoEstimatedHours}
+                  onChange={(e) => onNewTodoEstimatedHoursChange(Number(e.target.value))}
+                  className="w-full p-2 border rounded-md"
+                  placeholder="見積もり工数を入力"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                onClick={onCancelCreateTodo}
+                className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={() => newTodoTaskId && onCreateTodo(newTodoTaskId)}
+                disabled={!newTodoTaskId || !newTodoText.trim()}
+                className="px-4 py-2 text-sm text-white bg-blue-500 rounded-md hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                作成
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 } 
