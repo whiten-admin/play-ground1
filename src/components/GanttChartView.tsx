@@ -7,6 +7,7 @@ import { IoAdd, IoBulb, IoTrash } from 'react-icons/io5';
 import { Task, Todo } from '@/types/task';
 import { suggestTodos } from '@/utils/openai';
 import ScheduleTodosButton from './ScheduleTodosButton';
+import { format } from 'date-fns';
 
 interface GanttChartViewProps {
   onTaskCreate?: (newTask: Task) => void;
@@ -32,8 +33,7 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
     description: '',
     todos: [],
     priority: 0,
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0] // デフォルトで1週間後
+    dueDate: new Date()
   });
   const [newTaskTodos, setNewTaskTodos] = useState<Todo[]>([]);
   const [newTaskTodoText, setNewTaskTodoText] = useState('');
@@ -55,10 +55,10 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
   // タスクを開始日でソートする関数
   const sortTasksByStartDate = (tasksToSort: Task[]): Task[] => {
     return [...tasksToSort].sort((a, b) => {
-      // 開始日でソート（開始日が早い順）
-      const aStartDate = new Date(a.startDate).getTime();
-      const bStartDate = new Date(b.startDate).getTime();
-      return aStartDate - bStartDate;
+      // 期日でソート（期日が早い順）
+      const aDueDate = a.dueDate.getTime();
+      const bDueDate = b.dueDate.getTime();
+      return aDueDate - bDueDate;
     });
   };
 
@@ -149,8 +149,7 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
   const handleCreateTask = () => {
     if (!newTask.title) return;
 
-    const startDate = newTask.startDate || new Date().toISOString().split('T')[0];
-    const endDate = newTask.endDate || new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0];
+    const dueDate = newTask.dueDate || new Date();
     
     // プロジェクトIDを取得（propsのprojectIdまたはcurrentProjectから）
     const taskProjectId = projectId || (currentProject?.id || '');
@@ -159,10 +158,11 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
       id: `task-${Date.now()}`,
       title: newTask.title,
       description: newTask.description || '',
-      todos: newTaskTodos.length > 0 ? newTaskTodos : getDefaultTodos(startDate, endDate),
-      startDate: startDate,
-      endDate: endDate,
+      todos: newTaskTodos.length > 0 ? newTaskTodos : getDefaultTodos(dueDate),
+      dueDate: dueDate,
+      completedDateTime: undefined,
       priority: newTask.priority || 0,
+      assigneeIds: [],
       projectId: taskProjectId
     };
 
@@ -179,8 +179,7 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
       description: '',
       todos: [],
       priority: 0,
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0]
+      dueDate: new Date()
     });
     setNewTaskTodos([]);
     setNewTaskTodoText('');
@@ -188,25 +187,31 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
   };
 
   // デフォルトのTODOを生成
-  const getDefaultTodos = (startDate: string, endDate: string): Todo[] => {
+  const getDefaultTodos = (dueDate: Date): Todo[] => {
+    const today = new Date();
+    
     return [
       {
         id: `todo-${Date.now()}-1`,
         text: '開始',
         completed: false,
-        startDate: startDate,
-        endDate: startDate,
-        dueDate: new Date(startDate),
-        estimatedHours: 1
+        startDate: today,
+        calendarStartDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0),
+        calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 0, 0),
+        estimatedHours: 1,
+        actualHours: 0,
+        assigneeIds: []
       },
       {
         id: `todo-${Date.now()}-2`,
         text: '完了',
         completed: false,
-        startDate: endDate,
-        endDate: endDate,
-        dueDate: new Date(endDate),
-        estimatedHours: 1
+        startDate: dueDate,
+        calendarStartDateTime: new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate(), 15, 0, 0),
+        calendarEndDateTime: new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate(), 17, 0, 0),
+        estimatedHours: 1,
+        actualHours: 0,
+        assigneeIds: []
       }
     ];
   };
@@ -216,16 +221,17 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
     if (!newTaskTodoText.trim()) return;
 
     const today = new Date();
-    const formattedDate = today.toISOString().split('T')[0]; // YYYY-MM-DD形式
     
     const newTodo: Todo = {
       id: `todo-${Date.now()}`,
       text: newTaskTodoText.trim(),
       completed: false,
-      startDate: formattedDate,
-      endDate: formattedDate,
-      dueDate: new Date(),
-      estimatedHours: 1 // デフォルトの見積もり工数を1時間に設定
+      startDate: today,
+      calendarStartDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0),
+      calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 17, 0, 0),
+      estimatedHours: 1, // デフォルトの見積もり工数を1時間に設定
+      actualHours: 0,
+      assigneeIds: []
     };
 
     setNewTaskTodos([...newTaskTodos, newTodo]);
@@ -260,16 +266,17 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
   // 提案されたTODOを新規タスクに追加
   const handleAddSuggestedNewTaskTodo = (suggestion: { text: string; estimatedHours: number }) => {
     const today = new Date();
-    const formattedDate = today.toISOString().split('T')[0]; // YYYY-MM-DD形式
     
     const newTodo: Todo = {
       id: `todo-${Date.now()}`,
       text: suggestion.text,
       completed: false,
-      startDate: formattedDate,
-      endDate: formattedDate,
-      dueDate: new Date(),
-      estimatedHours: suggestion.estimatedHours
+      startDate: today,
+      calendarStartDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0),
+      calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 17, 0, 0),
+      estimatedHours: suggestion.estimatedHours,
+      actualHours: 0,
+      assigneeIds: []
     };
 
     setNewTaskTodos([...newTaskTodos, newTodo]);
@@ -312,17 +319,8 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
                 <label className="block text-sm font-medium text-gray-700 mb-1">開始日</label>
                 <input
                   type="date"
-                  value={newTask.startDate}
-                  onChange={(e) => setNewTask({...newTask, startDate: e.target.value})}
-                  className="w-full p-2 border rounded-md"
-                />
-              </div>
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">終了日</label>
-                <input
-                  type="date"
-                  value={newTask.endDate}
-                  onChange={(e) => setNewTask({...newTask, endDate: e.target.value})}
+                  value={newTask.dueDate ? format(newTask.dueDate, 'yyyy-MM-dd') : ''}
+                  onChange={(e) => setNewTask({...newTask, dueDate: new Date(e.target.value)})}
                   className="w-full p-2 border rounded-md"
                 />
               </div>
@@ -692,60 +690,59 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
   );
 }
 
-// タスクバーコンポーネント
+// TaskBarコンポーネント
 const TaskBar = ({ task, calendarRange }: { task: Task; calendarRange: { totalDays: number; startDate: Date } }) => {
-  const startDate = new Date(Math.min(...task.todos.map(todo => new Date(todo.startDate).getTime())));
-  const endDate = new Date(Math.max(...task.todos.map(todo => new Date(todo.endDate).getTime())));
+  // タスクの開始日と終了日は含まれるTODOの最初の着手日と最後の着手日に基づいて計算
+  const startDates = task.todos.map(todo => todo.startDate.getTime());
+  const earliestStartDate = new Date(Math.min(...startDates));
+
+  // 期日をタスクの終了日として使用
+  const taskEndDate = task.dueDate;
   
-  const taskStartPos = getDatePosition(startDate, calendarRange.startDate);
-  const taskEndPos = getDatePosition(endDate, calendarRange.startDate);
-  const taskWidth = (taskEndPos - taskStartPos + 1) * (100 / calendarRange.totalDays);
+  const startPos = getDatePosition(earliestStartDate, calendarRange.startDate);
+  const endPos = getDatePosition(taskEndDate, calendarRange.startDate);
   
-  const progress = task.todos.length > 0
-    ? (task.todos.filter(todo => todo.completed).length / task.todos.length) * 100
-    : 0;
+  // 進捗状況を計算
+  const completedTodos = task.todos.filter(todo => todo.completed).length;
+  const totalTodos = task.todos.length;
+  const progress = totalTodos > 0 ? (completedTodos / totalTodos) * 100 : 0;
 
   return (
     <div
-      className="absolute h-4 bg-gray-300 rounded top-2"
+      className="absolute h-8 bg-gray-200 rounded flex flex-col justify-center overflow-hidden"
       style={{
-        left: `${(taskStartPos - 1) * (100 / calendarRange.totalDays)}%`,
-        width: `${taskWidth}%`,
+        left: `${(startPos - 1) * (100 / calendarRange.totalDays)}%`,
+        width: `${((endPos - startPos) + 1) * (100 / calendarRange.totalDays)}%`,
         zIndex: 0
       }}
     >
-      <div
-        className="h-full bg-green-500 rounded"
-        style={{ width: `${progress}%` }}
-      />
+      <div className="h-full bg-blue-500 absolute left-0 top-0" style={{ width: `${progress}%` }} />
+      <div className="px-1 z-10 text-xs font-semibold truncate">{task.title}</div>
     </div>
   );
 };
 
 // TODOバーコンポーネント
 const TodoBar = ({ todo, calendarRange }: { todo: Todo; calendarRange: { totalDays: number; startDate: Date } }) => {
-  const startDate = new Date(todo.startDate);
-  const endDate = new Date(todo.endDate);
+  const startPosition = getDatePosition(todo.calendarStartDateTime, calendarRange.startDate);
+  const endPosition = getDatePosition(todo.calendarEndDateTime, calendarRange.startDate);
+  const duration = endPosition - startPosition + 1;
   
-  const startPos = getDatePosition(startDate, calendarRange.startDate);
-  const endPos = getDatePosition(endDate, calendarRange.startDate);
-  const width = (endPos - startPos + 1) * (100 / calendarRange.totalDays);
-
   return (
     <div
-      className="absolute h-4 bg-blue-100 rounded top-2"
+      className={`absolute h-6 rounded-md transition-all ${
+        todo.completed ? 'bg-green-200 border border-green-300' : 'bg-blue-200 border border-blue-300'
+      }`}
       style={{
-        left: `${(startPos - 1) * (100 / calendarRange.totalDays)}%`,
-        width: `${width}%`,
-        zIndex: 0
+        left: `${(startPosition / calendarRange.totalDays) * 100}%`,
+        width: `${(duration / calendarRange.totalDays) * 100}%`,
+        top: '0.5rem'
       }}
+      title={`${todo.text} (${format(todo.calendarStartDateTime, 'yyyy/MM/dd HH:mm')} - ${format(todo.calendarEndDateTime, 'yyyy/MM/dd HH:mm')})`}
     >
-      <div
-        className="h-full bg-blue-500 rounded"
-        style={{
-          width: `${todo.completed ? 100 : 0}%`,
-        }}
-      />
+      <div className="px-2 whitespace-nowrap text-xs font-medium text-gray-700 overflow-visible">
+        {todo.text}
+      </div>
     </div>
   );
 }; 
