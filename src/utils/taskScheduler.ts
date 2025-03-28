@@ -2,17 +2,27 @@ import { Task, Todo } from '@/types/task';
 import { format, startOfDay, addDays, addHours, setHours, isWeekend } from 'date-fns';
 import { BUSINESS_HOURS } from './constants';
 import { saveSeedDataToLocalStorage } from './seedDataUtils';
+import { parseDate, calculateCalendarDateTime } from '@/utils/dateUtils';
 
 const MAX_DAILY_HOURS = 8; // 1日の最大工数
 
 /**
- * 期日でTODOをソートする
+ * 開始日でTODOをソートする
  */
-const sortTodosByDueDate = (todos: Todo[]): Todo[] => {
+const sortTodosByStartDate = (todos: Todo[]): Todo[] => {
   return [...todos].sort((a, b) => {
-    const aDate = a.dueDate instanceof Date ? a.dueDate : new Date(a.dueDate);
-    const bDate = b.dueDate instanceof Date ? b.dueDate : new Date(b.dueDate);
-    return aDate.getTime() - bDate.getTime();
+    return a.startDate.getTime() - b.startDate.getTime();
+  });
+};
+
+/**
+ * タスクの期日でTODOをソートする
+ */
+const sortTodosByTaskDueDate = (todos: { todo: Todo; taskIndex: number }[], tasks: Task[]): { todo: Todo; taskIndex: number }[] => {
+  return [...todos].sort((a, b) => {
+    const aTask = tasks[a.taskIndex];
+    const bTask = tasks[b.taskIndex];
+    return aTask.dueDate.getTime() - bTask.dueDate.getTime();
   });
 };
 
@@ -37,7 +47,7 @@ const getAppropriateHour = (date: Date, hour: number): number => {
 };
 
 /**
- * 期日に基づいてTODOをスケジュールし、plannedStartDateを設定する
+ * 期日に基づいてTODOをスケジュールし、カレンダー表示用日時を設定する
  * @param tasks タスクのリスト
  * @returns 更新されたタスクのリスト
  */
@@ -50,12 +60,26 @@ export const scheduleTodosByDueDate = (tasks: Task[]): Task[] => {
   
   // JSONによる変換でDateオブジェクトが文字列になるので、再度Dateオブジェクトに変換
   updatedTasks.forEach(task => {
+    // タスクの日付を変換
+    task.dueDate = new Date(task.dueDate);
+    if (task.completedDateTime) {
+      task.completedDateTime = new Date(task.completedDateTime);
+    }
+    
+    // TODOの日付を変換
     task.todos.forEach(todo => {
-      // dueDateをDateオブジェクトに変換
-      todo.dueDate = new Date(todo.dueDate);
-      // plannedStartDateが存在する場合はDateオブジェクトに変換
-      if (todo.plannedStartDate) {
-        todo.plannedStartDate = new Date(todo.plannedStartDate);
+      todo.startDate = new Date(todo.startDate);
+      
+      if (todo.calendarStartDateTime) {
+        todo.calendarStartDateTime = new Date(todo.calendarStartDateTime);
+      }
+      
+      if (todo.calendarEndDateTime) {
+        todo.calendarEndDateTime = new Date(todo.calendarEndDateTime);
+      }
+      
+      if (todo.completedDateTime) {
+        todo.completedDateTime = new Date(todo.completedDateTime);
       }
     });
   });
@@ -64,51 +88,45 @@ export const scheduleTodosByDueDate = (tasks: Task[]): Task[] => {
   const allTodos: { todo: Todo; taskIndex: number }[] = [];
   
   updatedTasks.forEach((task, taskIndex) => {
-    const sortedTodos = sortTodosByDueDate(task.todos);
+    const sortedTodos = sortTodosByStartDate(task.todos);
     sortedTodos.forEach(todo => {
-      allTodos.push({ todo, taskIndex });
+      // 完了済みのTODOはスケジューリング対象外
+      if (!todo.completed) {
+        allTodos.push({ todo, taskIndex });
+      }
     });
   });
   
-  // 日付順、同じ日付内では優先度順にソート
-  allTodos.sort((a, b) => {
-    const aDate = a.todo.dueDate instanceof Date ? a.todo.dueDate : new Date(a.todo.dueDate);
-    const bDate = b.todo.dueDate instanceof Date ? b.todo.dueDate : new Date(b.todo.dueDate);
-    
-    // 日付が異なる場合は日付順
-    if (aDate.getTime() !== bDate.getTime()) {
-      return aDate.getTime() - bDate.getTime();
-    }
-    
-    // 日付が同じ場合は親タスクの優先度順
+  // タスクの期日順、同じ期日内では優先度順にソート
+  const sortedTodos = sortTodosByTaskDueDate(allTodos, updatedTasks);
+  sortedTodos.sort((a, b) => {
     const aTask = updatedTasks[a.taskIndex];
     const bTask = updatedTasks[b.taskIndex];
+    
+    // 期日が異なる場合は期日順
+    if (aTask.dueDate.getTime() !== bTask.dueDate.getTime()) {
+      return aTask.dueDate.getTime() - bTask.dueDate.getTime();
+    }
+    
+    // 期日が同じ場合は優先度順
     return (bTask.priority || 0) - (aTask.priority || 0);
   });
   
+  // 日付文字列の形式を統一
+  const getDateKey = (date: Date) => format(date, 'yyyy-MM-dd');
+  
   // 各TODOをスケジュール
-  allTodos.forEach(({ todo, taskIndex }) => {
-    let startDate: Date;
-    
-    // 開始日を決定
-    if (todo.plannedStartDate) {
-      startDate = todo.plannedStartDate;
-    } else if (todo.startDate) {
-      startDate = new Date(todo.startDate);
-    } else {
-      startDate = new Date(todo.dueDate);
-    }
+  sortedTodos.forEach(({ todo, taskIndex }) => {
+    // 開始日を決定（すでにstartDateが設定されている）
+    let currentDate = startOfDay(todo.startDate);
     
     // 過去日の場合は今日からスケジュール
-    if (startDate < startOfDay(new Date())) {
-      startDate = startOfDay(new Date());
+    if (currentDate < startOfDay(new Date())) {
+      currentDate = startOfDay(new Date());
+      todo.startDate = new Date(currentDate);
     }
     
-    let currentDate = startOfDay(startDate);
     let remainingHours = todo.estimatedHours;
-    
-    // 日付文字列の形式を統一
-    const getDateKey = (date: Date) => format(date, 'yyyy-MM-dd');
     
     // 残りの工数がなくなるまでスケジュール
     while (remainingHours > 0) {
@@ -137,20 +155,34 @@ export const scheduleTodosByDueDate = (tasks: Task[]): Task[] => {
             // 休憩前に割り当て
             const originalTodo = updatedTasks[taskIndex].todos.find(t => t.id === todo.id);
             if (originalTodo) {
-              originalTodo.plannedStartDate = setHours(currentDate, startHour);
+              // カレンダー表示用の日時を設定
+              const calStartDateTime = new Date(currentDate);
+              calStartDateTime.setHours(startHour, 0, 0, 0);
+              
+              const calEndDateTime = new Date(calStartDateTime);
+              calEndDateTime.setHours(calStartDateTime.getHours() + beforeBreakHours, 0, 0, 0);
+              
+              originalTodo.calendarStartDateTime = calStartDateTime;
+              originalTodo.calendarEndDateTime = calEndDateTime;
               originalTodo.estimatedHours = beforeBreakHours;
               
               // 休憩後に残りを割り当て（新しいTODOとして）
               const afterBreakHours = allocatedHours - beforeBreakHours;
               if (afterBreakHours > 0) {
+                // 新しいTODOを作成
+                const afterBreakStartDateTime = new Date(currentDate);
+                afterBreakStartDateTime.setHours(BUSINESS_HOURS.BREAK_END, 0, 0, 0);
+                
+                const afterBreakEndDateTime = new Date(afterBreakStartDateTime);
+                afterBreakEndDateTime.setHours(afterBreakStartDateTime.getHours() + afterBreakHours, 0, 0, 0);
+                
                 const newTodo: Todo = {
-                  ...originalTodo,
+                  ...JSON.parse(JSON.stringify(originalTodo)), // ディープコピー
                   id: `${originalTodo.id}-after-break`,
-                  plannedStartDate: setHours(currentDate, BUSINESS_HOURS.BREAK_END),
+                  calendarStartDateTime: afterBreakStartDateTime,
+                  calendarEndDateTime: afterBreakEndDateTime,
                   estimatedHours: afterBreakHours,
-                  dueDate: new Date(originalTodo.dueDate),
-                  startDate: format(currentDate, 'yyyy-MM-dd'),
-                  endDate: format(currentDate, 'yyyy-MM-dd')
+                  startDate: new Date(currentDate),
                 };
                 updatedTasks[taskIndex].todos.push(newTodo);
               }
@@ -162,10 +194,18 @@ export const scheduleTodosByDueDate = (tasks: Task[]): Task[] => {
             startHour = BUSINESS_HOURS.BREAK_END;
           }
           
-          // TODOのplannedStartDateを設定
+          // TODOのカレンダー表示用日時を設定
           const originalTodo = updatedTasks[taskIndex].todos.find(t => t.id === todo.id);
           if (originalTodo) {
-            originalTodo.plannedStartDate = setHours(currentDate, startHour);
+            // カレンダー表示用の日時を設定
+            const calStartDateTime = new Date(currentDate);
+            calStartDateTime.setHours(startHour, 0, 0, 0);
+            
+            const calEndDateTime = new Date(calStartDateTime);
+            calEndDateTime.setHours(calStartDateTime.getHours() + allocatedHours, 0, 0, 0);
+            
+            originalTodo.calendarStartDateTime = calStartDateTime;
+            originalTodo.calendarEndDateTime = calEndDateTime;
           } else {
             console.warn(`TODOが見つかりません: ID=${todo.id}`);
           }

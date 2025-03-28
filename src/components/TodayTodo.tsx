@@ -45,7 +45,6 @@ export default function TodayTodo({
       ...todo,
       taskId: task.id,
       taskTitle: task.title,
-      isNew: task.isNew,
       priority: task.priority,
       assigneeIds: todo.assigneeIds || task.assigneeIds,
     }))
@@ -67,13 +66,9 @@ export default function TodayTodo({
   });
 
   // TODOの開始予定日を取得する関数
-  const getPlannedStartDate = (todo: Todo & { taskId: string; taskTitle: string; isNew?: boolean }) => {
-    if (todo.plannedStartDate) {
-      return typeof todo.plannedStartDate === 'string' 
-        ? parseISO(todo.plannedStartDate) 
-        : todo.plannedStartDate;
-    }
-    return parseISO(todo.startDate);
+  const getPlannedStartDate = (todo: Todo & { taskId: string; taskTitle: string }) => {
+    // 新しい型定義ではstartDateがDate型なので、そのまま返す
+    return todo.startDate;
   };
 
   // 今日が開始日のTODO

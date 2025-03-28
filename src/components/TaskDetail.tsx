@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { IoAdd, IoTrash, IoPencil, IoSave, IoClose, IoBulb, IoList, IoGrid, IoBarChart, IoCaretDown, IoCaretUp, IoFilter, IoCheckbox } from 'react-icons/io5'
 import { Task, Todo } from '@/types/task'
-import { format } from 'date-fns'
+import { format, startOfDay, isBefore, isToday } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { suggestTodos } from '@/utils/openai'
 import KanbanView from './KanbanView'
@@ -15,6 +15,7 @@ import { User } from '@/types/user'
 import { useFilterContext } from '@/contexts/FilterContext'
 import { useProjectContext } from '@/contexts/ProjectContext'
 import TaskCreationForm from './TaskCreationForm'
+import { FaClock } from 'react-icons/fa'
 
 type ViewMode = 'list' | 'kanban' | 'gantt'
 
@@ -61,6 +62,19 @@ interface SortState {
   order: SortOrder
 }
 
+// 期日の状態に応じたスタイルを返す関数
+const getDueDateStyle = (date: Date | number) => {
+  const today = startOfDay(new Date());
+  const dateObj = date instanceof Date ? date : new Date(date);
+  if (isBefore(dateObj, today)) {
+    return 'text-red-500'; // 期日超過
+  }
+  if (isToday(dateObj)) {
+    return 'text-orange-500'; // 今日が期日
+  }
+  return 'text-blue-500'; // 期日が近い
+};
+
 export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate, tasks, onTaskSelect, onTaskCreate }: TaskDetailProps) {
   const [editState, setEditState] = useState<EditState>({
     title: false,
@@ -88,8 +102,7 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
     description: '',
     todos: [],
     priority: 0,
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0]
+    dueDate: new Date()
   })
   const [newTaskTodos, setNewTaskTodos] = useState<Todo[]>([])
   const [newTaskTodoText, setNewTaskTodoText] = useState('')
@@ -220,16 +233,16 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
     if (!newTodoText || !editedTask) return
 
     const today = new Date()
-    const formattedDate = today.toISOString().split('T')[0] // YYYY-MM-DD形式
     
     const newTodo: Todo = {
       id: `todo-${Date.now()}`,
       text: newTodoText,
       completed: false,
-      startDate: formattedDate,
-      endDate: formattedDate,
-      dueDate: new Date(),
-      estimatedHours: 0,
+      startDate: today,
+      calendarStartDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0),
+      calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 0, 0),
+      estimatedHours: 1,
+      actualHours: 0,
       assigneeIds: []
     }
     
@@ -325,8 +338,8 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
 
       // 通常の並び替え
       if (sortState.field === 'dueDate') {
-        const aDate = Math.min(...a.todos.map(todo => todo.dueDate.getTime()));
-        const bDate = Math.min(...b.todos.map(todo => todo.dueDate.getTime()));
+        const aDate = Math.min(...a.todos.map(todo => todo.startDate.getTime()));
+        const bDate = Math.min(...b.todos.map(todo => todo.startDate.getTime()));
         return sortState.order === 'asc' ? aDate - bDate : bDate - aDate;
       } else {
         const aPriority = a.priority ?? 0;  // デフォルト値を0に設定
@@ -354,9 +367,10 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
       title: '', 
       description: '', 
       todos: newTaskTodos, 
-      startDate: '', 
-      endDate: '',
-      projectId: currentProject.id 
+      dueDate: new Date(),
+      projectId: currentProject.id,
+      priority: 0,
+      assigneeIds: []
     });
 
     const taskToCreate: Task = {
@@ -364,8 +378,8 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
       title: newTask.title,
       description: newTask.description || '',
       todos: newTaskTodos,
-      startDate: newTask.startDate || new Date().toISOString().split('T')[0],
-      endDate: newTask.endDate || new Date().toISOString().split('T')[0],
+      dueDate: newTask.dueDate || new Date(),
+      completedDateTime: undefined,
       priority: newTask.priority || 0,
       assigneeIds: assigneeIds,
       projectId: currentProject.id
@@ -378,8 +392,7 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
       description: '',
       todos: [],
       priority: 0,
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date().toISOString().split('T')[0]
+      dueDate: new Date()
     })
     setNewTaskTodos([])
     setNewTaskTodoText('')
@@ -391,16 +404,16 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
     if (!newTaskTodoText) return
     
     const today = new Date()
-    const formattedDate = today.toISOString().split('T')[0] // YYYY-MM-DD形式
     
     const newTodo: Todo = {
       id: `todo-${Date.now()}`,
       text: newTaskTodoText,
       completed: false,
-      startDate: formattedDate,
-      endDate: formattedDate,
-      dueDate: new Date(),
-      estimatedHours: 0,
+      startDate: today,
+      calendarStartDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0),
+      calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 0, 0),
+      estimatedHours: 1,
+      actualHours: 0,
       assigneeIds: []
     }
     
@@ -436,16 +449,16 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
   // 提案されたTODOを新規タスクに追加
   const handleAddSuggestedNewTaskTodo = (suggestion: { text: string; estimatedHours: number }) => {
     const today = new Date()
-    const formattedDate = today.toISOString().split('T')[0] // YYYY-MM-DD形式
     
     const newTodo: Todo = {
       id: `todo-${Date.now()}`,
       text: suggestion.text,
       completed: false,
-      startDate: formattedDate,
-      endDate: formattedDate,
-      dueDate: new Date(),
+      startDate: today,
+      calendarStartDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0),
+      calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 0, 0),
       estimatedHours: suggestion.estimatedHours,
+      actualHours: 0,
       assigneeIds: []
     }
 
@@ -588,12 +601,12 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
                   </div>
                   <p className="text-sm text-gray-600 mt-2 line-clamp-2">{task.description}</p>
                   <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
                       <span>期日:</span>
                       <span>
                         {task.todos.length > 0
                           ? format(
-                              new Date(Math.min(...task.todos.map(todo => todo.dueDate.getTime()))),
+                              new Date(Math.min(...task.todos.map(todo => todo.startDate.getTime()))),
                               'yyyy年M月d日',
                               { locale: ja }
                             )
@@ -816,7 +829,7 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
                         {todo.text}
                       </span>
                       <div className="text-xs text-gray-500 mt-1 space-y-1">
-                        <div>期日: {format(todo.dueDate, 'yyyy年M月d日', { locale: ja })}</div>
+                        <div>着手予定日: {format(todo.startDate, 'yyyy年M月d日', { locale: ja })}</div>
                         <div>見積もり工数: {todo.estimatedHours}時間</div>
                         <div className="flex items-center gap-1">
                           <span>担当:</span>
@@ -953,16 +966,16 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
                           if (!editedTask) return;
                           
                           const today = new Date();
-                          const formattedDate = today.toISOString().split('T')[0]; // YYYY-MM-DD形式
                           
                           const newTodo: Todo = {
                             id: `todo-${Date.now()}`,
                             text: suggestion.text,
                             completed: false,
-                            startDate: formattedDate,
-                            endDate: formattedDate,
-                            dueDate: new Date(),
+                            startDate: today,
+                            calendarStartDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0),
+                            calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 0, 0),
                             estimatedHours: suggestion.estimatedHours,
+                            actualHours: 0,
                             assigneeIds: []
                           };
                           
@@ -1001,6 +1014,25 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
                 </div>
               </div>
             )}
+          </div>
+
+          {/* タスクの期日表示 */}
+          <div className="mt-4">
+            <div className="flex items-center gap-2">
+              <FaClock className="text-gray-500" />
+              <span className="font-semibold text-gray-700">期日:</span>
+              {selectedTask.todos.length > 0 ? (
+                <span className={getDueDateStyle(Math.min(...selectedTask.todos.map(todo => todo.startDate.getTime())))}>
+                  {format(
+                    new Date(Math.min(...selectedTask.todos.map(todo => todo.startDate.getTime()))),
+                    'yyyy年M月d日',
+                    { locale: ja }
+                  )}
+                </span>
+              ) : (
+                <span className="text-gray-500">未設定</span>
+              )}
+            </div>
           </div>
         </div>
       ) : (

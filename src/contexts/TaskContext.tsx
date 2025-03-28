@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Task } from '@/types/task';
-import { seedTasks } from '@/utils/seedData';
+import { seedTasks } from '@/data/seedData';
 import { getTasksFromLocalStorage, saveSeedDataToLocalStorage, resetToSeedData, resetToScheduledSeedData } from '@/utils/seedDataUtils';
 import { useProjectContext } from './ProjectContext';
 
