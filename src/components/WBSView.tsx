@@ -52,8 +52,13 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
   const sortTasksByStartDate = (tasksToSort: Task[]): Task[] => {
     return [...tasksToSort].sort((a, b) => {
       // 期日でソート（期日が早い順）
-      const aDueDate = a.dueDate.getTime();
-      const bDueDate = b.dueDate.getTime();
+      // 文字列の場合はDateオブジェクトに変換
+      const aDueDate = a.dueDate instanceof Date 
+        ? a.dueDate.getTime() 
+        : new Date(a.dueDate as any).getTime();
+      const bDueDate = b.dueDate instanceof Date 
+        ? b.dueDate.getTime() 
+        : new Date(b.dueDate as any).getTime();
       return aDueDate - bDueDate;
     });
   };
