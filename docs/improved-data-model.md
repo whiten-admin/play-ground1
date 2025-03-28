@@ -9,7 +9,7 @@ erDiagram
     Project ||--o{ Task : "contains"
     Task ||--o{ Todo : "contains"
     User }o--o{ Task : "assigned to"
-    User }o--o{ Todo : "assigned to"
+    User }|--o{ Todo : "assigned to"
 
     Project {
         string id PK
@@ -34,9 +34,8 @@ erDiagram
         string id PK
         string title
         string description
-        DateTime startDateTime "開始日時"
-        DateTime endDateTime "終了日時"
-        number priority "0:低, 1:中, 2:高"
+        Date dueDate "期日"
+        DateTime completedDateTime "完了日時（任意）"
         string[] assigneeIds "User IDsの配列"
         string projectId FK "Project参照"
     }
@@ -45,13 +44,13 @@ erDiagram
         string id PK
         string text
         boolean completed
-        DateTime startDateTime "開始日時"
-        DateTime endDateTime "終了日時"
-        DateTime dueDateTime "期限日時"
+        Date startDate "着手予定日"
+        DateTime calendarStartDateTime "カレンダー表示用開始日時"
+        DateTime calendarEndDateTime "カレンダー表示用終了日時"
+        DateTime completedDateTime "完了日時（任意）"
         number estimatedHours
         number actualHours "デフォルト値: 0"
-        DateTime plannedStartDateTime "着手予定日時"
-        string[] assigneeIds "User IDsの配列"
+        string assigneeId "担当者ID（１人のみ）"
     }
 
     User {
@@ -63,21 +62,21 @@ erDiagram
 
 ## 主な改善点
 
-1. **型の統一**: 
-   - すべての日付関連フィールドを`DateTime`型に統一
-   - 名前も`startDate`→`startDateTime`のように明確化
+1. **日付プロパティの整理**: 
+   - タスクには`dueDate`（期日）と`completedDateTime`（完了日時）のみを残す
+   - TODOには`startDate`（着手予定日）、`calendarStartDateTime`/`calendarEndDateTime`（カレンダー表示用）、`completedDateTime`（完了日時）を定義
 
-2. **任意プロパティの整理**: 
-   - 真に任意なプロパティのみを任意（optional）に
-   - それ以外にはデフォルト値を設定（例：`actualHours`は0など）
+2. **型の統一**: 
+   - すべての日付関連フィールドをDateオブジェクトに統一
+   - 単なる日付のみを扱うものは`Date`型、時間情報も含むものは`DateTime`型として明示
 
-3. **アサイン関係の明確化**: 
-   - アサイン情報の同期ルールの明確化
-   - TODOのアサイン情報が変更されたら、タスクのアサイン情報に自動反映
+3. **不要プロパティの削除**: 
+   - タスクの`startDate`/`endDate`は削除（`dueDate`のみで十分）
+   - TODOの`dueDate`/`plannedStartDate`は整理して`startDate`に統一
 
-4. **日付・時間情報の明確化**:
-   - 日付だけなのか、時間情報も含むのかを名前で明確化
-   - `startDate` → `startDateTime`として時間情報も含むことを明示
+4. **プロパティ名の明確化**:
+   - 日時情報を含むプロパティ名には`DateTime`を含めて明示化
+   - 単純な日付のみを扱うプロパティには`Date`を使用
 
 ## 移行計画
 
@@ -87,9 +86,8 @@ interface Task {
   id: string;
   title: string;
   description: string;
-  startDateTime: Date;  // 文字列からDate型に変更
-  endDateTime: Date;    // 文字列からDate型に変更
-  priority: number;     // デフォルト値: 0
+  dueDate: Date;                // 期日
+  completedDateTime?: Date;     // 完了日時（任意）
   assigneeIds: string[];
   projectId: string;
   todos: Todo[];
@@ -99,20 +97,22 @@ interface Todo {
   id: string;
   text: string;
   completed: boolean;
-  startDateTime: Date;
-  endDateTime: Date;
-  dueDateTime: Date;
+  startDate: Date;              // 着手予定日
+  calendarStartDateTime: Date;  // カレンダー表示用開始日時
+  calendarEndDateTime: Date;    // カレンダー表示用終了日時
+  completedDateTime?: Date;     // 完了日時（任意）
   estimatedHours: number;
-  actualHours: number;  // デフォルト値: 0
-  plannedStartDateTime: Date;
-  assigneeIds: string[];
+  actualHours: number;          // デフォルト値: 0
+  assigneeId: string;           // 担当者ID（１人のみ）
 }
 ```
 
 2. **既存データの変換ユーティリティの作成**:
    - 既存の文字列形式の日付からDateオブジェクトへの変換
-   - 不足情報の補完（時間情報がない場合は00:00:00として扱うなど）
+   - カレンダー表示用の日時情報の計算（着手予定日 + 予定工数から算出）
+   - 完了状態の場合の完了日時の設定
 
 3. **フロントエンド側の表示ロジック修正**:
-   - 日付選択UI、表示フォーマットの統一
-   - 時間情報の編集も可能に 
+   - 日付表示UI、入力フォームの更新
+   - カレンダーやガントチャート表示の修正
+   - 新しい日付処理ロジックへの切り替え 
