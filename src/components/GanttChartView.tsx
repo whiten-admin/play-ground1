@@ -698,11 +698,22 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
 // TaskBarコンポーネント
 const TaskBar = ({ task, calendarRange }: { task: Task; calendarRange: { totalDays: number; startDate: Date } }) => {
   // タスクの開始日と終了日は含まれるTODOの最初の着手日と最後の着手日に基づいて計算
-  const startDates = task.todos.map(todo => todo.startDate.getTime());
-  const earliestStartDate = new Date(Math.min(...startDates));
+  const startDates = task.todos.map(todo => {
+    // startDateがDateオブジェクトかどうかをチェック
+    return todo.startDate instanceof Date 
+      ? todo.startDate.getTime() 
+      : new Date(todo.startDate as any).getTime();
+  });
+  const earliestStartDate = startDates.length > 0 
+    ? new Date(Math.min(...startDates)) 
+    : task.dueDate instanceof Date 
+      ? task.dueDate 
+      : new Date(task.dueDate as any);
 
   // 期日をタスクの終了日として使用
-  const taskEndDate = task.dueDate;
+  const taskEndDate = task.dueDate instanceof Date 
+    ? task.dueDate 
+    : new Date(task.dueDate as any);
   
   const startPos = getDatePosition(earliestStartDate, calendarRange.startDate);
   const endPos = getDatePosition(taskEndDate, calendarRange.startDate);
@@ -729,8 +740,17 @@ const TaskBar = ({ task, calendarRange }: { task: Task; calendarRange: { totalDa
 
 // TODOバーコンポーネント
 const TodoBar = ({ todo, calendarRange }: { todo: Todo; calendarRange: { totalDays: number; startDate: Date } }) => {
-  const startPosition = getDatePosition(todo.calendarStartDateTime, calendarRange.startDate);
-  const endPosition = getDatePosition(todo.calendarEndDateTime, calendarRange.startDate);
+  // calendarStartDateTimeとcalendarEndDateTimeがDateオブジェクトかどうかをチェック
+  const calendarStartDateTime = todo.calendarStartDateTime instanceof Date 
+    ? todo.calendarStartDateTime 
+    : new Date(todo.calendarStartDateTime as any);
+  
+  const calendarEndDateTime = todo.calendarEndDateTime instanceof Date 
+    ? todo.calendarEndDateTime 
+    : new Date(todo.calendarEndDateTime as any);
+  
+  const startPosition = getDatePosition(calendarStartDateTime, calendarRange.startDate);
+  const endPosition = getDatePosition(calendarEndDateTime, calendarRange.startDate);
   const duration = endPosition - startPosition + 1;
   
   return (
@@ -743,7 +763,7 @@ const TodoBar = ({ todo, calendarRange }: { todo: Todo; calendarRange: { totalDa
         width: `${(duration / calendarRange.totalDays) * 100}%`,
         top: '0.5rem'
       }}
-      title={`${todo.text} (${format(todo.calendarStartDateTime, 'yyyy/MM/dd HH:mm')} - ${format(todo.calendarEndDateTime, 'yyyy/MM/dd HH:mm')})`}
+      title={`${todo.text} (${format(calendarStartDateTime, 'yyyy/MM/dd HH:mm')} - ${format(calendarEndDateTime, 'yyyy/MM/dd HH:mm')})`}
     >
       <div className="px-2 whitespace-nowrap text-xs font-medium text-gray-700 overflow-visible">
         {todo.text}

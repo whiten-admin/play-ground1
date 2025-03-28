@@ -361,19 +361,19 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
     setScheduleChanges([]);
     
     // タスクを開始日でソート
-    updatedTasks.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+    updatedTasks.sort((a: Task, b: Task) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
     
     // 担当者ごとの工数を管理するマップ
     const userHoursMap = new Map();
     const MAX_DAILY_HOURS = 8; // 1日あたりの最大工数
     
     // 各タスクのTODOを最適化
-    updatedTasks.forEach(task => {
+    updatedTasks.forEach((task: Task) => {
       // タスクの期日から逆算して開始日を決定
       let currentDate = new Date(task.dueDate);
       currentDate.setDate(currentDate.getDate() - 7); // 仮に期日の1週間前から開始
       
-      task.todos.forEach(todo => {
+      task.todos.forEach((todo: Todo) => {
         const todoHours = todo.estimatedHours || 1;
         const oldStartDate = format(todo.startDate, 'yyyy-MM-dd');
         
@@ -384,7 +384,7 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
         
         // この日に追加できるかチェック
         let canAddToCurrentDate = true;
-        assignedUsers.forEach(userId => {
+        assignedUsers.forEach((userId: string) => {
           const dateKey = `${userId}-${format(currentDate, 'yyyy-MM-dd')}`;
           const currentHours = userHoursMap.get(dateKey) || 0;
           if (currentHours + todoHours > MAX_DAILY_HOURS) {
@@ -437,7 +437,7 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
         );
         
         // 担当者の工数を更新
-        assignedUsers.forEach(userId => {
+        assignedUsers.forEach((userId: string) => {
           const dateKey = `${userId}-${format(newStartDate, 'yyyy-MM-dd')}`;
           const currentHours = userHoursMap.get(dateKey) || 0;
           userHoursMap.set(dateKey, currentHours + todoHours);
@@ -446,10 +446,10 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
     });
     
     // タスクを更新
-    const updatedTasksWithDate = updatedTasks.map(task => {
+    const updatedTasksWithDate = updatedTasks.map((task: Task) => {
       // 各タスクの最早開始日と最遅終了日を計算
-      const minStartDate = Math.min(...task.todos.map(t => new Date(t.startDate).getTime()));
-      const maxEndDate = Math.max(...task.todos.map(t => {
+      const minStartDate = Math.min(...task.todos.map((t: Todo) => new Date(t.startDate).getTime()));
+      const maxEndDate = Math.max(...task.todos.map((t: Todo) => {
         // 終了時間は開始時間 + 見積もり時間とする
         const endTime = new Date(t.calendarEndDateTime).getTime();
         return endTime;
@@ -465,7 +465,7 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
     
     // 更新したタスクをコンテキストに反映
     if (onTaskUpdate) {
-      updatedTasksWithDate.forEach(task => {
+      updatedTasksWithDate.forEach((task: Task) => {
         onTaskUpdate(task);
       });
     }
@@ -489,9 +489,9 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
     
     // 変更を適用
     scheduleChanges.forEach(change => {
-      const task = updatedTasks.find(t => t.id === change.taskId);
+      const task = updatedTasks.find((t: Task) => t.id === change.taskId);
       if (task) {
-        const todo = task.todos.find(t => t.id === change.todoId);
+        const todo = task.todos.find((t: Todo) => t.id === change.todoId);
         if (todo) {
           // 変更された日付を新しいDate型に変換
           const newDate = new Date(change.newDate);
@@ -521,7 +521,7 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
     
     // 更新したタスクをコンテキストに反映
     if (onTaskUpdate) {
-      updatedTasks.forEach(task => {
+      updatedTasks.forEach((task: Task) => {
         onTaskUpdate(task);
       });
     }
