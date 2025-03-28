@@ -79,7 +79,6 @@ export function migrateTask(oldTask: any): Task {
     dueDate,
     completedDateTime,
     todos: migratedTodos,
-    priority: oldTask.priority ?? 0,
     assigneeIds: oldTask.assigneeIds || [],
     projectId: oldTask.projectId
   };

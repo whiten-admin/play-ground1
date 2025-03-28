@@ -20,7 +20,6 @@ export interface Task {
   dueDate: Date;                 // 期日
   completedDateTime?: Date;      // 完了日時
   todos: Todo[];
-  priority: number;             // 0: 低, 1: 中, 2: 高
   assigneeIds: string[];         // タスク全体の担当者IDの配列
   projectId: string;             // タスクが属するプロジェクトのID
 }

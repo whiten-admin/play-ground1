@@ -36,7 +36,6 @@ erDiagram
         string description
         Date dueDate "期日"
         Date completedDateTime "完了日時（任意）"
-        number priority "0:低, 1:中, 2:高"
         string[] assigneeIds "User IDsの配列"
         string projectId FK "Project参照"
     }

@@ -36,7 +36,6 @@ erDiagram
         string description
         Date dueDate "期日"
         DateTime completedDateTime "完了日時（任意）"
-        number priority "0:低, 1:中, 2:高"
         string[] assigneeIds "User IDsの配列"
         string projectId FK "Project参照"
     }
@@ -89,7 +88,6 @@ interface Task {
   description: string;
   dueDate: Date;                // 期日
   completedDateTime?: Date;     // 完了日時（任意）
-  priority: number;             // デフォルト値: 0
   assigneeIds: string[];
   projectId: string;
   todos: Todo[];

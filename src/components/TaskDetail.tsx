@@ -54,7 +54,7 @@ interface ViewModeButton {
   label: string
 }
 
-type SortField = 'dueDate' | 'priority'
+type SortField = 'dueDate'
 type SortOrder = 'asc' | 'desc'
 
 interface SortState {
@@ -101,7 +101,6 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
     title: '',
     description: '',
     todos: [],
-    priority: 0,
     dueDate: new Date()
   })
   const [newTaskTodos, setNewTaskTodos] = useState<Todo[]>([])
@@ -327,8 +326,8 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
     }
   }, [])
 
-  // 並び替え関数
-  const sortTasks = (tasksToSort: Task[]) => {
+  // ソート関数
+  const sortTasks = (tasksToSort: Task[]): Task[] => {
     return [...tasksToSort].sort((a, b) => {
       // 完了タスクを下部に配置
       const aProgress = calculateProgress(a.todos);
@@ -338,66 +337,69 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
 
       // 通常の並び替え
       if (sortState.field === 'dueDate') {
-        const aDate = Math.min(...a.todos.map(todo => todo.startDate.getTime()));
-        const bDate = Math.min(...b.todos.map(todo => todo.startDate.getTime()));
+        const aDate = Math.min(...a.todos.map(todo => todo.startDate instanceof Date ? todo.startDate.getTime() : new Date(todo.startDate as any).getTime()));
+        const bDate = Math.min(...b.todos.map(todo => todo.startDate instanceof Date ? todo.startDate.getTime() : new Date(todo.startDate as any).getTime()));
         return sortState.order === 'asc' ? aDate - bDate : bDate - aDate;
-      } else {
-        const aPriority = a.priority ?? 0;  // デフォルト値を0に設定
-        const bPriority = b.priority ?? 0;  // デフォルト値を0に設定
-        return sortState.order === 'asc' ? aPriority - bPriority : bPriority - aPriority;
       }
+      return 0; // デフォルトケース
     });
-  }
+  };
 
-  // 並び替えの切り替え
-  const toggleSort = (field: SortField) => {
-    setSortState(prev => ({
-      field,
-      order: prev.field === field ? (prev.order === 'asc' ? 'desc' : 'asc') : 'asc'
-    }))
-  }
+  const sortedTasks = sortTasks(filteredTasks);
 
-  // 新規タスクを作成する関数
+  // 新しいタスクの作成を開始
+  const handleInitiateTaskCreation = () => {
+    setIsCreatingTask(true);
+    if (currentProject) {
+      setNewTask({
+        title: '',
+        description: '',
+        todos: [],
+        dueDate: new Date(),
+      });
+    }
+  };
+
+  // タスク作成の確定
   const handleCreateTask = () => {
-    if (!newTask.title || !currentProject) return
+    if (!newTask.title || !currentProject) return;
 
-    // タスク全体のアサイン情報を更新
-    const assigneeIds = updateTaskAssignees(newTaskTodos, { 
-      id: '', 
-      title: '', 
-      description: '', 
-      todos: newTaskTodos, 
-      dueDate: new Date(),
-      projectId: currentProject.id,
-      priority: 0,
-      assigneeIds: []
+    // アサイン情報を集約
+    const assigneeIds: string[] = [];
+    newTaskTodos.forEach(todo => {
+      if (todo.assigneeIds) {
+        todo.assigneeIds.forEach(id => {
+          if (!assigneeIds.includes(id)) {
+            assigneeIds.push(id);
+          }
+        });
+      }
     });
 
     const taskToCreate: Task = {
       id: `task-${Date.now()}`,
       title: newTask.title,
       description: newTask.description || '',
-      todos: newTaskTodos,
+      todos: newTaskTodos.length > 0 ? newTaskTodos : getDefaultTodos(),
       dueDate: newTask.dueDate || new Date(),
       completedDateTime: undefined,
-      priority: newTask.priority || 0,
       assigneeIds: assigneeIds,
       projectId: currentProject.id
-    }
+    };
 
-    onTaskCreate?.(taskToCreate)
-    setIsCreatingTask(false)
-    setNewTask({
-      title: '',
-      description: '',
-      todos: [],
-      priority: 0,
-      dueDate: new Date()
-    })
-    setNewTaskTodos([])
-    setNewTaskTodoText('')
-    setNewTaskSuggestedTodos([])
-  }
+    if (onTaskCreate) {
+      onTaskCreate(taskToCreate);
+      setIsCreatingTask(false);
+      setNewTask({
+        title: '',
+        description: '',
+        todos: [],
+        dueDate: new Date()
+      });
+      setNewTaskTodos([]);
+      setNewTaskSuggestedTodos([]);
+    }
+  };
 
   // 新規タスクにTODOを追加
   const handleAddNewTaskTodo = () => {
@@ -546,19 +548,6 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
                     sortState.order === 'asc' ? <IoCaretUp className="w-3 h-3" /> : <IoCaretDown className="w-3 h-3" />
                   )}
                 </button>
-                <button
-                  onClick={() => toggleSort('priority')}
-                  className={`px-2 py-0.5 text-xs rounded flex items-center gap-1 ${
-                    sortState.field === 'priority'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  優先度
-                  {sortState.field === 'priority' && (
-                    sortState.order === 'asc' ? <IoCaretUp className="w-3 h-3" /> : <IoCaretDown className="w-3 h-3" />
-                  )}
-                </button>
               </div>
             </div>
           )}
@@ -567,7 +556,7 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
         <div className="flex-1 overflow-y-auto mt-1">
           {viewMode === 'list' && (
             <div className="space-y-4 pr-2">
-              {sortTasks(filteredTasks).map((task) => (
+              {sortedTasks.map((task) => (
                 <div
                   key={task.id}
                   onClick={() => onTaskSelect(task.id)}
@@ -613,22 +602,6 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
                           : '未設定'}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <span>優先度:</span>
-                      <span className={`px-2 py-0.5 rounded ${
-                        task.priority === 2
-                          ? 'bg-red-100 text-red-800'
-                          : task.priority === 1
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {task.priority === 2 ? '高' : task.priority === 1 ? '中' : '低'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span>担当:</span>
-                      <span>{getUserNamesByIds(task.assigneeIds)}</span>
-                    </div>
                   </div>
                 </div>
               ))}
@@ -638,7 +611,7 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
           {viewMode === 'kanban' && (
             <div className="flex-1 overflow-x-auto">
               <KanbanView 
-                tasks={sortTasks(filteredTasks)} 
+                tasks={sortedTasks} 
                 projectId={currentProject?.id || ''} 
                 onTaskSelect={onTaskSelect}
                 onTaskUpdate={onTaskUpdate}
@@ -659,6 +632,45 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
       </div>
     )
   }
+
+  // 並び替えの切り替え
+  const toggleSort = (field: SortField) => {
+    setSortState(prev => ({
+      field,
+      order: prev.field === field ? (prev.order === 'asc' ? 'desc' : 'asc') : 'asc'
+    }))
+  }
+
+  // デフォルトのTODOを生成
+  const getDefaultTodos = (): Todo[] => {
+    const today = new Date();
+    const dueDateCopy = newTask.dueDate ? new Date(newTask.dueDate) : new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+    
+    return [
+      {
+        id: `todo-${Date.now()}-1`,
+        text: '開始',
+        completed: false,
+        startDate: today,
+        calendarStartDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0),
+        calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 0, 0),
+        estimatedHours: 1,
+        actualHours: 0,
+        assigneeIds: []
+      },
+      {
+        id: `todo-${Date.now()}-2`,
+        text: '完了',
+        completed: false,
+        startDate: dueDateCopy,
+        calendarStartDateTime: new Date(dueDateCopy.getFullYear(), dueDateCopy.getMonth(), dueDateCopy.getDate(), 15, 0, 0),
+        calendarEndDateTime: new Date(dueDateCopy.getFullYear(), dueDateCopy.getMonth(), dueDateCopy.getDate(), 17, 0, 0),
+        estimatedHours: 1,
+        actualHours: 0,
+        assigneeIds: []
+      }
+    ];
+  };
 
   return (
     <div className="h-full">

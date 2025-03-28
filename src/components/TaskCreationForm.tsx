@@ -25,7 +25,6 @@ export default function TaskCreationForm({
     title: '',
     description: '',
     todos: [],
-    priority: 0,
     dueDate: new Date(new Date().setDate(new Date().getDate() + 7)), // 1週間後をデフォルトの期日に
     assigneeIds: []
   });
@@ -118,7 +117,6 @@ export default function TaskCreationForm({
       todos: newTaskTodos.length > 0 ? newTaskTodos : getDefaultTodos(dueDate),
       dueDate: dueDate,
       completedDateTime: undefined,
-      priority: newTask.priority || 0,
       projectId: projectId || '',
       assigneeIds: newTask.assigneeIds || []
     };
@@ -196,19 +194,6 @@ export default function TaskCreationForm({
             </div>
           </div>
           
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">優先度</label>
-            <select
-              value={newTask.priority}
-              onChange={(e) => setNewTask({...newTask, priority: Number(e.target.value)})}
-              className="w-full p-2 border rounded-md"
-            >
-              <option value={0}>低</option>
-              <option value={1}>中</option>
-              <option value={2}>高</option>
-            </select>
-          </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">担当者</label>
             <UserAssignSelect

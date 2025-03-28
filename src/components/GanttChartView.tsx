@@ -8,6 +8,7 @@ import { Task, Todo } from '@/types/task';
 import { suggestTodos } from '@/utils/openai';
 import ScheduleTodosButton from './ScheduleTodosButton';
 import { format } from 'date-fns';
+import UserAssignSelect from './UserAssignSelect';
 
 interface GanttChartViewProps {
   onTaskCreate?: (newTask: Task) => void;
@@ -32,7 +33,6 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
     title: '',
     description: '',
     todos: [],
-    priority: 0,
     dueDate: new Date()
   });
   const [newTaskTodos, setNewTaskTodos] = useState<Todo[]>([]);
@@ -150,7 +150,7 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
     return () => clearTimeout(timer);
   }, []); // 依存配列を空にして、マウント時のみ実行
 
-  // 新しいタスクを作成する関数
+  // タスク作成を確定する関数
   const handleCreateTask = () => {
     if (!newTask.title) return;
 
@@ -166,7 +166,6 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
       todos: newTaskTodos.length > 0 ? newTaskTodos : getDefaultTodos(dueDate),
       dueDate: dueDate,
       completedDateTime: undefined,
-      priority: newTask.priority || 0,
       assigneeIds: [],
       projectId: taskProjectId
     };
@@ -183,7 +182,6 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
       title: '',
       description: '',
       todos: [],
-      priority: 0,
       dueDate: new Date()
     });
     setNewTaskTodos([]);
@@ -302,7 +300,7 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
               <label className="block text-sm font-medium text-gray-700 mb-1">タイトル</label>
               <input
                 type="text"
-                value={newTask.title}
+                value={newTask.title || ''}
                 onChange={(e) => setNewTask({...newTask, title: e.target.value})}
                 className="w-full p-2 border rounded-md"
                 placeholder="タスクのタイトルを入力"
@@ -312,7 +310,7 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">説明</label>
               <textarea
-                value={newTask.description}
+                value={newTask.description || ''}
                 onChange={(e) => setNewTask({...newTask, description: e.target.value})}
                 className="w-full p-2 border rounded-md h-24"
                 placeholder="タスクの説明を入力"
@@ -321,10 +319,10 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
             
             <div className="flex gap-4">
               <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">開始日</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">期日</label>
                 <input
                   type="date"
-                  value={newTask.dueDate ? format(newTask.dueDate, 'yyyy-MM-dd') : ''}
+                  value={newTask.dueDate instanceof Date ? newTask.dueDate.toISOString().split('T')[0] : ''}
                   onChange={(e) => setNewTask({...newTask, dueDate: new Date(e.target.value)})}
                   className="w-full p-2 border rounded-md"
                 />
@@ -332,16 +330,11 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">優先度</label>
-              <select
-                value={newTask.priority}
-                onChange={(e) => setNewTask({...newTask, priority: Number(e.target.value)})}
-                className="w-full p-2 border rounded-md"
-              >
-                <option value={0}>低</option>
-                <option value={1}>中</option>
-                <option value={2}>高</option>
-              </select>
+              <label className="block text-sm font-medium text-gray-700 mb-1">担当者</label>
+              <UserAssignSelect
+                assigneeIds={newTask.assigneeIds || []}
+                onAssigneeChange={(newIds) => setNewTask({...newTask, assigneeIds: newIds})}
+              />
             </div>
 
             <div>
