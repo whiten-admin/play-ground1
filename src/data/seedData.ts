@@ -37,7 +37,7 @@ export const sampleTasks: Task[] = [
         completedDateTime: parseDate('2023-07-17'),
         estimatedHours: 3,
         actualHours: 4,
-        assigneeIds: ['user1']
+        assigneeId: 'user1'
       },
       {
         id: '102',
@@ -48,7 +48,7 @@ export const sampleTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 4,
         actualHours: 0,
-        assigneeIds: ['user1']
+        assigneeId: 'user1'
       }
     ],
     assigneeIds: ['user1'],
@@ -70,7 +70,7 @@ export const sampleTasks: Task[] = [
         completedDateTime: parseDate('2023-07-27'),
         estimatedHours: 2,
         actualHours: 2,
-        assigneeIds: ['user2']
+        assigneeId: 'user2'
       },
       {
         id: '202',
@@ -81,7 +81,7 @@ export const sampleTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 5,
         actualHours: 0,
-        assigneeIds: ['user2']
+        assigneeId: 'user2'
       }
     ],
     assigneeIds: ['user2'],
@@ -103,7 +103,7 @@ export const sampleTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 4,
         actualHours: 0,
-        assigneeIds: ['user3']
+        assigneeId: 'user3'
       },
       {
         id: '302',
@@ -114,7 +114,7 @@ export const sampleTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 6,
         actualHours: 0,
-        assigneeIds: ['user3']
+        assigneeId: 'user3'
       }
     ],
     assigneeIds: ['user3'],
@@ -170,7 +170,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 4,
         actualHours: 0,
-        assigneeIds: ['taro'] // 太郎が担当
+        assigneeId: 'taro' // 太郎が担当
       },
       {
         id: 'todo-1-2',
@@ -181,7 +181,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 3,
         actualHours: 0,
-        assigneeIds: ['gonzo'] // ゴンゾウが担当
+        assigneeId: 'gonzo' // ゴンゾウが担当
       },
       {
         id: 'todo-1-3',
@@ -192,7 +192,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 2,
         actualHours: 0,
-        assigneeIds: ['taro', 'gonzo'] // 太郎とゴンゾウが共同で担当
+        assigneeId: 'taro' // 太郎とゴンゾウが共同で担当
       },
       {
         id: 'todo-1-4',
@@ -203,7 +203,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 2,
         actualHours: 0,
-        assigneeIds: ['taro', 'gonzo', 'hanako'] // 全員参加
+        assigneeId: 'taro' // 全員参加
       }
     ]
   },
@@ -225,7 +225,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 3,
         actualHours: 0,
-        assigneeIds: ['jiro'] // 次郎が担当
+        assigneeId: 'jiro' // 次郎が担当
       },
       {
         id: 'todo-2-2',
@@ -236,7 +236,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 4,
         actualHours: 0,
-        assigneeIds: ['saburo'] // 三郎が担当
+        assigneeId: 'saburo' // 三郎が担当
       },
       {
         id: 'todo-2-3',
@@ -247,7 +247,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 3,
         actualHours: 0,
-        assigneeIds: ['jiro', 'saburo'] // 次郎と三郎が共同で担当
+        assigneeId: 'jiro' // 次郎と三郎が共同で担当
       },
       {
         id: 'todo-2-4',
@@ -258,7 +258,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 2,
         actualHours: 0,
-        assigneeIds: ['taro', 'jiro', 'saburo'] // マネージャーと担当者
+        assigneeId: 'taro' // マネージャーと担当者
       }
     ]
   },
@@ -280,7 +280,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 4,
         actualHours: 0,
-        assigneeIds: ['hanako'] // 花子が担当
+        assigneeId: 'hanako' // 花子が担当
       },
       {
         id: 'todo-3-2',
@@ -291,7 +291,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 3,
         actualHours: 0,
-        assigneeIds: ['hanako'] // 花子が担当
+        assigneeId: 'hanako' // 花子が担当
       },
       {
         id: 'todo-3-3',
@@ -302,7 +302,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 4,
         actualHours: 0,
-        assigneeIds: ['hanako'] // 花子が担当
+        assigneeId: 'hanako' // 花子が担当
       },
       {
         id: 'todo-3-4',
@@ -313,7 +313,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 2,
         actualHours: 0,
-        assigneeIds: ['taro', 'gonzo', 'hanako'] // マネージャーとデザイナー
+        assigneeId: 'taro' // マネージャーとデザイナー
       }
     ]
   },
@@ -335,7 +335,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 3,
         actualHours: 0,
-        assigneeIds: [] // 未アサイン
+        assigneeId: '' // 未アサイン
       },
       {
         id: 'todo-4-2',
@@ -346,7 +346,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 4,
         actualHours: 0,
-        assigneeIds: [] // 未アサイン
+        assigneeId: '' // 未アサイン
       },
       {
         id: 'todo-4-3',
@@ -357,7 +357,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 4,
         actualHours: 0,
-        assigneeIds: [] // 未アサイン
+        assigneeId: '' // 未アサイン
       },
       {
         id: 'todo-4-4',
@@ -368,7 +368,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 3,
         actualHours: 0,
-        assigneeIds: [] // 未アサイン
+        assigneeId: '' // 未アサイン
       }
     ]
   },
@@ -390,7 +390,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 2,
         actualHours: 0,
-        assigneeIds: ['jiro'] // 次郎が担当
+        assigneeId: 'jiro' // 次郎が担当
       },
       {
         id: 'todo-5-2',
@@ -401,7 +401,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 4,
         actualHours: 0,
-        assigneeIds: ['jiro'] // 次郎が担当
+        assigneeId: 'jiro' // 次郎が担当
       },
       {
         id: 'todo-5-3',
@@ -412,7 +412,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 4,
         actualHours: 0,
-        assigneeIds: ['hanako'] // 花子が担当
+        assigneeId: 'hanako' // 花子が担当
       },
       {
         id: 'todo-5-4',
@@ -423,7 +423,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 3,
         actualHours: 0,
-        assigneeIds: ['jiro', 'hanako'] // 次郎と花子が共同で担当
+        assigneeId: 'jiro' // 次郎と花子が共同で担当
       }
     ]
   }

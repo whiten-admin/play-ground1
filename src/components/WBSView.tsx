@@ -7,10 +7,11 @@ import { IoAdd, IoBulb, IoTrash, IoClose, IoCalendar } from 'react-icons/io5';
 import { Task, Todo } from '@/types/task';
 import { suggestTodos } from '@/utils/openai';
 import ScheduleTodosButton from './ScheduleTodosButton';
-import { differenceInDays, format } from 'date-fns';
+import { differenceInDays, format, isToday } from 'date-fns';
 import TaskCreationForm from './TaskCreationForm';
 import TaskDetail from './TaskDetail';
 import ScheduleDiffView from './ScheduleDiffView';
+import { getUserById } from '@/utils/userUtils';
 
 interface WBSViewProps {
   onTaskCreate?: (newTask: Task) => void;
@@ -378,8 +379,8 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
         const oldStartDate = format(todo.startDate, 'yyyy-MM-dd');
         
         // 担当者ごとの工数を計算
-        let assignedUsers = todo.assigneeIds && todo.assigneeIds.length > 0
-          ? todo.assigneeIds
+        let assignedUsers = todo.assigneeId 
+          ? [todo.assigneeId]
           : ['unassigned'];
         
         // この日に追加できるかチェック
@@ -655,7 +656,7 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
                       </label>
                     </div>
                     <div className="text-xs text-gray-700">
-                      {todo.assigneeIds?.length ? `${todo.assigneeIds.length}人` : '-'}
+                      {todo.assigneeId ? getUserById(todo.assigneeId)?.name || '担当者' : '-'}
                     </div>
                     <div className="text-xs text-gray-700 flex items-center">
                       <input

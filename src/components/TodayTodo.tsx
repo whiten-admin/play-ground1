@@ -45,20 +45,19 @@ export default function TodayTodo({
       ...todo,
       taskId: task.id,
       taskTitle: task.title,
-      priority: task.priority,
-      assigneeIds: todo.assigneeIds || task.assigneeIds,
+      assigneeId: todo.assigneeId || '',
     }))
   );
   
   // 担当者でフィルタリングする
   const filteredByAssigneeTodos = allTodos.filter((todo) => {
     // アサインされていないTODOを表示するかどうか
-    if (showUnassigned && (!todo.assigneeIds || todo.assigneeIds.length === 0)) {
+    if (showUnassigned && !todo.assigneeId) {
       return true;
     }
     
     // 選択されたユーザーのTODOを表示
-    if (todo.assigneeIds && todo.assigneeIds.some(id => selectedUserIds.includes(id))) {
+    if (todo.assigneeId && selectedUserIds.includes(todo.assigneeId)) {
       return true;
     }
     
@@ -231,7 +230,7 @@ export default function TodayTodo({
                 </div>
                 <div className="ml-4 text-xs flex justify-between">
                   <span className="text-gray-500">タスク名：{todo.taskTitle}</span>
-                  <span className="text-gray-500">担当：{getUserNamesByIds(todo.assigneeIds)}</span>
+                  <span className="text-gray-500">担当：{todo.assigneeId ? getUserNamesByIds([todo.assigneeId]) : '未割当'}</span>
                 </div>
               </div>
             );
@@ -317,7 +316,7 @@ export default function TodayTodo({
                   </div>
                   <div className="ml-4 text-xs flex justify-between">
                     <span className="text-gray-500">タスク名：{todo.taskTitle}</span>
-                    <span className="text-gray-500">担当：{getUserNamesByIds(todo.assigneeIds)}</span>
+                    <span className="text-gray-500">担当：{todo.assigneeId ? getUserNamesByIds([todo.assigneeId]) : '未割当'}</span>
                   </div>
                 </div>
               );

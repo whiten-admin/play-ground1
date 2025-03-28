@@ -123,7 +123,7 @@ export function migrateTodo(oldTodo: any): Todo {
     completedDateTime,
     estimatedHours: oldTodo.estimatedHours,
     actualHours: oldTodo.actualHours ?? 0,
-    assigneeIds: oldTodo.assigneeIds || []
+    assigneeId: oldTodo.assigneeIds && oldTodo.assigneeIds.length > 0 ? oldTodo.assigneeIds[0] : ''
   };
 }
 

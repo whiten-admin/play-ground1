@@ -54,7 +54,7 @@ export const getTasksFromLocalStorage = (): Task[] | null => {
           calendarEndDateTime,
           completedDateTime: todo.completedDateTime ? new Date(todo.completedDateTime) : undefined,
           actualHours: todo.actualHours || 0,
-          assigneeIds: todo.assigneeIds || [],
+          assigneeId: todo.assigneeIds && todo.assigneeIds.length > 0 ? todo.assigneeIds[0] : '',
           // 古い日付フィールドを削除
           dueDate: undefined,
           endDate: undefined,
@@ -171,7 +171,7 @@ export const importTasksFromJson = (jsonString: string): Task[] | null => {
           calendarEndDateTime,
           completedDateTime: todo.completedDateTime ? new Date(todo.completedDateTime) : undefined,
           actualHours: todo.actualHours || 0,
-          assigneeIds: todo.assigneeIds || [],
+          assigneeId: todo.assigneeIds && todo.assigneeIds.length > 0 ? todo.assigneeIds[0] : '',
           // 古い日付フィールドを削除
           dueDate: undefined,
           endDate: undefined,

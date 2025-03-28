@@ -189,9 +189,9 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
     filteredTasks.forEach(task => {
       task.todos.forEach(todo => {
         // TODO自体の担当者でもフィルタリング
-        const todoAssigneeIds = todo.assigneeIds || task.assigneeIds
-        const isAssignedToSelectedUser = todoAssigneeIds && todoAssigneeIds.some(id => selectedUserIds.includes(id))
-        const isUnassigned = !todoAssigneeIds || todoAssigneeIds.length === 0
+        const todoAssigneeId = todo.assigneeId || ''
+        const isAssignedToSelectedUser = todoAssigneeId && selectedUserIds.includes(todoAssigneeId)
+        const isUnassigned = !todoAssigneeId
         
         // フィルタリング条件に合わない場合はスキップ
         if (!(isAssignedToSelectedUser || (showUnassigned && isUnassigned))) {
@@ -873,7 +873,7 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
       calendarEndDateTime,
       estimatedHours: newTodoEstimatedHours,
       actualHours: 0,
-      assigneeIds: []
+      assigneeId: ''
     };
 
     console.log('WeeklySchedule - handleCreateTodo: 新しいTODOを作成', {

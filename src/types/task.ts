@@ -10,7 +10,7 @@ export interface Todo {
   completedDateTime?: Date;      // 完了日時
   estimatedHours: number;        // 見積もり工数（時間単位）
   actualHours: number;           // 実績工数（時間単位）
-  assigneeIds: string[];         // 担当者IDの配列
+  assigneeId: string;            // 担当者ID（１人のみ）
 }
 
 export interface Task {

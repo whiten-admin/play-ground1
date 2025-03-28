@@ -9,7 +9,7 @@ erDiagram
     Project ||--o{ Task : "contains"
     Task ||--o{ Todo : "contains"
     User }o--o{ Task : "assigned to"
-    User }o--o{ Todo : "assigned to"
+    User }|--o{ Todo : "assigned to"
 
     Project {
         string id PK
@@ -50,7 +50,7 @@ erDiagram
         DateTime completedDateTime "完了日時（任意）"
         number estimatedHours
         number actualHours "デフォルト値: 0"
-        string[] assigneeIds "User IDsの配列"
+        string assigneeId "担当者ID（１人のみ）"
     }
 
     User {
@@ -103,7 +103,7 @@ interface Todo {
   completedDateTime?: Date;     // 完了日時（任意）
   estimatedHours: number;
   actualHours: number;          // デフォルト値: 0
-  assigneeIds: string[];
+  assigneeId: string;           // 担当者ID（１人のみ）
 }
 ```
 

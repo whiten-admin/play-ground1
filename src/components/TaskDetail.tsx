@@ -187,8 +187,8 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
     const assigneeIdsSet = new Set<string>();
     
     todos.forEach(todo => {
-      if (todo.assigneeIds && todo.assigneeIds.length > 0) {
-        todo.assigneeIds.forEach(id => assigneeIdsSet.add(id));
+      if (todo.assigneeId) {
+        assigneeIdsSet.add(todo.assigneeId);
       }
     });
     
@@ -242,7 +242,7 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
       calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 0, 0),
       estimatedHours: 1,
       actualHours: 0,
-      assigneeIds: []
+      assigneeId: ''
     }
     
     const updatedTodos = [...editedTask.todos, newTodo];
@@ -367,12 +367,8 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
     // アサイン情報を集約
     const assigneeIds: string[] = [];
     newTaskTodos.forEach(todo => {
-      if (todo.assigneeIds) {
-        todo.assigneeIds.forEach(id => {
-          if (!assigneeIds.includes(id)) {
-            assigneeIds.push(id);
-          }
-        });
+      if (todo.assigneeId && !assigneeIds.includes(todo.assigneeId)) {
+        assigneeIds.push(todo.assigneeId);
       }
     });
 
@@ -416,7 +412,7 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
       calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 0, 0),
       estimatedHours: 1,
       actualHours: 0,
-      assigneeIds: []
+      assigneeId: ''
     }
     
     setNewTaskTodos([...newTaskTodos, newTodo])
@@ -461,7 +457,7 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
       calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 0, 0),
       estimatedHours: suggestion.estimatedHours,
       actualHours: 0,
-      assigneeIds: []
+      assigneeId: ''
     }
 
     const updatedTodos = [...newTaskTodos, newTodo];
@@ -656,7 +652,7 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
         calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 0, 0),
         estimatedHours: 1,
         actualHours: 0,
-        assigneeIds: []
+        assigneeId: ''
       },
       {
         id: `todo-${Date.now()}-2`,
@@ -667,7 +663,7 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
         calendarEndDateTime: new Date(dueDateCopy.getFullYear(), dueDateCopy.getMonth(), dueDateCopy.getDate(), 17, 0, 0),
         estimatedHours: 1,
         actualHours: 0,
-        assigneeIds: []
+        assigneeId: ''
       }
     ];
   };
@@ -846,10 +842,11 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
                         <div className="flex items-center gap-1">
                           <span>担当:</span>
                           <UserAssignSelect
-                            assigneeIds={todo.assigneeIds || []}
+                            assigneeIds={[todo.assigneeId].filter(Boolean)}
                             onAssigneeChange={(newAssigneeIds) => {
                               // TODOの担当者を更新
-                              const updatedTodo = { ...todo, assigneeIds: newAssigneeIds };
+                              const newAssigneeId = newAssigneeIds.length > 0 ? newAssigneeIds[0] : '';
+                              const updatedTodo = { ...todo, assigneeId: newAssigneeId };
                               
                               // タスクのTODOリストを更新
                               const updatedTodos = selectedTask.todos.map(t => 
@@ -988,7 +985,7 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
                             calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 0, 0),
                             estimatedHours: suggestion.estimatedHours,
                             actualHours: 0,
-                            assigneeIds: []
+                            assigneeId: ''
                           };
                           
                           const updatedTodos = [...editedTask.todos, newTodo];
