@@ -499,7 +499,7 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
   const renderContent = () => {
     if (!selectedTask) {
       return (
-        <div className="flex flex-col items-center justify-center h-64 p-6 bg-white rounded-lg shadow">
+        <div className="flex flex-col items-center justify-center h-[80vh] p-6 bg-white rounded-lg shadow">
           <div className="text-center mb-4">
             <IoList className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-700 mb-2">タスク詳細</h3>
