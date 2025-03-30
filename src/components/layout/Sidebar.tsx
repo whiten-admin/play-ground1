@@ -14,6 +14,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   
   const tabs = [
     { id: 'todo', label: 'やること', icon: '📝', href: '/' },
+    { id: 'tasks', label: 'タスク一覧', icon: '📋', href: '/tasks' },
     { id: 'wbs', label: 'WBS', icon: '📊', href: '/wbs' },
     { id: 'analysis', label: 'PJ分析', icon: '📈', href: '/analysis' },
     { id: 'settings', label: '設定', icon: '⚙️', href: '/settings' },

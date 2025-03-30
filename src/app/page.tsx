@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import TaskDetail from '@/features/tasks/components/TaskDetail'
@@ -16,6 +16,7 @@ import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
 import UserFilter from '@/components/UserFilter'
 import ResizablePanel from '@/components/layout/ResizablePanel'
 import { FilterProvider } from '@/features/tasks/filters/FilterContext'
+import { useSearchParams } from 'next/navigation'
 
 export default function Home() {
   const { isAuthenticated, user, login, logout } = useAuth()
@@ -24,6 +25,20 @@ export default function Home() {
   const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null)
   const { filteredTasks, setTasks, addTask } = useTaskContext()
   const { currentProject, updateProject, projects } = useProjectContext()
+  const searchParams = useSearchParams()
+
+  // URLのクエリパラメータからタスクIDとTODO IDを取得
+  useEffect(() => {
+    const taskId = searchParams.get('taskId')
+    const todoId = searchParams.get('todoId')
+    
+    if (taskId) {
+      setSelectedTaskId(taskId)
+      if (todoId) {
+        setSelectedTodoId(todoId)
+      }
+    }
+  }, [searchParams])
 
   // タスク選択ハンドラーを修正
   const handleTaskSelect = (taskId: string, todoId?: string) => {
