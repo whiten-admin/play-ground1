@@ -51,7 +51,6 @@ export const sampleTasks: Task[] = [
         assigneeId: 'user1'
       }
     ],
-    assigneeIds: ['user1'],
     projectId: '1'
   },
   {
@@ -84,7 +83,6 @@ export const sampleTasks: Task[] = [
         assigneeId: 'user2'
       }
     ],
-    assigneeIds: ['user2'],
     projectId: '1'
   },
   {
@@ -117,7 +115,6 @@ export const sampleTasks: Task[] = [
         assigneeId: 'user3'
       }
     ],
-    assigneeIds: ['user3'],
     projectId: '2'
   }
 ];
@@ -158,7 +155,6 @@ export const seedTasks: Task[] = [
     description: 'ECサイトの要件を定義し、主要な機能と非機能要件を明確化します。ステークホルダーとの合意を得ることが目標です。',
     dueDate: parseDate('2025-03-05'),
     completedDateTime: undefined,
-    assigneeIds: ['taro', 'gonzo', 'hanako'], // すべてのTODO担当者の和集合
     projectId: '1', // プロジェクトA
     todos: [
       {
@@ -213,7 +209,6 @@ export const seedTasks: Task[] = [
     description: 'ECサイトで必要なデータベーススキーマを設計します。商品、ユーザー、注文など主要なエンティティの関連を定義します。',
     dueDate: parseDate('2025-03-10'),
     completedDateTime: undefined,
-    assigneeIds: ['jiro', 'saburo', 'taro'], // すべてのTODO担当者の和集合
     projectId: '1', // プロジェクトA
     todos: [
       {
@@ -268,7 +263,6 @@ export const seedTasks: Task[] = [
     description: 'ECサイトのユーザーインターフェースを設計します。使いやすさと視覚的な魅力を両立させることが目標です。',
     dueDate: parseDate('2025-03-17'),
     completedDateTime: undefined,
-    assigneeIds: ['hanako', 'taro', 'gonzo'], // すべてのTODO担当者の和集合
     projectId: '1', // プロジェクトA
     todos: [
       {
@@ -323,7 +317,6 @@ export const seedTasks: Task[] = [
     description: '商品一覧ページと商品詳細ページのフロントエンド実装を行います。React.jsを使用して開発します。',
     dueDate: parseDate('2025-03-24'),
     completedDateTime: undefined,
-    assigneeIds: [], // 未アサイン
     projectId: '1', // プロジェクトA
     todos: [
       {
@@ -378,7 +371,6 @@ export const seedTasks: Task[] = [
     description: 'ショッピングカートと注文処理のフロントエンド実装を行います。状態管理にはReduxを使用します。',
     dueDate: parseDate('2025-03-31'),
     completedDateTime: undefined,
-    assigneeIds: ['jiro', 'hanako'], // すべてのTODO担当者の和集合
     projectId: '1', // プロジェクトA
     todos: [
       {

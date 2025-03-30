@@ -150,14 +150,11 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
     return () => clearTimeout(timer);
   }, []); // 依存配列を空にして、マウント時のみ実行
 
-  // タスク作成を確定する関数
+  // 新しいタスクを作成する関数
   const handleCreateTask = () => {
     if (!newTask.title) return;
 
-    const dueDate = newTask.dueDate || new Date();
-    
-    // プロジェクトIDを取得（propsのprojectIdまたはcurrentProjectから）
-    const taskProjectId = projectId || (currentProject?.id || '');
+    const dueDate = newTask.dueDate || new Date(new Date().setDate(new Date().getDate() + 7));
 
     const taskToCreate: Task = {
       id: `task-${Date.now()}`,
@@ -166,32 +163,25 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
       todos: newTaskTodos.length > 0 ? newTaskTodos : getDefaultTodos(dueDate),
       dueDate: dueDate,
       completedDateTime: undefined,
-      assigneeIds: [],
-      projectId: taskProjectId
+      projectId: projectId || ''
     };
 
     onTaskCreate?.(taskToCreate);
-    // 新しく作成したタスクのアコーディオンを自動的に開く
-    setExpandedTasks(prev => {
-      const newSet = new Set(prev);
-      newSet.add(taskToCreate.id);
-      return newSet;
-    });
     setIsCreatingTask(false);
     setNewTask({
       title: '',
       description: '',
       todos: [],
-      dueDate: new Date()
+      dueDate: new Date(new Date().setDate(new Date().getDate() + 7))
     });
     setNewTaskTodos([]);
-    setNewTaskTodoText('');
     setNewTaskSuggestedTodos([]);
   };
 
   // デフォルトのTODOを生成
   const getDefaultTodos = (dueDate: Date): Todo[] => {
     const today = new Date();
+    const dueDateCopy = new Date(dueDate);
     
     return [
       {
@@ -203,18 +193,18 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
         calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 0, 0),
         estimatedHours: 1,
         actualHours: 0,
-        assigneeIds: []
+        assigneeId: ''
       },
       {
         id: `todo-${Date.now()}-2`,
         text: '完了',
         completed: false,
-        startDate: dueDate,
-        calendarStartDateTime: new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate(), 15, 0, 0),
-        calendarEndDateTime: new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate(), 17, 0, 0),
+        startDate: dueDateCopy,
+        calendarStartDateTime: new Date(dueDateCopy.getFullYear(), dueDateCopy.getMonth(), dueDateCopy.getDate(), 15, 0, 0),
+        calendarEndDateTime: new Date(dueDateCopy.getFullYear(), dueDateCopy.getMonth(), dueDateCopy.getDate(), 17, 0, 0),
         estimatedHours: 1,
         actualHours: 0,
-        assigneeIds: []
+        assigneeId: ''
       }
     ];
   };
@@ -231,10 +221,10 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
       completed: false,
       startDate: today,
       calendarStartDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0),
-      calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 17, 0, 0),
+      calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 0, 0),
       estimatedHours: 1, // デフォルトの見積もり工数を1時間に設定
       actualHours: 0,
-      assigneeIds: []
+      assigneeId: ''
     };
 
     setNewTaskTodos([...newTaskTodos, newTodo]);
@@ -276,10 +266,10 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
       completed: false,
       startDate: today,
       calendarStartDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0),
-      calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 17, 0, 0),
+      calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9 + Math.min(8, suggestion.estimatedHours), 0, 0),
       estimatedHours: suggestion.estimatedHours,
       actualHours: 0,
-      assigneeIds: []
+      assigneeId: ''
     };
 
     setNewTaskTodos([...newTaskTodos, newTodo]);
@@ -329,14 +319,6 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
               </div>
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">担当者</label>
-              <UserAssignSelect
-                assigneeIds={newTask.assigneeIds || []}
-                onAssigneeChange={(newIds) => setNewTask({...newTask, assigneeIds: newIds})}
-              />
-            </div>
-
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label className="block text-sm font-medium text-gray-700">TODOリスト</label>

@@ -25,8 +25,7 @@ export default function TaskCreationForm({
     title: '',
     description: '',
     todos: [],
-    dueDate: new Date(new Date().setDate(new Date().getDate() + 7)), // 1週間後をデフォルトの期日に
-    assigneeIds: []
+    dueDate: new Date(new Date().setDate(new Date().getDate() + 7)) // 1週間後をデフォルトの期日に
   });
 
   const [newTaskTodos, setNewTaskTodos] = useState<Todo[]>([]);
@@ -50,7 +49,7 @@ export default function TaskCreationForm({
       calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 0, 0),
       estimatedHours: 1, // デフォルトの見積もり工数を1時間に設定
       actualHours: 0,
-      assigneeIds: []
+      assigneeId: ''
     };
 
     setNewTaskTodos([...newTaskTodos, newTodo]);
@@ -95,7 +94,7 @@ export default function TaskCreationForm({
       calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9 + Math.min(8, suggestion.estimatedHours), 0, 0),
       estimatedHours: suggestion.estimatedHours,
       actualHours: 0,
-      assigneeIds: []
+      assigneeId: ''
     };
 
     setNewTaskTodos([...newTaskTodos, newTodo]);
@@ -117,8 +116,7 @@ export default function TaskCreationForm({
       todos: newTaskTodos.length > 0 ? newTaskTodos : getDefaultTodos(dueDate),
       dueDate: dueDate,
       completedDateTime: undefined,
-      projectId: projectId || '',
-      assigneeIds: newTask.assigneeIds || []
+      projectId: projectId || ''
     };
 
     onTaskCreate(taskToCreate);
@@ -139,7 +137,7 @@ export default function TaskCreationForm({
         calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 0, 0),
         estimatedHours: 1,
         actualHours: 0,
-        assigneeIds: []
+        assigneeId: ''
       },
       {
         id: `todo-${Date.now()}-2`,
@@ -150,7 +148,7 @@ export default function TaskCreationForm({
         calendarEndDateTime: new Date(dueDateCopy.getFullYear(), dueDateCopy.getMonth(), dueDateCopy.getDate(), 17, 0, 0),
         estimatedHours: 1,
         actualHours: 0,
-        assigneeIds: []
+        assigneeId: ''
       }
     ];
   };
@@ -194,19 +192,6 @@ export default function TaskCreationForm({
             </div>
           </div>
           
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">担当者</label>
-            <UserAssignSelect
-              assigneeIds={newTask.assigneeIds || []}
-              onAssigneeChange={(newAssigneeIds) => {
-                setNewTask({
-                  ...newTask,
-                  assigneeIds: newAssigneeIds
-                });
-              }}
-            />
-          </div>
-
           <div>
             <div className="flex justify-between items-center mb-2">
               <label className="block text-sm font-medium text-gray-700">TODOリスト</label>

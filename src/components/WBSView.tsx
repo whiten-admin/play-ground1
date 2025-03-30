@@ -605,7 +605,17 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
                     <span className="truncate">{task.title}</span>
                   </div>
                   <div className="text-xs text-gray-700">
-                    {task.assigneeIds?.length ? `${task.assigneeIds.length}人` : '-'}
+                    {(() => {
+                      // タスクの担当者を子TODOから計算
+                      const assigneeIds = new Set<string>();
+                      task.todos.forEach(todo => {
+                        if (todo.assigneeId) {
+                          assigneeIds.add(todo.assigneeId);
+                        }
+                      });
+                      const count = assigneeIds.size;
+                      return count > 0 ? `${count}人` : '-';
+                    })()}
                   </div>
                   <div className="text-xs text-gray-700 flex items-center">
                     <span>

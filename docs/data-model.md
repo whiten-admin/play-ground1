@@ -8,7 +8,6 @@
 erDiagram
     Project ||--o{ Task : "contains"
     Task ||--o{ Todo : "contains"
-    User }o--o{ Task : "assigned to"
     User }|--o{ Todo : "assigned to"
 
     Project {
@@ -36,7 +35,6 @@ erDiagram
         string description
         Date dueDate "期日"
         Date completedDateTime "完了日時（任意）"
-        string[] assigneeIds "User IDsの配列"
         string projectId FK "Project参照"
     }
 
@@ -83,6 +81,7 @@ erDiagram
 3. **不要プロパティの削除**: 
    - タスクの`startDate`/`endDate`は削除しました（`dueDate`のみで十分）
    - TODOの`dueDate`/`plannedStartDate`は整理して`startDate`に統一しました
+   - タスクの`assigneeIds`を削除しました（子TODOのアサイン情報から計算可能なため）
 
 4. **プロパティ名の明確化**: 
    - 日時情報を含むプロパティ名には`DateTime`を含めて明示化しました
@@ -95,4 +94,4 @@ erDiagram
 - TODOの着手予定日（`startDate`）はカレンダー上で設定・変更できます
 - TODOが完了すると`completedDateTime`が設定されます
 - タスク内のすべてのTODOが完了すると、タスクの`completedDateTime`が設定されます
-- TODOのアサイン情報が変更されると、タスク全体のアサイン情報も更新される仕組みになっています 
+- タスクの担当者情報は、子TODOのアサイン情報から動的に計算されます 

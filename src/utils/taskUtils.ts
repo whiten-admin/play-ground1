@@ -46,7 +46,7 @@ export function convertGeneratedTasksToTaskObjects(
         calendarEndDateTime,
         estimatedHours: todo.estimatedHours || 1,
         actualHours: 0,
-        assigneeIds: []
+        assigneeId: ''
       };
     });
 
@@ -58,7 +58,6 @@ export function convertGeneratedTasksToTaskObjects(
       dueDate: new Date(task.endDate || task.startDate || new Date()),
       completedDateTime: undefined,
       todos,
-      assigneeIds: [],
       projectId
     };
   });
@@ -75,7 +74,7 @@ function createDefaultTodo(id: string, text: string, date: Date): Todo {
     calendarEndDateTime: new Date(date.getFullYear(), date.getMonth(), date.getDate(), 10, 0, 0),
     estimatedHours: 1,
     actualHours: 0,
-    assigneeIds: []
+    assigneeId: ''
   };
 }
 
@@ -93,7 +92,6 @@ export function addTaskWithDefaultTodos(project: Project, title: string, descrip
     dueDate: dueDateObj,
     completedDateTime: undefined,
     todos: [],
-    assigneeIds: [],
     projectId: project.id
   };
   

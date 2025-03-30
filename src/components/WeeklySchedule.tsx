@@ -172,17 +172,25 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
     
     // フィルタリングされたタスクを使用
     const filteredTasks = tasks.filter(task => {
+      // 各タスクのTODOから担当者リストを作成
+      const taskAssignees = new Set<string>();
+      task.todos.forEach(todo => {
+        if (todo.assigneeId) {
+          taskAssignees.add(todo.assigneeId);
+        }
+      });
+      
       // アサインされていないタスクを表示するかどうか
-      if (showUnassigned && (!task.assigneeIds || task.assigneeIds.length === 0)) {
-        return true
+      if (showUnassigned && taskAssignees.size === 0) {
+        return true;
       }
       
       // 選択されたユーザーのタスクを表示
-      if (task.assigneeIds && task.assigneeIds.some(id => selectedUserIds.includes(id))) {
-        return true
+      if (Array.from(taskAssignees).some(id => selectedUserIds.includes(id))) {
+        return true;
       }
       
-      return false
+      return false;
     })
     
     // すべてのTODOを一度に処理し、適切な日付に配置
@@ -221,7 +229,7 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
           },
           taskId: task.id,
           taskTitle: task.title,
-          priority: task.priority, // 優先度を追加
+          priority: 0, // 優先度はデフォルト値を使用
           isNextTodo: false // NEXTTODOフラグの初期値
         })
       })

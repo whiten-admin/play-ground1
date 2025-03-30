@@ -113,13 +113,21 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
   
   // 表示するタスクをフィルタリングする
   const filteredTasks = tasks.filter((task) => {
+    // 各タスクのTODOから担当者リストを作成
+    const taskAssignees = new Set<string>();
+    task.todos.forEach(todo => {
+      if (todo.assigneeId) {
+        taskAssignees.add(todo.assigneeId);
+      }
+    });
+    
     // アサインされていないタスクを表示するかどうか
-    if (showUnassigned && (!task.assigneeIds || task.assigneeIds.length === 0)) {
+    if (showUnassigned && taskAssignees.size === 0) {
       return true;
     }
     
     // 選択されたユーザーのタスクを表示
-    if (task.assigneeIds && task.assigneeIds.some(id => selectedUserIds.includes(id))) {
+    if (Array.from(taskAssignees).some(id => selectedUserIds.includes(id))) {
       return true;
     }
     
@@ -203,13 +211,9 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
         todo.id === todoId ? { ...todo, completed: !todo.completed } : todo
       );
       
-      // タスク全体のアサイン情報を更新
-      const updatedAssigneeIds = updateTaskAssignees(updatedTodos, editedTask);
-      
       const updatedTask = { 
         ...editedTask, 
-        todos: updatedTodos,
-        assigneeIds: updatedAssigneeIds
+        todos: updatedTodos
       };
       
       setEditedTask(updatedTask);
@@ -247,13 +251,9 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
     
     const updatedTodos = [...editedTask.todos, newTodo];
     
-    // タスク全体のアサイン情報を更新
-    const updatedAssigneeIds = updateTaskAssignees(updatedTodos, editedTask);
-    
     const updatedTask = {
       ...editedTask,
-      todos: updatedTodos,
-      assigneeIds: updatedAssigneeIds
+      todos: updatedTodos
     }
     
     setEditedTask(updatedTask)
@@ -270,13 +270,9 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
       if (window.confirm(`「${todoToDelete.text}」を削除してもよろしいですか？`)) {
         const updatedTodos = editedTask.todos.filter(todo => todo.id !== todoId);
         
-        // タスク全体のアサイン情報を更新
-        const updatedAssigneeIds = updateTaskAssignees(updatedTodos, editedTask);
-        
         const updatedTask = {
           ...editedTask,
-          todos: updatedTodos,
-          assigneeIds: updatedAssigneeIds
+          todos: updatedTodos
         };
         
         setEditedTask(updatedTask);
@@ -364,14 +360,6 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
   const handleCreateTask = () => {
     if (!newTask.title || !currentProject) return;
 
-    // アサイン情報を集約
-    const assigneeIds: string[] = [];
-    newTaskTodos.forEach(todo => {
-      if (todo.assigneeId && !assigneeIds.includes(todo.assigneeId)) {
-        assigneeIds.push(todo.assigneeId);
-      }
-    });
-
     const taskToCreate: Task = {
       id: `task-${Date.now()}`,
       title: newTask.title,
@@ -379,7 +367,6 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
       todos: newTaskTodos.length > 0 ? newTaskTodos : getDefaultTodos(),
       dueDate: newTask.dueDate || new Date(),
       completedDateTime: undefined,
-      assigneeIds: assigneeIds,
       projectId: currentProject.id
     };
 
@@ -725,10 +712,19 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
                     <div className="text-sm mr-4">
                       <span className="text-gray-500 mr-1">担当:</span>
                       <div className="text-sm text-gray-600">
-                        {selectedTask.assigneeIds && selectedTask.assigneeIds.length > 0 
-                          ? getUserNamesByIds(selectedTask.assigneeIds)
-                          : '担当者なし'
-                        }
+                        {(() => {
+                          // タスクの担当者を子TODOから計算
+                          const assigneeIds = new Set<string>();
+                          selectedTask.todos.forEach(todo => {
+                            if (todo.assigneeId) {
+                              assigneeIds.add(todo.assigneeId);
+                            }
+                          });
+                          const assigneeIdArray = Array.from(assigneeIds);
+                          return assigneeIdArray.length > 0 
+                            ? getUserNamesByIds(assigneeIdArray)
+                            : '担当者なし';
+                        })()}
                       </div>
                     </div>
                     {!editState.title && (
@@ -853,14 +849,10 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
                                 t.id === todo.id ? updatedTodo : t
                               );
                               
-                              // タスク全体のアサイン情報を更新
-                              const updatedAssigneeIds = updateTaskAssignees(updatedTodos, selectedTask);
-                              
                               // 全体のタスク情報を更新
                               const updatedTask = {
                                 ...selectedTask,
-                                todos: updatedTodos,
-                                assigneeIds: updatedAssigneeIds
+                                todos: updatedTodos
                               };
                               
                               if (editedTask) {
@@ -990,13 +982,9 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
                           
                           const updatedTodos = [...editedTask.todos, newTodo];
                           
-                          // タスク全体のアサイン情報を更新
-                          const updatedAssigneeIds = updateTaskAssignees(updatedTodos, editedTask);
-                          
                           const updatedTask = {
                             ...editedTask,
-                            todos: updatedTodos,
-                            assigneeIds: updatedAssigneeIds
+                            todos: updatedTodos
                           };
                           
                           setEditedTask(updatedTask);
