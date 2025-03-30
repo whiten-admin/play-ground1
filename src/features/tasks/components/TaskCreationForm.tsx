@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import { IoAdd, IoTrash, IoBulb } from 'react-icons/io5';
-import { Task, Todo } from '@/types/task';
-import { suggestTodos } from '@/utils/openai';
-import UserAssignSelect from './UserAssignSelect';
+import { Task, Todo } from '@/features/tasks/types/task';
+import { suggestTodos } from '@/services/api/utils/openai';
+import UserAssignSelect from '@/components/UserAssignSelect';
 
 interface TaskCreationFormProps {
   onCancel: () => void;

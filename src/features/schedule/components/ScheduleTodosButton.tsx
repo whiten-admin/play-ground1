@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { IoCalendarOutline } from 'react-icons/io5';
-import { useTaskContext } from '@/contexts/TaskContext';
-import { scheduleAndSaveTasks } from '@/utils/taskScheduler';
+import { useTaskContext } from '@/features/tasks/contexts/TaskContext';
+import { scheduleAndSaveTasks } from '@/features/schedule/utils/taskScheduler';
 
 interface ScheduleTodosButtonProps {
   onScheduleComplete?: () => void;

@@ -1,4 +1,4 @@
-import { Project, Task, Todo } from '@/types/task';
+import { Project, Task, Todo } from '@/features/tasks/types/task';
 import { parseDate, calculateCalendarDateTime } from '@/utils/dateUtils';
 
 // サンプルプロジェクト

@@ -3,11 +3,11 @@
 import React, { useState, useEffect } from 'react'
 import { format, addDays, startOfWeek, isSameDay, addHours, isBefore, isToday, parse, startOfMonth, endOfMonth, getDaysInMonth, getDay, addMonths, startOfDay } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { Task, Todo } from '@/types/task'
+import { Task, Todo } from '@/features/tasks/types/task'
 import { IoCalendarOutline, IoGrid, IoList, IoChevronBack, IoChevronForward, IoCalendarClearOutline, IoCalendarNumberOutline } from 'react-icons/io5'
 import dynamic from 'next/dynamic'
-import { BUSINESS_HOURS, generateTimeSlots } from '@/utils/constants'
-import { useFilterContext } from '@/contexts/FilterContext'
+import { BUSINESS_HOURS, generateTimeSlots } from '@/utils/constants/constants'
+import { useFilterContext } from '@/features/tasks/filters/FilterContext'
 
 const DndContext = dynamic(
   () => import('./WeeklyScheduleDnd').then(mod => mod.default),

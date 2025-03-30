@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import usersData from '@/data/users.json'
-import Logo from './Logo'
+import usersData from '@/features/tasks/users/users.json'
+import Logo from '@/components/Logo'
 import { theme } from '@/styles/theme'
 
 interface AuthProps {
@@ -24,6 +24,10 @@ export default function Auth({ onLogin }: AuthProps) {
       setError('')
     }
   }
+
+  // テーマカラーを直接変数として定義
+  const primaryColor = theme?.colors?.primary || '#8BC34A'
+  const primaryHoverColor = theme?.colors?.primaryHover || '#7CB342'
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -63,9 +67,9 @@ export default function Auth({ onLogin }: AuthProps) {
           <button
             type="submit"
             className="w-full text-white py-2 rounded-lg transition-colors"
-            style={{ backgroundColor: theme.colors.primary }}
-            onMouseOver={(e) => e.currentTarget.style.backgroundColor = theme.colors.primaryHover}
-            onMouseOut={(e) => e.currentTarget.style.backgroundColor = theme.colors.primary}
+            style={{ backgroundColor: primaryColor }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = primaryHoverColor}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = primaryColor}
           >
             ログイン
           </button>

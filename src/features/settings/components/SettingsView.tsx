@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { FiUser, FiBell, FiLock, FiGlobe, FiDatabase } from 'react-icons/fi';
-import { useTaskContext } from '@/contexts/TaskContext';
+import { useTaskContext } from '@/features/tasks/contexts/TaskContext';
 import DataManagement from './DataManagement';
 
 // シンプルなカードコンポーネント

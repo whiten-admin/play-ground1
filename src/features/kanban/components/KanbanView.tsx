@@ -1,10 +1,10 @@
 'use client';
 
-import { Task, Todo } from '@/types/task';
+import { Task, Todo } from '@/features/tasks/types/task';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { IoAdd, IoBulb, IoTrash } from 'react-icons/io5';
 import { useState } from 'react';
-import { suggestTodos } from '@/utils/openai';
+import { suggestTodos } from '@/services/api/utils/openai';
 
 interface KanbanViewProps {
   tasks: Task[];

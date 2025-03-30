@@ -1,10 +1,10 @@
 'use client';
 
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { Task } from '@/types/task';
-import { seedTasks } from '@/data/seedData';
-import { getTasksFromLocalStorage, saveSeedDataToLocalStorage, resetToSeedData, resetToScheduledSeedData } from '@/utils/seedDataUtils';
-import { useProjectContext } from './ProjectContext';
+import { Task } from '@/features/tasks/types/task';
+import { seedTasks } from '@/features/tasks/data/seedData';
+import { getTasksFromLocalStorage, saveSeedDataToLocalStorage, resetToSeedData, resetToScheduledSeedData } from '@/services/storage/utils/seedDataUtils';
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 
 interface TaskContextType {
   tasks: Task[];

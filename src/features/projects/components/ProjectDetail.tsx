@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Project } from '@/types/project'
+import { Project } from '@/features/projects/types/project'
 import ProjectDetailModal from './ProjectDetailModal'
 
 interface ProjectDetailProps {

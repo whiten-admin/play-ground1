@@ -1,8 +1,8 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { Project } from '@/types/project'
-import projectsData from '@/data/projects.json'
+import { Project } from '@/features/projects/types/project'
+import projectsData from '@/features/projects/data/projects.json'
 
 interface ProjectContextType {
   projects: Project[]

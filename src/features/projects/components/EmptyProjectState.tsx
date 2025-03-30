@@ -3,8 +3,8 @@
 import React, { useState } from 'react'
 import { FiPlus } from 'react-icons/fi'
 import ProjectCreateModal from './ProjectCreateModal'
-import { Project } from '@/types/project'
-import { useProjectContext } from '@/contexts/ProjectContext'
+import { Project } from '@/features/projects/types/project'
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
 
 export default function EmptyProjectState() {
   const { createProject } = useProjectContext()

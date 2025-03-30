@@ -1,14 +1,14 @@
 'use client';
 
-import { useTaskContext } from '@/contexts/TaskContext';
-import { useProjectContext } from '@/contexts/ProjectContext';
+import { useTaskContext } from '@/features/tasks/contexts/TaskContext';
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 import { useEffect, useRef, useState } from 'react';
 import { IoAdd, IoBulb, IoTrash } from 'react-icons/io5';
-import { Task, Todo } from '@/types/task';
-import { suggestTodos } from '@/utils/openai';
-import ScheduleTodosButton from './ScheduleTodosButton';
+import { Task, Todo } from '@/features/tasks/types/task';
+import { suggestTodos } from '@/services/api/utils/openai';
+import ScheduleTodosButton from '@/features/schedule/components/ScheduleTodosButton';
 import { format } from 'date-fns';
-import UserAssignSelect from './UserAssignSelect';
+import UserAssignSelect from '@/components/UserAssignSelect';
 
 interface GanttChartViewProps {
   onTaskCreate?: (newTask: Task) => void;

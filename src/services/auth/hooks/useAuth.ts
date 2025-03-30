@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { User, UserRole } from '@/types/user'
-import usersData from '@/data/users.json'
+import { User, UserRole } from '@/features/tasks/types/user'
+import usersData from '@/features/tasks/users/users.json'
 
 // 型の定義
 interface UserData {

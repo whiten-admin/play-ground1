@@ -1,4 +1,4 @@
-import { Task, Todo, Project } from "@/types/task";
+import { Task, Todo, Project } from '@/features/tasks/types/task';
 
 /**
  * 生成されたタスク情報をプロジェクトのTaskオブジェクトに変換する

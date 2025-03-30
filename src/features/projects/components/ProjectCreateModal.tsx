@@ -1,13 +1,13 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Project } from '@/types/project'
+import { Project } from '@/features/projects/types/project'
 import { FiEdit3, FiFileText, FiUpload } from 'react-icons/fi'
-import { extractTextFromPDF, extractProjectInfoFromText } from '@/utils/pdfUtils'
-import { generateProjectTasks } from '@/utils/openai'
-import { convertGeneratedTasksToTaskObjects } from '@/utils/taskUtils'
-import { Task } from '@/types/task'
-import { useTaskContext } from '@/contexts/TaskContext'
+import { extractTextFromPDF, extractProjectInfoFromText } from '@/services/api/utils/pdfUtils'
+import { generateProjectTasks } from '@/services/api/utils/openai'
+import { convertGeneratedTasksToTaskObjects } from '@/features/tasks/utils/taskUtils'
+import { Task } from '@/features/tasks/types/task'
+import { useTaskContext } from '@/features/tasks/contexts/TaskContext'
 
 interface ProjectCreateModalProps {
   isOpen: boolean

@@ -1,5 +1,5 @@
-import usersData from '@/data/users.json';
-import { User, UserRole } from '@/types/user';
+import usersData from '@/features/tasks/users/users.json';
+import { User, UserRole } from '@/features/tasks/types/user';
 
 // 型の定義
 interface UserData {

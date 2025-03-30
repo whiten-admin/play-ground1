@@ -11,9 +11,9 @@ import {
   parseISO,
 } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { Task, Todo } from '@/types/task';
-import { getUserNameById, getUserNamesByIds } from '@/utils/userUtils';
-import { useFilterContext } from '@/contexts/FilterContext';
+import { Task, Todo } from '@/features/tasks/types/task';
+import { getUserNameById, getUserNamesByIds } from '@/features/tasks/utils/userUtils';
+import { useFilterContext } from '@/features/tasks/filters/FilterContext';
 
 interface TodayTodoProps {
   tasks: Task[];

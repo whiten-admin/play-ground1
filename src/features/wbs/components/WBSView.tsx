@@ -1,17 +1,17 @@
 'use client';
 
-import { useTaskContext } from '@/contexts/TaskContext';
-import { useProjectContext } from '@/contexts/ProjectContext';
+import { useTaskContext } from '@/features/tasks/contexts/TaskContext';
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 import { useEffect, useRef, useState } from 'react';
 import { IoAdd, IoBulb, IoTrash, IoClose, IoCalendar } from 'react-icons/io5';
-import { Task, Todo } from '@/types/task';
-import { suggestTodos } from '@/utils/openai';
-import ScheduleTodosButton from './ScheduleTodosButton';
+import { Task, Todo } from '@/features/tasks/types/task';
+import { suggestTodos } from '@/services/api/utils/openai';
+import ScheduleTodosButton from '@/features/schedule/components/ScheduleTodosButton';
 import { differenceInDays, format, isToday } from 'date-fns';
-import TaskCreationForm from './TaskCreationForm';
-import TaskDetail from './TaskDetail';
-import ScheduleDiffView from './ScheduleDiffView';
-import { getUserById } from '@/utils/userUtils';
+import TaskCreationForm from '@/features/tasks/components/TaskCreationForm';
+import TaskDetail from '@/features/tasks/components/TaskDetail';
+import ScheduleDiffView from '@/features/schedule/components/ScheduleDiffView';
+import { getUserById } from '@/features/tasks/utils/userUtils';
 
 interface WBSViewProps {
   onTaskCreate?: (newTask: Task) => void;

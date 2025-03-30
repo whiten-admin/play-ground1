@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
-import { Project } from '@/types/project'
-import { formatProjectInfo, extractProjectInfoFromFile } from '@/utils/openai'
-import { extractTextFromFile } from '@/utils/fileParser'
+import { Project } from '@/features/projects/types/project'
+import { formatProjectInfo, extractProjectInfoFromFile } from '@/services/api/utils/openai'
+import { extractTextFromFile } from '@/services/api/utils/fileParser'
 
 interface ProjectDetailModalProps {
   isOpen: boolean

@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useTaskContext } from '@/contexts/TaskContext';
-import { useProjectContext } from '@/contexts/ProjectContext';
-import { exportTasksAsJson, importTasksFromJson } from '@/utils/seedDataUtils';
+import { useTaskContext } from '@/features/tasks/contexts/TaskContext';
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
+import { exportTasksAsJson, importTasksFromJson } from '@/services/storage/utils/seedDataUtils';
 
 export default function DataManagement() {
   const { tasks, setTasks, resetTasks, clearAllTasks } = useTaskContext();

@@ -1,6 +1,6 @@
-import { Task, Todo } from '@/types/task';
-import { seedTasks } from '@/data/seedData';
-import { scheduleTodosByDueDate } from './taskScheduler';
+import { Task, Todo } from '@/features/tasks/types/task';
+import { seedTasks } from '@/features/tasks/data/seedData';
+import { scheduleTodosByDueDate } from '@/features/schedule/utils/taskScheduler';
 import { parseDate, calculateCalendarDateTime } from '@/utils/dateUtils';
 
 // シードデータをローカルストレージに保存する

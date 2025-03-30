@@ -2,9 +2,9 @@
 
 import React, { useRef, useEffect } from 'react';
 import { IoFilter, IoCaretDown } from 'react-icons/io5';
-import { User } from '@/types/user';
-import { getUserNameById, getAllUsers } from '@/utils/userUtils';
-import { useFilterContext } from '@/contexts/FilterContext';
+import { User } from '@/features/tasks/types/user';
+import { getUserNameById, getAllUsers } from '@/features/tasks/utils/userUtils';
+import { useFilterContext } from '@/features/tasks/filters/FilterContext';
 
 export default function UserFilter() {
   const {

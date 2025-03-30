@@ -1,11 +1,11 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Project } from '@/types/project'
-import { User } from '@/types/user'
-import { useProjectContext } from '@/contexts/ProjectContext'
+import { Project } from '@/features/projects/types/project'
+import { User } from '@/features/tasks/types/user'
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
 import { ChevronDownIcon, PlusIcon } from '@heroicons/react/24/outline'
-import ProjectCreateModal from './ProjectCreateModal'
+import ProjectCreateModal from '@/features/projects/components/ProjectCreateModal'
 
 interface HeaderProps {
   onLogout?: () => void

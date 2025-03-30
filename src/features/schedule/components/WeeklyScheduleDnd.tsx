@@ -3,9 +3,9 @@
 import React, { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { Task } from '@/types/task'
-import { BUSINESS_HOURS } from '@/utils/constants'
-import { useFilterContext } from '@/contexts/FilterContext'
+import { Task } from '@/features/tasks/types/task'
+import { BUSINESS_HOURS } from '@/utils/constants/constants'
+import { useFilterContext } from '@/features/tasks/filters/FilterContext'
 
 interface WeeklyScheduleDndProps {
   weekDays: Date[]
