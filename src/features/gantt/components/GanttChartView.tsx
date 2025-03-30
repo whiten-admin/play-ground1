@@ -6,9 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { IoAdd, IoBulb, IoTrash } from 'react-icons/io5';
 import { Task, Todo } from '@/features/tasks/types/task';
 import { suggestTodos } from '@/services/api/utils/openai';
-import ScheduleTodosButton from '@/features/schedule/components/ScheduleTodosButton';
 import { format } from 'date-fns';
-import UserAssignSelect from '@/components/UserAssignSelect';
 
 interface GanttChartViewProps {
   onTaskCreate?: (newTask: Task) => void;

@@ -5,7 +5,6 @@ import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import TaskDetail from '@/features/tasks/components/TaskDetail'
 import TodayTodo from '@/features/tasks/components/TodayTodo'
-import AdditionalTask from '@/features/tasks/components/AdditionalTask'
 import ProjectDetail from '@/features/projects/components/ProjectDetail'
 import WeeklySchedule from '@/features/schedule/components/WeeklySchedule'
 import Auth from '@/services/auth/components/Auth'
@@ -204,9 +203,6 @@ export default function Home() {
                       onTaskSelect={handleTaskSelect}
                       onTaskCreate={handleTaskCreate}
                     />
-                  </div>
-                  <div className="text-sm">
-                    <AdditionalTask />
                   </div>
                 </div>
               }
