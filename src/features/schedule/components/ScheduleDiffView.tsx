@@ -1,4 +1,4 @@
-import { Task, Todo } from '@/features/tasks/types/task';
+import { Task } from '@/features/tasks/types/task';
 import { differenceInDays, isBefore, isAfter, format } from 'date-fns';
 
 interface ScheduleDiff {

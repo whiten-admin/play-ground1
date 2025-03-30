@@ -52,7 +52,6 @@ export default function WeeklyScheduleDnd({
   timeSlots,
   tasks,
   onTaskSelect,
-  onTodoUpdate,
   selectedTodoId,
   onCalendarClick,
   isCreatingTodo,

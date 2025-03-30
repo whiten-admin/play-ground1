@@ -3,11 +3,9 @@
 import { useTaskContext } from '@/features/tasks/contexts/TaskContext';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 import { useEffect, useRef, useState } from 'react';
-import { IoAdd, IoBulb, IoTrash, IoClose, IoCalendar } from 'react-icons/io5';
+import { IoAdd, IoClose, IoCalendar } from 'react-icons/io5';
 import { Task, Todo } from '@/features/tasks/types/task';
-import { suggestTodos } from '@/services/api/utils/openai';
-import ScheduleTodosButton from '@/features/schedule/components/ScheduleTodosButton';
-import { differenceInDays, format, isToday } from 'date-fns';
+import { format } from 'date-fns';
 import TaskCreationForm from '@/features/tasks/components/TaskCreationForm';
 import TaskDetail from '@/features/tasks/components/TaskDetail';
 import ScheduleDiffView from '@/features/schedule/components/ScheduleDiffView';

@@ -6,7 +6,6 @@ import { FiEdit3, FiFileText, FiUpload } from 'react-icons/fi'
 import { extractTextFromPDF, extractProjectInfoFromText } from '@/services/api/utils/pdfUtils'
 import { generateProjectTasks } from '@/services/api/utils/openai'
 import { convertGeneratedTasksToTaskObjects } from '@/features/tasks/utils/taskUtils'
-import { Task } from '@/features/tasks/types/task'
 import { useTaskContext } from '@/features/tasks/contexts/TaskContext'
 
 interface ProjectCreateModalProps {
