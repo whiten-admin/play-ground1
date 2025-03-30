@@ -3,56 +3,28 @@
 import React, { useState, useEffect } from 'react'
 import { format, addDays, startOfWeek, isBefore, isToday, startOfMonth, endOfMonth, getDaysInMonth, getDay, addMonths, startOfDay } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { Task, Todo } from '@/features/tasks/types/task'
 import { IoCalendarOutline, IoChevronBack, IoChevronForward, IoCalendarClearOutline, IoCalendarNumberOutline } from 'react-icons/io5'
 import dynamic from 'next/dynamic'
 import { BUSINESS_HOURS, generateTimeSlots } from '@/utils/constants/constants'
 import { useFilterContext } from '@/features/tasks/filters/FilterContext'
+import { ScheduleCalendarProps, TodoWithMeta, ViewMode, ViewModeButton } from '../types/schedule'
+import DayView from './DayView'
+import MonthView from './MonthView'
+import ScheduleHeader from './ScheduleHeader'
+import { Task, Todo } from '@/features/tasks/types/task'
 
-const DndContext = dynamic(
+const WeeklyScheduleDnd = dynamic(
   () => import('./WeeklyScheduleDnd').then(mod => mod.default),
   { ssr: false }
 )
 
-interface WeeklyScheduleProps {
-  tasks: Task[]
-  onTaskSelect: (taskId: string, todoId?: string) => void
-  onTodoUpdate: (todoId: string, taskId: string, newDate: Date, isPlannedDate?: boolean) => void
-  selectedTodoId?: string | null
-  onTaskUpdate?: (updatedTask: Task) => void
-}
-
-interface TodoWithMeta {
-  todo: {
-    id: string
-    text: string
-    completed: boolean
-    startDate: Date
-    calendarStartDateTime?: Date
-    calendarEndDateTime?: Date
-    completedDateTime?: Date
-    estimatedHours: number
-    originalEstimatedHours?: number
-    startTime?: number
-    dueDate?: Date
-  }
-  taskId: string
-  taskTitle: string
-  priority?: number
-  isNextTodo: boolean
-}
-
-// ビューモードの型定義
-type ViewMode = 'day' | 'week' | 'month'
-
-// ビューモードボタンの型定義
-interface ViewModeButton {
-  id: ViewMode
-  icon: JSX.Element
-  label: string
-}
-
-export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, selectedTodoId, onTaskUpdate }: WeeklyScheduleProps) {
+export default function ScheduleCalendar({ 
+  tasks, 
+  onTaskSelect, 
+  onTodoUpdate, 
+  selectedTodoId, 
+  onTaskUpdate 
+}: ScheduleCalendarProps) {
   const [isClient, setIsClient] = useState(false)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [showWeekend, setShowWeekend] = useState(false)
@@ -75,7 +47,7 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
   // 選択状態の変更を検知するuseEffect
   useEffect(() => {
     if (selectedTodoId) {
-      console.log('WeeklySchedule - selectedTodoId変更:', selectedTodoId)
+      console.log('ScheduleCalendar - selectedTodoId変更:', selectedTodoId)
     }
   }, [selectedTodoId])
 
@@ -86,7 +58,7 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
   // tasksが変更されたときにtodoScheduleを再計算
   useEffect(() => {
     if (isClient) {
-      console.log('WeeklySchedule - tasksが変更されました。スケジュール再計算', {
+      console.log('ScheduleCalendar - tasksが変更されました。スケジュール再計算', {
         tasksLength: tasks.length,
         totalTodos: tasks.reduce((acc, task) => acc + task.todos.length, 0)
       });
@@ -552,271 +524,6 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
     return todosByDate;
   }
 
-  // デバッグ用：今日のTODOをコンソールに出力
-  useEffect(() => {
-    if (todoSchedule.size > 0) {
-      const todayStr = format(new Date(), 'yyyy-MM-dd');
-      const todayTodos = todoSchedule.get(todayStr) || [];
-      console.log('今日のTODO一覧:', todayTodos.map(item => ({
-        id: item.todo.id,
-        text: item.todo.text,
-        taskId: item.taskId,
-        taskTitle: item.taskTitle,
-        estimatedHours: item.todo.estimatedHours,
-        originalEstimatedHours: item.todo.originalEstimatedHours,
-        startTime: item.todo.startTime
-      })));
-    }
-  }, [todoSchedule]);
-
-  // 親コンポーネントのonTaskSelectに通知
-  const handleTaskSelect = (taskId: string, todoId?: string) => {
-    console.log('WeeklySchedule - handleTaskSelect:', { taskId, todoId })
-    // 親コンポーネントに通知するだけ
-    onTaskSelect(taskId, todoId)
-  }
-
-  // 日単位ビューのレンダリング
-  const renderDayView = () => {
-    const todayKey = format(currentDate, 'yyyy-MM-dd')
-    const todayTodos = todoSchedule.get(todayKey) || []
-
-    return (
-      <div className="min-w-[600px]">
-        {/* 日付ヘッダー */}
-        <div 
-          className="grid border-b" 
-          style={{ 
-            gridTemplateColumns: `3rem 1fr` 
-          }}
-        >
-          <div className="h-8 w-12" />
-          <div
-            className={`text-center py-1 text-xs font-medium border-l ${
-              isToday(currentDate) ? 'bg-amber-100' : ''
-            }`}
-          >
-            {format(currentDate, 'M/d (E)', { locale: ja })}
-          </div>
-        </div>
-
-        {/* 時間帯と予定 */}
-        <div className="grid" style={{ gridTemplateColumns: `3rem 1fr` }}>
-          {/* 時間帯 */}
-          <div className="border-r">
-            {timeSlots.map(hour => (
-              <div key={hour} className="h-16 text-xs text-gray-500 flex items-start justify-end pr-1 pt-1">
-                {`${hour}:00`}
-              </div>
-            ))}
-          </div>
-
-          {/* 予定エリア */}
-          <div className="relative">
-            {/* 時間帯の区切り線 */}
-            {timeSlots.map(hour => (
-              <div 
-                key={hour} 
-                className={`h-16 border-b border-gray-200 ${
-                  hour === BUSINESS_HOURS.BREAK_START ? 'bg-gray-200' : ''
-                }`}
-              >
-                {hour === BUSINESS_HOURS.BREAK_START && (
-                  <div className="flex items-center justify-center h-full text-sm text-gray-500 font-medium">
-                    休憩
-                  </div>
-                )}
-              </div>
-            ))}
-
-            {/* TODOの表示 */}
-            {todayTodos.map(({ todo, taskId, taskTitle, priority, isNextTodo }) => {
-              const hourHeight = 64; // 1時間の高さ（px）
-              const top = (todo.startTime || BUSINESS_HOURS.START_HOUR) * hourHeight - BUSINESS_HOURS.START_HOUR * hourHeight;
-              const height = todo.estimatedHours * hourHeight;
-              
-              // 状態に応じた色分け
-              let borderColor = todo.completed ? 'border-gray-400' : 'border-blue-400';
-              let bgColor = 'bg-white';
-              let textColor = 'text-gray-800';
-              
-              if (todo.completed) {
-                // 完了済みTODO：グレーアウト
-                bgColor = 'bg-gray-100';
-                textColor = 'text-gray-500';
-              } else {
-                // NEXTTODOかどうか判定（今日かつisNextTodoがtrueのTODOのみ黄色にする）
-                const today = format(new Date(), 'yyyy-MM-dd');
-                const isDisplayingToday = today === todayKey;
-                
-                if (isDisplayingToday && isNextTodo) {
-                  // 今日のTODO（NEXTTODO表示対象）：黄色系
-                  bgColor = 'bg-amber-100';
-                  borderColor = 'border-amber-500';
-                }
-                // それ以外のTODOは白（デフォルト）のまま
-              }
-              
-              // ラベル（予定か期日かの区別）
-              let timeLabel = '';
-              // カレンダー設定があれば予定とみなす
-              if (todo.calendarStartDateTime) {
-                timeLabel = '予定: ';
-              } else if (todo.dueDate && isToday(todo.dueDate)) {
-                timeLabel = '期日: ';
-              }
-
-              return (
-                <div
-                  key={todo.id}
-                  className={`absolute left-0 right-0 mx-1 p-1 rounded overflow-hidden border-l-4 ${borderColor} ${bgColor} ${textColor} ${selectedTodoId === todo.id ? 'ring-4 ring-blue-500 shadow-md' : ''}`}
-                  style={{
-                    top: `${top}px`,
-                    height: `${height}px`,
-                    // 選択されている場合は前面に表示
-                    zIndex: selectedTodoId === todo.id ? 10 : 1,
-                    // 選択されている場合は境界線を追加
-                    boxShadow: selectedTodoId === todo.id ? '0 4px 12px rgba(59, 130, 246, 0.5)' : undefined,
-                    // 選択時の背景色を追加
-                    backgroundColor: selectedTodoId === todo.id ? (todo.completed ? '#e5e7eb' : '#dbeafe') : undefined
-                  }}
-                  onClick={() => handleTaskSelect(taskId, todo.id)}
-                >
-                  <div className={`font-medium truncate ${selectedTodoId === todo.id ? 'text-blue-700 font-bold' : ''}`}>
-                    {todo.text}
-                    {todo.id.includes('-after-break-') && <span className="text-xs ml-1 text-amber-600">（休憩後）</span>}
-                  </div>
-                  <div className="text-gray-500 truncate">{taskTitle}</div>
-                  <div className="text-gray-500">
-                    {timeLabel}{Math.round((todo.originalEstimatedHours || todo.estimatedHours) * 10) / 10}h
-                    {todo.calendarStartDateTime && format(todo.calendarStartDateTime, 'yyyy-MM-dd') !== todayKey && (
-                      <span className="ml-1 text-xs text-gray-400">(予定: {format(todo.calendarStartDateTime, 'M/d')})</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // 月単位ビューのレンダリング
-  const renderMonthView = () => {
-    const weeks = [];
-    for (let i = 0; i < 6; i++) {
-      weeks.push(monthCalendarDays.slice(i * 7, (i + 1) * 7));
-    }
-
-    return (
-      <div className="min-w-[800px] relative">
-        {/* 年月表示 - スティッキーポジショニングを適用 */}
-        <div className="sticky left-0 z-10 text-left font-medium py-2 text-gray-700 pl-2 bg-white">
-          {format(currentDate, 'yyyy年M月', { locale: ja })}
-        </div>
-        
-        {/* 曜日ヘッダー */}
-        <div 
-          className="grid grid-cols-7 border-b"
-        >
-          {['日', '月', '火', '水', '木', '金', '土'].map((day, index) => (
-            <div
-              key={index}
-              className="text-center py-1 text-xs font-medium border-l"
-            >
-              {day}
-            </div>
-          ))}
-        </div>
-
-        {/* カレンダー本体 */}
-        <div className="grid grid-cols-7">
-          {monthCalendarDays.map((day, index) => {
-            const isCurrentMonth = day.getMonth() === currentDate.getMonth();
-            const dateKey = format(day, 'yyyy-MM-dd');
-            const dayTodos = todoSchedule.get(dateKey) || [];
-            const isSunday = getDay(day) === 0;
-            const isSaturday = getDay(day) === 6;
-            
-            return (
-              <div 
-                key={index}
-                className={`min-h-[100px] border-b border-l p-1 ${
-                  isToday(day) ? 'bg-amber-100' : 
-                  !isCurrentMonth ? 'bg-gray-50 text-gray-400' : 
-                  isSunday ? 'text-red-500' : 
-                  isSaturday ? 'text-blue-500' : ''
-                }`}
-              >
-                <div className="text-right text-xs mb-1">
-                  {format(day, 'd')}
-                </div>
-                <div className="space-y-1">
-                  {dayTodos.slice(0, 3).map(({ todo, taskId, priority, isNextTodo }) => {
-                    // 状態に応じた色分け
-                    let bgColor = 'bg-white';
-                    let textColor = 'text-gray-800';
-                    let borderClass = 'border border-gray-200';
-                    
-                    if (todo.completed) {
-                      // 完了済みTODO：グレーアウト
-                      bgColor = 'bg-gray-100';
-                      textColor = 'text-gray-500';
-                      borderClass = 'border border-gray-300';
-                    } else {
-                      // NEXTTODOかどうか判定（今日かつisNextTodoがtrueのTODOのみ黄色にする）
-                      const today = format(new Date(), 'yyyy-MM-dd');
-                      const isDisplayingToday = isToday(day) && format(day, 'yyyy-MM-dd') === today;
-                      
-                      if (isDisplayingToday && isNextTodo) {
-                        // 今日のTODO（NEXTTODO表示対象）：黄色系
-                        bgColor = 'bg-amber-100';
-                        borderClass = 'border border-amber-400';
-                      } else {
-                        // 予定TODO：デフォルト白色
-                        bgColor = 'bg-white';
-                      }
-                    }
-                    
-                    // 選択されたTODOの場合、スタイルを強調
-                    if (selectedTodoId === todo.id) {
-                      bgColor = todo.completed ? 'bg-gray-200' : 'bg-blue-100';
-                      borderClass = 'border-2 border-blue-600';
-                      textColor = 'text-blue-800 font-bold';
-                    }
-
-                    return (
-                      <div
-                        key={todo.id}
-                        className={`text-xs p-1 ${bgColor} rounded truncate cursor-pointer flex items-center ${textColor} ${borderClass} ${selectedTodoId === todo.id ? 'ring-4 ring-blue-500 shadow-md' : ''}`}
-                        style={{
-                          boxShadow: selectedTodoId === todo.id ? '0 4px 8px rgba(59, 130, 246, 0.5)' : undefined,
-                          zIndex: selectedTodoId === todo.id ? 10 : 1,
-                          position: 'relative'
-                        }}
-                        onClick={(e) => handleTaskSelect(taskId, todo.id)}
-                      >
-                        <span className="truncate">
-                          {todo.text}
-                        </span>
-                      </div>
-                    );
-                  })}
-                  {dayTodos.length > 3 && (
-                    <div className="text-xs text-gray-500 text-center">
-                      + {dayTodos.length - 3} more
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
   // カレンダー部分のクリックイベントハンドラー
   const handleCalendarClick = (e: React.MouseEvent<HTMLDivElement>, day: Date, hour: number) => {
     // クリックした日付と時間を取得（引数から直接受け取る）
@@ -836,7 +543,7 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
     // 日付に時間を設定
     clickedDate.setHours(clickedHour, 0, 0, 0);
     
-    console.log('WeeklySchedule - handleCalendarClick:', {
+    console.log('ScheduleCalendar - handleCalendarClick:', {
       clickedDay: format(day, 'yyyy-MM-dd'),
       clickedDate,
       clickedHour,
@@ -851,7 +558,7 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
   // 新しいTODOを作成する関数
   const handleCreateTodo = (taskId: string) => {
     if (!newTodoDate || !newTodoText.trim()) {
-      console.log('WeeklySchedule - handleCreateTodo: 必要なデータが不足', {
+      console.log('ScheduleCalendar - handleCreateTodo: 必要なデータが不足', {
         newTodoDate,
         onTaskUpdate: !!onTaskUpdate,
         newTodoText: newTodoText.trim()
@@ -861,7 +568,7 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
 
     const task = tasks.find(t => t.id === taskId);
     if (!task) {
-      console.log('WeeklySchedule - handleCreateTodo: タスクが見つからない', { taskId });
+      console.log('ScheduleCalendar - handleCreateTodo: タスクが見つからない', { taskId });
       return;
     }
 
@@ -884,7 +591,7 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
       assigneeId: ''
     };
 
-    console.log('WeeklySchedule - handleCreateTodo: 新しいTODOを作成', {
+    console.log('ScheduleCalendar - handleCreateTodo: 新しいTODOを作成', {
       todoId: newTodo.id,
       taskId: task.id,
       date: newTodoDate,
@@ -913,7 +620,7 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
       setTimeout(() => {
         const updatedSchedule = scheduleTodos();
         setTodoSchedule(updatedSchedule);
-        console.log('WeeklySchedule - handleCreateTodo: スケジュール再計算完了', {
+        console.log('ScheduleCalendar - handleCreateTodo: スケジュール再計算完了', {
           updatedSchedule: updatedSchedule.size,
           newTodoId: newTodo.id
         });
@@ -957,66 +664,17 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
 
   return (
     <div className="bg-white rounded-lg shadow p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-bold">
-          スケジュール
-        </h2>
-        
-        <div className="flex items-center gap-4">
-          <div className="flex gap-1">
-            {viewModeButtons.map((button) => (
-              <button
-                key={button.id}
-                onClick={() => setViewMode(button.id)}
-                className={`p-2 rounded ${
-                  viewMode === button.id
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-                title={button.label}
-              >
-                {button.icon}
-              </button>
-            ))}
-          </div>
-          
-          <div className="h-6 border-l border-gray-300"></div>
-          
-          <div className="flex items-center gap-2">
-            <button
-              onClick={movePrevious}
-              className="p-1 hover:bg-gray-100 rounded"
-            >
-              <IoChevronBack className="w-5 h-5" />
-            </button>
-            <button
-              onClick={goToToday}
-              className="px-2 py-1 text-sm bg-blue-50 text-blue-600 rounded hover:bg-blue-100"
-            >
-              {viewMode === 'day' ? '今日' : viewMode === 'week' ? '今週' : '今月'}
-            </button>
-            <button
-              onClick={moveNext}
-              className="p-1 hover:bg-gray-100 rounded"
-            >
-              <IoChevronForward className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      </div>
-      <div className="flex items-center justify-end mb-2">
-        {(viewMode === 'week' || viewMode === 'month') && (
-          <button
-            onClick={() => setShowWeekend(!showWeekend)}
-            className="text-xs text-gray-600 hover:text-gray-800 flex items-center gap-1"
-          >
-            {showWeekend ? '土日を非表示' : '土日を表示'}
-            <span className="text-xs">
-              {showWeekend ? '▼' : '▶'}
-            </span>
-          </button>
-        )}
-      </div>
+      <ScheduleHeader 
+        currentDate={currentDate}
+        viewMode={viewMode}
+        viewModeButtons={viewModeButtons}
+        showWeekend={showWeekend}
+        onViewModeChange={setViewMode}
+        onShowWeekendChange={setShowWeekend}
+        onMovePrevious={movePrevious}
+        onMoveNext={moveNext}
+        onGoToToday={goToToday}
+      />
       
       {/* 月表示の場合は年月表示を外部に配置 */}
       {viewMode === 'month' && (
@@ -1026,7 +684,15 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
       )}
       
       <div className="overflow-x-auto">
-        {viewMode === 'day' && renderDayView()}
+        {viewMode === 'day' && 
+          <DayView 
+            currentDate={currentDate}
+            timeSlots={timeSlots}
+            todoSchedule={todoSchedule}
+            selectedTodoId={selectedTodoId}
+            onTaskSelect={onTaskSelect}
+          />
+        }
         {viewMode === 'week' && (
           <div className={showWeekend ? "min-w-[800px]" : "min-w-[600px]"}>
             {/* 曜日ヘッダー */}
@@ -1049,11 +715,11 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
               ))}
             </div>
 
-            <DndContext
+            <WeeklyScheduleDnd
               weekDays={displayDays}
               timeSlots={timeSlots}
               tasks={tasks}
-              onTaskSelect={handleTaskSelect}
+              onTaskSelect={onTaskSelect}
               onTodoUpdate={onTodoUpdate}
               selectedTodoId={selectedTodoId}
               onCalendarClick={(e: React.MouseEvent<HTMLDivElement>, day: Date, hour: number) => handleCalendarClick(e, day, hour)}
@@ -1077,115 +743,14 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
           </div>
         )}
         {viewMode === 'month' && (
-          <div className={showWeekend ? "min-w-[800px]" : "min-w-[600px]"}>            
-            {/* 曜日ヘッダー */}
-            <div 
-              className="grid border-b"
-              style={{ 
-                gridTemplateColumns: showWeekend ? 'repeat(7, minmax(0, 1fr))' : 'repeat(5, minmax(0, 1fr))' 
-              }}
-            >
-              {(showWeekend ? ['日', '月', '火', '水', '木', '金', '土'] : ['月', '火', '水', '木', '金']).map((day, index) => (
-                <div
-                  key={index}
-                  className="text-center py-1 text-xs font-medium border-l"
-                >
-                  {day}
-                </div>
-              ))}
-            </div>
-
-            {/* カレンダー本体 */}
-            <div 
-              className="grid"
-              style={{ 
-                gridTemplateColumns: showWeekend ? 'repeat(7, minmax(0, 1fr))' : 'repeat(5, minmax(0, 1fr))' 
-              }}
-            >
-              {monthCalendarDays
-                .filter(day => showWeekend || (getDay(day) !== 0 && getDay(day) !== 6))
-                .map((day, index) => {
-                const isCurrentMonth = day.getMonth() === currentDate.getMonth();
-                const dateKey = format(day, 'yyyy-MM-dd');
-                const dayTodos = todoSchedule.get(dateKey) || [];
-                const isSunday = getDay(day) === 0;
-                const isSaturday = getDay(day) === 6;
-                
-                return (
-                  <div 
-                    key={`${dateKey}-${index}`}
-                    className={`min-h-[100px] border-b border-l p-1 ${
-                      isToday(day) ? 'bg-amber-100' : 
-                      !isCurrentMonth ? 'bg-gray-50 text-gray-400' : 
-                      isSunday ? 'text-red-500' : 
-                      isSaturday ? 'text-blue-500' : ''
-                    }`}
-                  >
-                    <div className="text-right text-xs mb-1">
-                      {format(day, 'd')}
-                    </div>
-                    <div className="space-y-1">
-                      {dayTodos.slice(0, 3).map(({ todo, taskId, priority, isNextTodo }) => {
-                        // 状態に応じた色分け
-                        let bgColor = 'bg-white';
-                        let textColor = 'text-gray-800';
-                        let borderClass = 'border border-gray-200';
-                        
-                        if (todo.completed) {
-                          // 完了済みTODO：グレーアウト
-                          bgColor = 'bg-gray-100';
-                          textColor = 'text-gray-500';
-                          borderClass = 'border border-gray-300';
-                        } else {
-                          // NEXTTODOかどうか判定（今日かつisNextTodoがtrueのTODOのみ黄色にする）
-                          const today = format(new Date(), 'yyyy-MM-dd');
-                          const isDisplayingToday = isToday(day) && format(day, 'yyyy-MM-dd') === today;
-                          
-                          if (isDisplayingToday && isNextTodo) {
-                            // 今日のTODO（NEXTTODO表示対象）：黄色系
-                            bgColor = 'bg-amber-100';
-                            borderClass = 'border border-amber-400';
-                          } else {
-                            // 予定TODO：デフォルト白色
-                            bgColor = 'bg-white';
-                          }
-                        }
-                        
-                        // 選択されたTODOの場合、スタイルを強調
-                        if (selectedTodoId === todo.id) {
-                          bgColor = todo.completed ? 'bg-gray-200' : 'bg-blue-100';
-                          borderClass = 'border-2 border-blue-600';
-                          textColor = 'text-blue-800 font-bold';
-                        }
-
-                        return (
-                          <div
-                            key={todo.id}
-                            className={`text-xs p-1 ${bgColor} rounded truncate cursor-pointer flex items-center ${textColor} ${borderClass} ${selectedTodoId === todo.id ? 'ring-4 ring-blue-500 shadow-md' : ''}`}
-                            style={{
-                              boxShadow: selectedTodoId === todo.id ? '0 4px 8px rgba(59, 130, 246, 0.5)' : undefined,
-                              zIndex: selectedTodoId === todo.id ? 10 : 1,
-                              position: 'relative'
-                            }}
-                            onClick={(e) => handleTaskSelect(taskId, todo.id)}
-                          >
-                            <span className="truncate">
-                              {todo.text}
-                            </span>
-                          </div>
-                        );
-                      })}
-                      {dayTodos.length > 3 && (
-                        <div className="text-xs text-gray-500 text-center">
-                          + {dayTodos.length - 3} more
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <MonthView 
+            currentDate={currentDate}
+            showWeekend={showWeekend}
+            monthCalendarDays={monthCalendarDays}
+            todoSchedule={todoSchedule}
+            selectedTodoId={selectedTodoId}
+            onTaskSelect={onTaskSelect}
+          />
         )}
       </div>
 

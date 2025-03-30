@@ -6,7 +6,7 @@ import Header from '@/components/layout/Header'
 import TaskDetail from '@/features/tasks/components/TaskDetail'
 import TodayTodo from '@/features/tasks/components/TodayTodo'
 import ProjectDetail from '@/features/projects/components/ProjectDetail'
-import WeeklySchedule from '@/features/schedule/components/WeeklySchedule'
+import ScheduleCalendar from '@/features/schedule/components/ScheduleCalendar'
 import Auth from '@/services/auth/components/Auth'
 import EmptyProjectState from '@/features/projects/components/EmptyProjectState'
 import { useAuth } from '@/services/auth/hooks/useAuth'
@@ -223,7 +223,7 @@ function HomeContent() {
                     />
                   </div>
                   <div className="text-sm">
-                    <WeeklySchedule
+                    <ScheduleCalendar
                       tasks={filteredTasks}
                       onTaskSelect={handleTaskSelect}
                       onTodoUpdate={handleTodoUpdate}
