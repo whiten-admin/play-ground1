@@ -32,11 +32,14 @@ interface TodoWithMeta {
     id: string
     text: string
     completed: boolean
+    startDate: Date
+    calendarStartDateTime?: Date
+    calendarEndDateTime?: Date
     dueDate: Date
     estimatedHours: number
     originalEstimatedHours?: number
     startTime?: number
-    plannedStartDate?: Date
+    actualHours?: number
   }
   taskId: string
   taskTitle: string

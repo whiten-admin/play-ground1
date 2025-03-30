@@ -107,9 +107,7 @@ export const scheduleTodosByDueDate = (tasks: Task[]): Task[] => {
     if (aTask.dueDate.getTime() !== bTask.dueDate.getTime()) {
       return aTask.dueDate.getTime() - bTask.dueDate.getTime();
     }
-    
-    // 期日が同じ場合は優先度順
-    return (bTask.priority || 0) - (aTask.priority || 0);
+    return 1;
   });
   
   // 日付文字列の形式を統一
