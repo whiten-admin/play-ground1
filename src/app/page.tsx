@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import TaskDetail from '@/features/tasks/components/TaskDetail'
@@ -18,7 +18,8 @@ import ResizablePanel from '@/components/layout/ResizablePanel'
 import { FilterProvider } from '@/features/tasks/filters/FilterContext'
 import { useSearchParams } from 'next/navigation'
 
-export default function Home() {
+// 検索パラメータを使用するコンポーネント
+function HomeContent() {
   const { isAuthenticated, user, login, logout } = useAuth()
   const [activeTab, setActiveTab] = useState('todo')
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
@@ -255,5 +256,14 @@ export default function Home() {
         </div>
       </div>
     </FilterProvider>
+  );
+}
+
+// メインコンポーネント
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="p-4 text-center">読み込み中...</div>}>
+      <HomeContent />
+    </Suspense>
   );
 }
