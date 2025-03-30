@@ -41,8 +41,8 @@ export default function ScheduleDiffView({ changes, onApprove, onCancel, tasks }
     tasks.forEach(task => {
       task.todos.forEach(todo => {
         // 過去分または完了済みのTODOを除外
-        const todoDate = todo.plannedStartDate 
-          ? new Date(todo.plannedStartDate)
+        const todoDate = todo.calendarStartDateTime 
+          ? new Date(todo.calendarStartDateTime)
           : new Date(todo.startDate);
         
         // 日付を0時0分0秒に設定して比較
@@ -62,8 +62,8 @@ export default function ScheduleDiffView({ changes, onApprove, onCancel, tasks }
             hasChange: true
           });
         } else {
-          const hasChange = Boolean(todo.plannedStartDate && 
-            format(new Date(todo.plannedStartDate), 'yyyy-MM-dd') !== format(new Date(todo.startDate), 'yyyy-MM-dd'));
+          const hasChange = Boolean(todo.calendarStartDateTime && 
+            format(new Date(todo.calendarStartDateTime), 'yyyy-MM-dd') !== format(new Date(todo.startDate), 'yyyy-MM-dd'));
           
           displayTodos.push({
             taskId: task.id,
@@ -71,8 +71,8 @@ export default function ScheduleDiffView({ changes, onApprove, onCancel, tasks }
             todoId: todo.id,
             todoTitle: todo.text,
             oldDate: format(new Date(todo.startDate), 'yyyy-MM-dd'),
-            newDate: todo.plannedStartDate 
-              ? format(new Date(todo.plannedStartDate), 'yyyy-MM-dd')
+            newDate: todo.calendarStartDateTime 
+              ? format(new Date(todo.calendarStartDateTime), 'yyyy-MM-dd')
               : format(new Date(todo.startDate), 'yyyy-MM-dd'),
             hasChange
           });

@@ -7,10 +7,11 @@ import { IoAdd, IoBulb, IoTrash, IoClose, IoCalendar } from 'react-icons/io5';
 import { Task, Todo } from '@/types/task';
 import { suggestTodos } from '@/utils/openai';
 import ScheduleTodosButton from './ScheduleTodosButton';
-import { differenceInDays } from 'date-fns';
+import { differenceInDays, format, isToday } from 'date-fns';
 import TaskCreationForm from './TaskCreationForm';
 import TaskDetail from './TaskDetail';
 import ScheduleDiffView from './ScheduleDiffView';
+import { getUserById } from '@/utils/userUtils';
 
 interface WBSViewProps {
   onTaskCreate?: (newTask: Task) => void;
@@ -51,10 +52,15 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
   // タスクを開始日でソートする関数
   const sortTasksByStartDate = (tasksToSort: Task[]): Task[] => {
     return [...tasksToSort].sort((a, b) => {
-      // 開始日でソート（開始日が早い順）
-      const aStartDate = new Date(a.startDate).getTime();
-      const bStartDate = new Date(b.startDate).getTime();
-      return aStartDate - bStartDate;
+      // 期日でソート（期日が早い順）
+      // 文字列の場合はDateオブジェクトに変換
+      const aDueDate = a.dueDate instanceof Date 
+        ? a.dueDate.getTime() 
+        : new Date(a.dueDate as any).getTime();
+      const bDueDate = b.dueDate instanceof Date 
+        ? b.dueDate.getTime() 
+        : new Date(b.dueDate as any).getTime();
+      return aDueDate - bDueDate;
     });
   };
 
@@ -288,32 +294,35 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
     );
   };
 
-  // タスクバーコンポーネント
+  // TaskBarコンポーネント
   const TaskBar = ({ task, calendarRange }: { task: Task; calendarRange: { totalDays: number; startDate: Date } }) => {
-    const startDiff = differenceInDays(task.startDate, calendarRange.startDate);
-    const duration = differenceInDays(task.endDate, task.startDate) + 1;
-    const width = `${(duration / calendarRange.totalDays) * 100}%`;
-    const left = `${(startDiff / calendarRange.totalDays) * 100}%`;
+    // タスクの開始日と終了日は含まれるTODOの最初の着手日と最後の着手日に基づいて計算
+    const startDates = task.todos.map(todo => todo.startDate.getTime());
+    const earliestStartDate = startDates.length > 0 ? new Date(Math.min(...startDates)) : task.dueDate;
 
-    // タスクの進捗状況を計算
+    // 期日をタスクの終了日として使用
+    const taskEndDate = task.dueDate;
+    
+    const startPos = getDatePosition(earliestStartDate, calendarRange.startDate);
+    const endPos = getDatePosition(taskEndDate, calendarRange.startDate);
+    
+    // 進捗状況を計算
     const completedTodos = task.todos.filter(todo => todo.completed).length;
-    const progress = task.todos.length > 0 ? (completedTodos / task.todos.length) * 100 : 0;
+    const totalTodos = task.todos.length;
+    const progress = totalTodos > 0 ? (completedTodos / totalTodos) * 100 : 0;
 
     return (
       <div
-        className="absolute h-4 top-2 bg-blue-500 rounded"
+        className="absolute h-8 bg-gray-200 rounded"
         style={{
-          width,
-          left,
+          left: `${(startPos - 1) * (100 / calendarRange.totalDays)}%`,
+          width: `${((endPos - startPos) + 1) * (100 / calendarRange.totalDays)}%`,
+          zIndex: 0
         }}
       >
-        <div className="h-full relative">
-          <div className="absolute inset-0 bg-blue-200 rounded overflow-hidden">
-            <div
-              className="h-full bg-blue-500"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+        <div className="h-full bg-blue-500 rounded" style={{ width: `${progress}%` }} />
+        <div className="absolute top-0 left-0 right-0 bottom-0 flex items-center px-2">
+          <span className="text-xs font-medium truncate text-gray-800">{task.title}</span>
         </div>
       </div>
     );
@@ -321,130 +330,213 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
 
   // TODOバーコンポーネント
   const TodoBar = ({ todo, calendarRange }: { todo: Todo; calendarRange: { totalDays: number; startDate: Date } }) => {
-    const startDiff = differenceInDays(todo.startDate, calendarRange.startDate);
-    const duration = differenceInDays(todo.endDate, todo.startDate) + 1;
-    const width = `${(duration / calendarRange.totalDays) * 100}%`;
-    const left = `${(startDiff / calendarRange.totalDays) * 100}%`;
-
+    const startPosition = getDatePosition(todo.calendarStartDateTime, calendarRange.startDate);
+    const endPosition = getDatePosition(todo.calendarEndDateTime, calendarRange.startDate);
+    const duration = endPosition - startPosition + 1;
+    
     return (
       <div
-        className={`absolute h-4 top-2 rounded ${
-          todo.completed ? 'bg-green-500' : 'bg-gray-300'
+        className={`absolute h-6 rounded-md transition-all ${
+          todo.completed ? 'bg-green-200 border border-green-300' : 'bg-blue-200 border border-blue-300'
         }`}
         style={{
-          width,
-          left,
+          left: `${(startPosition / calendarRange.totalDays) * 100}%`,
+          width: `${(duration / calendarRange.totalDays) * 100}%`,
+          top: '0.5rem'
         }}
-      />
+        title={`${todo.text} (${format(todo.calendarStartDateTime, 'yyyy/MM/dd HH:mm')} - ${format(todo.calendarEndDateTime, 'yyyy/MM/dd HH:mm')})`}
+      >
+        <div className="px-2 whitespace-nowrap text-xs font-medium text-gray-700 overflow-visible">
+          {todo.text}
+        </div>
+      </div>
     );
   };
 
-  // スケジュール最適化の関数
+  // スケジュールを最適化する関数
   const optimizeSchedule = () => {
-    const MAX_HOURS_PER_DAY = 8;
-    const updatedTasks = [...tasks];
-    const changes: typeof scheduleChanges = [];
-
+    // タスクとTODOを複製して変更できるようにする
+    const updatedTasks = JSON.parse(JSON.stringify(tasks));
+    
+    // スケジュール変更ログをクリア
+    setScheduleChanges([]);
+    
     // タスクを開始日でソート
-    updatedTasks.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
-
+    updatedTasks.sort((a: Task, b: Task) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+    
     // 担当者ごとの工数を管理するマップ
-    const assigneeHours = new Map<string, Map<string, number>>();
-
+    const userHoursMap = new Map();
+    const MAX_DAILY_HOURS = 8; // 1日あたりの最大工数
+    
     // 各タスクのTODOを最適化
-    updatedTasks.forEach(task => {
-      let currentDate = new Date(task.startDate);
+    updatedTasks.forEach((task: Task) => {
+      // タスクの期日から逆算して開始日を決定
+      let currentDate = new Date(task.dueDate);
+      currentDate.setDate(currentDate.getDate() - 7); // 仮に期日の1週間前から開始
       
-      task.todos.forEach(todo => {
+      task.todos.forEach((todo: Todo) => {
         const todoHours = todo.estimatedHours || 1;
-        const oldDate = todo.startDate;
+        const oldStartDate = format(todo.startDate, 'yyyy-MM-dd');
         
         // 担当者ごとの工数を計算
-        const assigneeId = todo.assigneeIds?.[0] || 'unassigned';
-        if (!assigneeHours.has(currentDate.toISOString().split('T')[0])) {
-          assigneeHours.set(currentDate.toISOString().split('T')[0], new Map());
-        }
-        let currentAssigneeHours = assigneeHours.get(currentDate.toISOString().split('T')[0])!;
-        const totalHours = (currentAssigneeHours.get(assigneeId) || 0) + todoHours;
-
-        // 担当者の1日の最大工数を超える場合、翌日に移動
-        if (totalHours > MAX_HOURS_PER_DAY) {
-          currentDate.setDate(currentDate.getDate() + 1);
-          // 新しい日付の工数を初期化
-          if (!assigneeHours.has(currentDate.toISOString().split('T')[0])) {
-            assigneeHours.set(currentDate.toISOString().split('T')[0], new Map());
+        let assignedUsers = todo.assigneeId 
+          ? [todo.assigneeId]
+          : ['unassigned'];
+        
+        // この日に追加できるかチェック
+        let canAddToCurrentDate = true;
+        assignedUsers.forEach((userId: string) => {
+          const dateKey = `${userId}-${format(currentDate, 'yyyy-MM-dd')}`;
+          const currentHours = userHoursMap.get(dateKey) || 0;
+          if (currentHours + todoHours > MAX_DAILY_HOURS) {
+            canAddToCurrentDate = false;
           }
-          currentAssigneeHours = assigneeHours.get(currentDate.toISOString().split('T')[0])!;
+        });
+        
+        // 追加できない場合は翌日に
+        if (!canAddToCurrentDate) {
+          currentDate = new Date(currentDate);
+          currentDate.setDate(currentDate.getDate() + 1);
         }
-
-        // TODOの開始日と終了日を更新
-        const newDate = currentDate.toISOString().split('T')[0];
-        if (oldDate !== newDate) {
-          changes.push({
-            taskId: task.id,
-            taskTitle: task.title,
-            todoId: todo.id,
-            todoTitle: todo.text,
-            oldDate,
-            newDate
-          });
+        
+        // 新しい日付を設定
+        const newStartDate = new Date(currentDate);
+        
+        // 日付が変わった場合のみスケジュール変更ログに追加
+        if (format(todo.startDate, 'yyyy-MM-dd') !== format(newStartDate, 'yyyy-MM-dd')) {
+          setScheduleChanges(prev => [
+            ...prev,
+            {
+              taskId: task.id,
+              taskTitle: task.title,
+              todoId: todo.id,
+              todoTitle: todo.text,
+              oldDate: oldStartDate,
+              newDate: format(newStartDate, 'yyyy-MM-dd')
+            }
+          ]);
         }
-        todo.startDate = newDate;
-        todo.endDate = newDate;
-
+        
+        // TODOの日付を更新
+        todo.startDate = newStartDate;
+        
+        // カレンダー表示用の日時も更新
+        todo.calendarStartDateTime = new Date(
+          newStartDate.getFullYear(),
+          newStartDate.getMonth(),
+          newStartDate.getDate(),
+          9, // 9:00 AM
+          0
+        );
+        
+        todo.calendarEndDateTime = new Date(
+          newStartDate.getFullYear(),
+          newStartDate.getMonth(),
+          newStartDate.getDate(),
+          9 + Math.min(8, todoHours), // 予定時間分（最大8時間）
+          0
+        );
+        
         // 担当者の工数を更新
-        currentAssigneeHours.set(assigneeId, (currentAssigneeHours.get(assigneeId) || 0) + todoHours);
+        assignedUsers.forEach((userId: string) => {
+          const dateKey = `${userId}-${format(newStartDate, 'yyyy-MM-dd')}`;
+          const currentHours = userHoursMap.get(dateKey) || 0;
+          userHoursMap.set(dateKey, currentHours + todoHours);
+        });
       });
-
-      // タスクの終了日を最後のTODOの日付に更新
-      const lastTodo = task.todos[task.todos.length - 1];
-      if (lastTodo) {
-        task.endDate = lastTodo.endDate;
-      }
     });
-
-    // 変更がある場合のみ差分表示を表示
-    if (changes.length > 0) {
-      setScheduleChanges(changes);
-    } else {
-      setNotification({
-        message: 'スケジュールの最適化が完了しました（変更なし）',
-        type: 'success'
+    
+    // タスクを更新
+    const updatedTasksWithDate = updatedTasks.map((task: Task) => {
+      // 各タスクの最早開始日と最遅終了日を計算
+      const minStartDate = Math.min(...task.todos.map((t: Todo) => new Date(t.startDate).getTime()));
+      const maxEndDate = Math.max(...task.todos.map((t: Todo) => {
+        // 終了時間は開始時間 + 見積もり時間とする
+        const endTime = new Date(t.calendarEndDateTime).getTime();
+        return endTime;
+      }));
+      
+      return {
+        ...task,
+        // startDateは削除（新しい型定義には存在しない）
+        // 最遅終了日をタスクの期日として設定
+        dueDate: new Date(maxEndDate)
+      };
+    });
+    
+    // 更新したタスクをコンテキストに反映
+    if (onTaskUpdate) {
+      updatedTasksWithDate.forEach((task: Task) => {
+        onTaskUpdate(task);
       });
-      setTimeout(() => {
-        setNotification(null);
-      }, 3000);
     }
+    
+    // 通知を表示
+    setNotification({
+      message: 'スケジュールが最適化されました',
+      type: 'success'
+    });
+    
+    // 3秒後に通知を消す
+    setTimeout(() => {
+      setNotification(null);
+    }, 3000);
   };
 
-  // 変更を適用する関数
+  // スケジュール変更を適用する関数
   const applyScheduleChanges = () => {
-    const updatedTasks = [...tasks];
+    // タスクとTODOを複製して変更できるようにする
+    const updatedTasks = JSON.parse(JSON.stringify(tasks));
     
+    // 変更を適用
     scheduleChanges.forEach(change => {
-      const task = updatedTasks.find(t => t.id === change.taskId);
+      const task = updatedTasks.find((t: Task) => t.id === change.taskId);
       if (task) {
-        const todo = task.todos.find(t => t.id === change.todoId);
+        const todo = task.todos.find((t: Todo) => t.id === change.todoId);
         if (todo) {
-          todo.startDate = change.newDate;
-          todo.endDate = change.newDate;
+          // 変更された日付を新しいDate型に変換
+          const newDate = new Date(change.newDate);
+          
+          // 日付を更新
+          todo.startDate = newDate;
+          
+          // カレンダー表示用の日時も更新
+          todo.calendarStartDateTime = new Date(
+            newDate.getFullYear(),
+            newDate.getMonth(),
+            newDate.getDate(),
+            9, // 9:00 AM
+            0
+          );
+          
+          todo.calendarEndDateTime = new Date(
+            newDate.getFullYear(),
+            newDate.getMonth(),
+            newDate.getDate(),
+            9 + Math.min(8, todo.estimatedHours || 1), // 予定時間分（最大8時間）
+            0
+          );
         }
       }
     });
-
-    // 更新されたタスクを保存
-    updatedTasks.forEach(task => {
-      onTaskUpdate?.(task);
-    });
-
-    // 差分表示を閉じる
+    
+    // 更新したタスクをコンテキストに反映
+    if (onTaskUpdate) {
+      updatedTasks.forEach((task: Task) => {
+        onTaskUpdate(task);
+      });
+    }
+    
+    // スケジュール変更ログをクリア
     setScheduleChanges([]);
     
     // 通知を表示
     setNotification({
-      message: 'スケジュールの最適化が完了しました',
+      message: 'スケジュール変更が適用されました',
       type: 'success'
     });
+    
+    // 3秒後に通知を消す
     setTimeout(() => {
       setNotification(null);
     }, 3000);
@@ -513,7 +605,17 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
                     <span className="truncate">{task.title}</span>
                   </div>
                   <div className="text-xs text-gray-700">
-                    {task.assigneeIds?.length ? `${task.assigneeIds.length}人` : '-'}
+                    {(() => {
+                      // タスクの担当者を子TODOから計算
+                      const assigneeIds = new Set<string>();
+                      task.todos.forEach(todo => {
+                        if (todo.assigneeId) {
+                          assigneeIds.add(todo.assigneeId);
+                        }
+                      });
+                      const count = assigneeIds.size;
+                      return count > 0 ? `${count}人` : '-';
+                    })()}
                   </div>
                   <div className="text-xs text-gray-700 flex items-center">
                     <span>
@@ -564,7 +666,7 @@ export default function WBSView({ onTaskCreate, onTaskSelect, onTaskUpdate, proj
                       </label>
                     </div>
                     <div className="text-xs text-gray-700">
-                      {todo.assigneeIds?.length ? `${todo.assigneeIds.length}人` : '-'}
+                      {todo.assigneeId ? getUserById(todo.assigneeId)?.name || '担当者' : '-'}
                     </div>
                     <div className="text-xs text-gray-700 flex items-center">
                       <input

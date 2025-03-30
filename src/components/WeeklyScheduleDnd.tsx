@@ -32,11 +32,14 @@ interface TodoWithMeta {
     id: string
     text: string
     completed: boolean
+    startDate: Date
+    calendarStartDateTime?: Date
+    calendarEndDateTime?: Date
     dueDate: Date
     estimatedHours: number
     originalEstimatedHours?: number
     startTime?: number
-    plannedStartDate?: Date
+    actualHours?: number
   }
   taskId: string
   taskTitle: string
@@ -97,26 +100,34 @@ export default function WeeklyScheduleDnd({
     
     // フィルタリングされたタスクを使用
     const filteredTasks = tasks.filter(task => {
+      // 各タスクのTODOから担当者リストを作成
+      const taskAssignees = new Set<string>();
+      task.todos.forEach(todo => {
+        if (todo.assigneeId) {
+          taskAssignees.add(todo.assigneeId);
+        }
+      });
+      
       // アサインされていないタスクを表示するかどうか
-      if (showUnassigned && (!task.assigneeIds || task.assigneeIds.length === 0)) {
-        return true
+      if (showUnassigned && taskAssignees.size === 0) {
+        return true;
       }
       
       // 選択されたユーザーのタスクを表示
-      if (task.assigneeIds && task.assigneeIds.some(id => selectedUserIds.includes(id))) {
-        return true
+      if (Array.from(taskAssignees).some(id => selectedUserIds.includes(id))) {
+        return true;
       }
       
-      return false
+      return false;
     })
 
     // まず、WeeklySchedule.tsxと同様のロジックですべてのTODOを適切な日付に配置
     filteredTasks.forEach(task => {
       task.todos.forEach(todo => {
         // TODO自体の担当者でもフィルタリング
-        const todoAssigneeIds = todo.assigneeIds || task.assigneeIds
-        const isAssignedToSelectedUser = todoAssigneeIds && todoAssigneeIds.some(id => selectedUserIds.includes(id))
-        const isUnassigned = !todoAssigneeIds || todoAssigneeIds.length === 0
+        const todoAssigneeId = todo.assigneeId || ''
+        const isAssignedToSelectedUser = todoAssigneeId && selectedUserIds.includes(todoAssigneeId)
+        const isUnassigned = !todoAssigneeId
         
         // フィルタリング条件に合わない場合はスキップ
         if (!(isAssignedToSelectedUser || (showUnassigned && isUnassigned))) {
@@ -127,19 +138,9 @@ export default function WeeklyScheduleDnd({
         let dateKey: string
         let scheduleDate: Date
         
-        if (todo.plannedStartDate) {
-          // 着手予定日が設定されている場合はそれを使用
-          dateKey = format(todo.plannedStartDate, 'yyyy-MM-dd')
-          scheduleDate = new Date(todo.plannedStartDate)
-        } else if (todo.startDate) {
-          // startDateが設定されている場合はそれを使用
-          dateKey = format(new Date(todo.startDate), 'yyyy-MM-dd')
-          scheduleDate = new Date(todo.startDate)
-        } else {
-          // それ以外は期日に配置
-          dateKey = format(new Date(todo.dueDate), 'yyyy-MM-dd')
-          scheduleDate = new Date(todo.dueDate)
-        }
+        // startDateを使用
+        dateKey = format(new Date(todo.startDate), 'yyyy-MM-dd')
+        scheduleDate = new Date(todo.startDate)
         
         if (!todosByDate.has(dateKey)) {
           todosByDate.set(dateKey, [])
@@ -154,14 +155,14 @@ export default function WeeklyScheduleDnd({
         // 開始時間の決定
         let startTime = defaultStartTime;
         
-        // plannedStartDateが設定されている場合はその時間を使用
-        if (todo.plannedStartDate) {
-          const plannedHour = todo.plannedStartDate.getHours();
+        // calendarStartDateTimeが設定されている場合はその時間を使用
+        if (todo.calendarStartDateTime) {
+          const calendarHour = todo.calendarStartDateTime.getHours();
           // 営業時間内の場合のみその時間を使用（休憩時間は除く）
-          if (plannedHour >= BUSINESS_HOURS.START_HOUR && plannedHour <= BUSINESS_HOURS.END_HOUR - 1 && 
-              !(plannedHour >= BUSINESS_HOURS.BREAK_START && plannedHour < BUSINESS_HOURS.BREAK_END)) {
-            startTime = plannedHour;
-          } else if (plannedHour >= BUSINESS_HOURS.BREAK_START && plannedHour < BUSINESS_HOURS.BREAK_END) {
+          if (calendarHour >= BUSINESS_HOURS.START_HOUR && calendarHour <= BUSINESS_HOURS.END_HOUR - 1 && 
+              !(calendarHour >= BUSINESS_HOURS.BREAK_START && calendarHour < BUSINESS_HOURS.BREAK_END)) {
+            startTime = calendarHour;
+          } else if (calendarHour >= BUSINESS_HOURS.BREAK_START && calendarHour < BUSINESS_HOURS.BREAK_END) {
             // 休憩時間内の場合は休憩後に設定
             startTime = BUSINESS_HOURS.BREAK_END;
           }
@@ -177,7 +178,7 @@ export default function WeeklyScheduleDnd({
           },
           taskId: task.id,
           taskTitle: task.title,
-          priority: task.priority || 0,
+          priority: 0, // 優先度はデフォルト値を使用
           isNextTodo: false
         })
       })

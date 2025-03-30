@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Task } from '@/types/task';
-import { seedTasks } from '@/utils/seedData';
+import { seedTasks } from '@/data/seedData';
 import { getTasksFromLocalStorage, saveSeedDataToLocalStorage, resetToSeedData, resetToScheduledSeedData } from '@/utils/seedDataUtils';
 import { useProjectContext } from './ProjectContext';
 
@@ -33,17 +33,28 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (initialized) return;
     
-    const storedTasks = getTasksFromLocalStorage();
-    // ローカルストレージにデータがあればそれを使用、なければシードデータを保存
-    if (storedTasks) {
-      setTasks(storedTasks);
-    } else {
-      // 初期データとして通常のシードデータを使用（スケジュールなし）
+    try {
+      console.log('ローカルストレージからタスク情報をロード中...');
+      const storedTasks = getTasksFromLocalStorage();
+      
+      // ローカルストレージにデータがあればそれを使用、なければシードデータを保存
+      if (storedTasks && storedTasks.length > 0) {
+        console.log('ローカルストレージからタスクを読み込みました:', storedTasks.length);
+        setTasks(storedTasks);
+      } else {
+        console.log('ローカルストレージにデータがないため、シードデータを使用します');
+        // 初期データとして通常のシードデータを使用（スケジュールなし）
+        const defaultTasks = resetToSeedData();
+        setTasks(defaultTasks);
+      }
+    } catch (error) {
+      console.error('ローカルストレージからのデータ読み込みに失敗しました:', error);
+      // エラー時はシードデータを使用
       const defaultTasks = resetToSeedData();
       setTasks(defaultTasks);
+    } finally {
+      setInitialized(true);
     }
-    
-    setInitialized(true);
   }, [initialized]);
   
   // タスクが更新されたらローカルストレージに保存

@@ -27,11 +27,14 @@ interface TodoWithMeta {
     id: string
     text: string
     completed: boolean
-    dueDate: Date
+    startDate: Date
+    calendarStartDateTime?: Date
+    calendarEndDateTime?: Date
+    completedDateTime?: Date
     estimatedHours: number
     originalEstimatedHours?: number
     startTime?: number
-    plannedStartDate?: Date
+    dueDate?: Date
   }
   taskId: string
   taskTitle: string
@@ -169,26 +172,34 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
     
     // フィルタリングされたタスクを使用
     const filteredTasks = tasks.filter(task => {
+      // 各タスクのTODOから担当者リストを作成
+      const taskAssignees = new Set<string>();
+      task.todos.forEach(todo => {
+        if (todo.assigneeId) {
+          taskAssignees.add(todo.assigneeId);
+        }
+      });
+      
       // アサインされていないタスクを表示するかどうか
-      if (showUnassigned && (!task.assigneeIds || task.assigneeIds.length === 0)) {
-        return true
+      if (showUnassigned && taskAssignees.size === 0) {
+        return true;
       }
       
       // 選択されたユーザーのタスクを表示
-      if (task.assigneeIds && task.assigneeIds.some(id => selectedUserIds.includes(id))) {
-        return true
+      if (Array.from(taskAssignees).some(id => selectedUserIds.includes(id))) {
+        return true;
       }
       
-      return false
+      return false;
     })
     
     // すべてのTODOを一度に処理し、適切な日付に配置
     filteredTasks.forEach(task => {
       task.todos.forEach(todo => {
         // TODO自体の担当者でもフィルタリング
-        const todoAssigneeIds = todo.assigneeIds || task.assigneeIds
-        const isAssignedToSelectedUser = todoAssigneeIds && todoAssigneeIds.some(id => selectedUserIds.includes(id))
-        const isUnassigned = !todoAssigneeIds || todoAssigneeIds.length === 0
+        const todoAssigneeId = todo.assigneeId || ''
+        const isAssignedToSelectedUser = todoAssigneeId && selectedUserIds.includes(todoAssigneeId)
+        const isUnassigned = !todoAssigneeId
         
         // フィルタリング条件に合わない場合はスキップ
         if (!(isAssignedToSelectedUser || (showUnassigned && isUnassigned))) {
@@ -196,18 +207,7 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
         }
         
         // 該当する日付を決定
-        let dateKey: string
-        
-        if (todo.plannedStartDate) {
-          // 着手予定日が設定されている場合はそれを使用
-          dateKey = format(todo.plannedStartDate, 'yyyy-MM-dd')
-        } else if (todo.startDate) {
-          // startDateが設定されている場合はそれを使用
-          dateKey = format(new Date(todo.startDate), 'yyyy-MM-dd')
-        } else {
-          // それ以外は期日に配置
-          dateKey = format(new Date(todo.dueDate), 'yyyy-MM-dd')
-        }
+        let dateKey: string = format(todo.startDate, 'yyyy-MM-dd')
         
         // 該当日付のリストがなければ作成
         if (!todosByDate.has(dateKey)) {
@@ -221,14 +221,15 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
         todosByDate.get(dateKey)?.push({
           todo: {
             ...todo,
-            startTime: todo.plannedStartDate ? todo.plannedStartDate.getHours() : BUSINESS_HOURS.START_HOUR, // 着手予定日の時間または9時をデフォルト設定
+            startTime: todo.calendarStartDateTime ? todo.calendarStartDateTime.getHours() : BUSINESS_HOURS.START_HOUR, // 着手予定日の時間または9時をデフォルト設定
             // 見積もり工数は最大8時間に制限
             estimatedHours: displayEstimatedHours,
-            originalEstimatedHours: todo.estimatedHours // 元の見積もり時間を保持
+            originalEstimatedHours: todo.estimatedHours, // 元の見積もり時間を保持
+            dueDate: task.dueDate, // 表示用にタスクの期日を追加
           },
           taskId: task.id,
           taskTitle: task.title,
-          priority: task.priority || 0, // 優先度を追加（未設定の場合は0）
+          priority: 0, // 優先度はデフォルト値を使用
           isNextTodo: false // NEXTTODOフラグの初期値
         })
       })
@@ -245,8 +246,12 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
         
         // 2. 期日でソート
         const today = startOfDay(new Date());
-        const aDueDate = a.todo.dueDate;
-        const bDueDate = b.todo.dueDate;
+        // 各タスクの期日を取得するため、元のタスクを検索
+        const taskA = tasks.find(t => t.id === a.taskId);
+        const taskB = tasks.find(t => t.id === b.taskId);
+        const aDueDate = taskA?.dueDate || new Date();
+        const bDueDate = taskB?.dueDate || new Date();
+        // 型チェックを追加（Date型であることを確認）
         const aIsOverdue = isBefore(aDueDate, today);
         const bIsOverdue = isBefore(bDueDate, today);
         const aIsToday = isToday(aDueDate);
@@ -451,8 +456,9 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
         
         // 2. 期日でソート
         const today = startOfDay(new Date());
-        const aDueDate = a.todo.dueDate;
-        const bDueDate = b.todo.dueDate;
+        // タスクの期日を使用
+        const aDueDate = a.todo.dueDate || new Date();
+        const bDueDate = b.todo.dueDate || new Date();
         const aIsOverdue = isBefore(aDueDate, today);
         const bIsOverdue = isBefore(bDueDate, today);
         const aIsToday = isToday(aDueDate);
@@ -467,7 +473,7 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
       scheduleDateTodos(dateKey);
     }
 
-    // 今日以外の日付の場合のスケジュール調整（plannedStartDateがあればその時間を尊重）
+    // 今日以外の日付の場合のスケジュール調整（カレンダー開始時間があればその時間を尊重）
     todosByDate.forEach((todos, dateKey) => {
       const todayStr = format(new Date(), 'yyyy-MM-dd');
       const isTodayDate = dateKey === todayStr;
@@ -475,9 +481,9 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
       if (!isTodayDate) {
         todos.forEach((todoWithMeta) => {
           const { todo } = todoWithMeta;
-          // 既に着手予定時間が設定されている場合はそれを使用
-          if (todo.plannedStartDate) {
-            const plannedHour = todo.plannedStartDate.getHours();
+          // 既に開始時間が設定されている場合はそれを使用
+          if (todo.calendarStartDateTime) {
+            const plannedHour = todo.calendarStartDateTime.getHours();
             // 営業時間内の場合のみその時間を使用（休憩時間は除く）
             if (plannedHour >= BUSINESS_HOURS.START_HOUR && plannedHour <= BUSINESS_HOURS.END_HOUR - 1 && 
                 !(plannedHour >= BUSINESS_HOURS.BREAK_START && plannedHour < BUSINESS_HOURS.BREAK_END)) {
@@ -653,9 +659,10 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
               
               // ラベル（予定か期日かの区別）
               let timeLabel = '';
-              if (todo.plannedStartDate) {
+              // カレンダー設定があれば予定とみなす
+              if (todo.calendarStartDateTime) {
                 timeLabel = '予定: ';
-              } else if (isToday(todo.dueDate)) {
+              } else if (todo.dueDate && isToday(todo.dueDate)) {
                 timeLabel = '期日: ';
               }
 
@@ -682,8 +689,8 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
                   <div className="text-gray-500 truncate">{taskTitle}</div>
                   <div className="text-gray-500">
                     {timeLabel}{Math.round((todo.originalEstimatedHours || todo.estimatedHours) * 10) / 10}h
-                    {todo.plannedStartDate && format(todo.plannedStartDate, 'yyyy-MM-dd') !== todayKey && (
-                      <span className="ml-1 text-xs text-gray-400">(予定: {format(todo.plannedStartDate, 'M/d')})</span>
+                    {todo.calendarStartDateTime && format(todo.calendarStartDateTime, 'yyyy-MM-dd') !== todayKey && (
+                      <span className="ml-1 text-xs text-gray-400">(予定: {format(todo.calendarStartDateTime, 'M/d')})</span>
                     )}
                   </div>
                 </div>
@@ -858,16 +865,23 @@ export default function WeeklySchedule({ tasks, onTaskSelect, onTodoUpdate, sele
       return;
     }
 
+    // カレンダー表示用の日時を計算
+    const calendarStartDateTime = new Date(newTodoDate);
+    calendarStartDateTime.setHours(newTodoDate.getHours(), 0, 0, 0);
+    
+    const calendarEndDateTime = new Date(calendarStartDateTime);
+    calendarEndDateTime.setHours(calendarStartDateTime.getHours() + newTodoEstimatedHours);
+
     const newTodo: Todo = {
       id: `todo-${Date.now()}`,
       text: newTodoText.trim(),
       completed: false,
-      startDate: newTodoDate.toISOString().split('T')[0],
-      endDate: newTodoDate.toISOString().split('T')[0],
-      dueDate: newTodoDate,
+      startDate: new Date(newTodoDate),
+      calendarStartDateTime,
+      calendarEndDateTime,
       estimatedHours: newTodoEstimatedHours,
       actualHours: 0,
-      plannedStartDate: newTodoDate  // 新規TODOの場合はplannedStartDateを設定
+      assigneeId: ''
     };
 
     console.log('WeeklySchedule - handleCreateTodo: 新しいTODOを作成', {

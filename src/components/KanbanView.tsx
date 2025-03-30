@@ -26,10 +26,7 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
   const [newTask, setNewTask] = useState<Partial<Task>>({
     title: '',
     description: '',
-    todos: [],
-    priority: 0,
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0]
+    todos: []
   });
   const [newTaskTodos, setNewTaskTodos] = useState<Todo[]>([]);
   const [newTaskTodoText, setNewTaskTodoText] = useState('');
@@ -121,10 +118,7 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
       title: newTask.title,
       description: newTask.description || '',
       todos: newTaskTodos.length > 0 ? newTaskTodos : getDefaultTodosForColumn(creatingInColumn),
-      startDate: newTask.startDate || new Date().toISOString().split('T')[0],
-      endDate: newTask.endDate || new Date().toISOString().split('T')[0],
-      priority: newTask.priority || 0,
-      assigneeIds: [],
+      dueDate: new Date(),
       projectId: projectId
     };
 
@@ -134,10 +128,7 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
     setNewTask({
       title: '',
       description: '',
-      todos: [],
-      priority: 0,
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date().toISOString().split('T')[0]
+      todos: []
     });
     setNewTaskTodos([]);
     setNewTaskTodoText('');
@@ -147,7 +138,6 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
   // カラムに応じたデフォルトのTODOを生成
   const getDefaultTodosForColumn = (columnId: string): Todo[] => {
     const today = new Date();
-    const formattedDate = today.toISOString().split('T')[0];
 
     if (columnId === 'completed') {
       // 完了カラムの場合、ダミーのTODOを1つ追加して完了状態にする
@@ -155,10 +145,12 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
         id: `todo-${Date.now()}`,
         text: 'タスク完了',
         completed: true,
-        startDate: formattedDate,
-        endDate: formattedDate,
-        dueDate: new Date(),
-        estimatedHours: 1
+        startDate: today,
+        calendarStartDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0),
+        calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 0, 0),
+        estimatedHours: 1,
+        actualHours: 0,
+        assigneeId: ''
       }];
     } else if (columnId === 'in-progress') {
       // 進行中カラムの場合、ダミーのTODOを2つ追加して1つを完了状態にする
@@ -167,19 +159,23 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
           id: `todo-${Date.now()}-1`,
           text: 'ステップ1',
           completed: true,
-          startDate: formattedDate,
-          endDate: formattedDate,
-          dueDate: new Date(),
-          estimatedHours: 1
+          startDate: today,
+          calendarStartDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0),
+          calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 0, 0),
+          estimatedHours: 1,
+          actualHours: 0,
+          assigneeId: ''
         },
         {
           id: `todo-${Date.now()}-2`,
           text: 'ステップ2',
           completed: false,
-          startDate: formattedDate,
-          endDate: formattedDate,
-          dueDate: new Date(),
-          estimatedHours: 1
+          startDate: today,
+          calendarStartDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0),
+          calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 0, 0),
+          estimatedHours: 1,
+          actualHours: 0,
+          assigneeId: ''
         }
       ];
     } else {
@@ -188,10 +184,12 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
         id: `todo-${Date.now()}`,
         text: 'タスク開始',
         completed: false,
-        startDate: formattedDate,
-        endDate: formattedDate,
-        dueDate: new Date(),
-        estimatedHours: 1
+        startDate: today,
+        calendarStartDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0),
+        calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 0, 0),
+        estimatedHours: 1,
+        actualHours: 0,
+        assigneeId: ''
       }];
     }
   };
@@ -201,16 +199,17 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
     if (!newTaskTodoText.trim()) return;
 
     const today = new Date();
-    const formattedDate = today.toISOString().split('T')[0]; // YYYY-MM-DD形式
     
     const newTodo: Todo = {
       id: `todo-${Date.now()}`,
       text: newTaskTodoText.trim(),
       completed: false,
-      startDate: formattedDate,
-      endDate: formattedDate,
-      dueDate: new Date(),
-      estimatedHours: 1 // デフォルトの見積もり工数を1時間に設定
+      startDate: today,
+      calendarStartDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0),
+      calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 0, 0),
+      estimatedHours: 1, // デフォルトの見積もり工数を1時間に設定
+      actualHours: 0,
+      assigneeId: ''
     };
 
     setNewTaskTodos([...newTaskTodos, newTodo]);
@@ -245,16 +244,17 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
   // 提案されたTODOを新規タスクに追加
   const handleAddSuggestedNewTaskTodo = (suggestion: { text: string; estimatedHours: number }) => {
     const today = new Date();
-    const formattedDate = today.toISOString().split('T')[0]; // YYYY-MM-DD形式
     
     const newTodo: Todo = {
       id: `todo-${Date.now()}`,
       text: suggestion.text,
       completed: false,
-      startDate: formattedDate,
-      endDate: formattedDate,
-      dueDate: new Date(),
-      estimatedHours: suggestion.estimatedHours
+      startDate: today,
+      calendarStartDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0),
+      calendarEndDateTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9 + Math.min(8, suggestion.estimatedHours), 0, 0),
+      estimatedHours: suggestion.estimatedHours,
+      actualHours: 0,
+      assigneeId: ''
     };
 
     setNewTaskTodos([...newTaskTodos, newTodo]);
@@ -297,19 +297,6 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
               />
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">優先度</label>
-              <select
-                value={newTask.priority}
-                onChange={(e) => setNewTask({...newTask, priority: Number(e.target.value)})}
-                className="w-full p-2 border rounded-md"
-              >
-                <option value={0}>低</option>
-                <option value={1}>中</option>
-                <option value={2}>高</option>
-              </select>
-            </div>
-
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label className="block text-sm font-medium text-gray-700">TODOリスト</label>

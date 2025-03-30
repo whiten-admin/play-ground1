@@ -1,11 +1,15 @@
 import { Task, Todo } from '@/types/task';
-import { seedTasks } from './seedData';
+import { seedTasks } from '@/data/seedData';
 import { scheduleTodosByDueDate } from './taskScheduler';
+import { parseDate, calculateCalendarDateTime } from '@/utils/dateUtils';
 
 // シードデータをローカルストレージに保存する
 export const saveSeedDataToLocalStorage = (tasks: Task[]) => {
   try {
-    localStorage.setItem('appTasks', JSON.stringify(tasks));
+    // Deep Cloneを行い、日付型を適切に処理
+    const tasksToSave = JSON.parse(JSON.stringify(tasks));
+  
+    localStorage.setItem('appTasks', JSON.stringify(tasksToSave));
     return true;
   } catch (error) {
     console.error('Failed to save tasks to localStorage:', error);
@@ -21,16 +25,52 @@ export const getTasksFromLocalStorage = (): Task[] | null => {
 
     const tasks = JSON.parse(tasksJson);
     
-    // Date型への変換処理（dueDateをDate型に変換）
+    // 古い形式のデータを新しい形式に変換
     const parsedTasks = tasks.map((task: any) => ({
       ...task,
-      todos: task.todos.map((todo: any) => ({
-        ...todo,
-        dueDate: todo.dueDate ? new Date(todo.dueDate) : new Date(),
-        plannedStartDate: todo.plannedStartDate ? new Date(todo.plannedStartDate) : undefined
-      }))
+      // タスクの日付をDate型に変換
+      dueDate: task.dueDate ? new Date(task.dueDate) : 
+               task.endDate ? parseDate(task.endDate) : new Date(),
+      completedDateTime: task.completedDateTime ? new Date(task.completedDateTime) : undefined,
+      // 古い日付フィールドを削除
+      startDate: undefined,
+      endDate: undefined,
+      // TODOも新しい形式に変換
+      todos: task.todos.map((todo: any) => {
+        // 基本フィールドを変換
+        const startDate = todo.startDate ? 
+          (typeof todo.startDate === 'string' ? parseDate(todo.startDate) : new Date(todo.startDate)) : 
+          new Date();
+        
+        // カレンダー表示用日時を生成
+        let calendarStartDateTime, calendarEndDateTime;
+        
+        if (todo.calendarStartDateTime) {
+          calendarStartDateTime = new Date(todo.calendarStartDateTime);
+          calendarEndDateTime = todo.calendarEndDateTime ? new Date(todo.calendarEndDateTime) : undefined;
+        } else {
+          const calculated = calculateCalendarDateTime(startDate, todo.estimatedHours || 1);
+          calendarStartDateTime = calculated.calendarStartDateTime;
+          calendarEndDateTime = calculated.calendarEndDateTime;
+        }
+        
+        return {
+          ...todo,
+          startDate,
+          calendarStartDateTime,
+          calendarEndDateTime,
+          dueDate: todo.dueDate ? new Date(todo.dueDate) : undefined,
+          completedDateTime: todo.completedDateTime ? new Date(todo.completedDateTime) : undefined,
+          actualHours: todo.actualHours || 0,
+          assigneeId: todo.assigneeId || (todo.assigneeIds && todo.assigneeIds.length > 0 ? todo.assigneeIds[0] : ''),
+          // 古い日付フィールドを削除
+          endDate: undefined,
+          plannedStartDate: todo.plannedStartDate ? new Date(todo.plannedStartDate) : undefined
+        };
+      })
     }));
     
+    console.log('ローカルストレージから読み込まれたタスク:', parsedTasks);
     return parsedTasks;
   } catch (error) {
     console.error('Failed to load tasks from localStorage:', error);
@@ -55,11 +95,15 @@ export const resetToScheduledSeedData = () => {
 export const bulkUpdateTaskCompletionStatus = (tasks: Task[], taskId: string, completed: boolean): Task[] => {
   return tasks.map(task => {
     if (task.id === taskId) {
+      // 完了状態の更新と完了日時の設定
+      const completedDateTime = completed ? new Date() : undefined;
       return {
         ...task,
+        completedDateTime,
         todos: task.todos.map(todo => ({
           ...todo,
-          completed
+          completed,
+          completedDateTime
         }))
       };
     }
@@ -70,17 +114,17 @@ export const bulkUpdateTaskCompletionStatus = (tasks: Task[], taskId: string, co
 // 指定された日付範囲内のタスク/TODOをフィルタリングする
 export const filterTasksByDateRange = (tasks: Task[], startDate: Date, endDate: Date): Task[] => {
   return tasks.filter(task => {
-    const taskStart = new Date(task.startDate);
-    const taskEnd = new Date(task.endDate);
+    // タスクの期日が指定された範囲内にあるかチェック
+    const taskDueDate = task.dueDate;
+    const isTaskInRange = taskDueDate >= startDate && taskDueDate <= endDate;
     
-    // タスクの期間が指定された範囲と重なるかチェック
-    return (
-      (taskStart <= endDate && taskEnd >= startDate) ||
-      task.todos.some(todo => {
-        const todoDueDate = todo.dueDate instanceof Date ? todo.dueDate : new Date(todo.dueDate);
-        return todoDueDate >= startDate && todoDueDate <= endDate;
-      })
-    );
+    // タスクのTODOが指定された範囲内にあるかチェック
+    const hasTodoInRange = task.todos.some(todo => {
+      const todoStartDate = todo.startDate;
+      return todoStartDate >= startDate && todoStartDate <= endDate;
+    });
+    
+    return isTaskInRange || hasTodoInRange;
   });
 };
 
@@ -103,14 +147,45 @@ export const importTasksFromJson = (jsonString: string): Task[] | null => {
       throw new Error('Invalid task structure');
     }
     
-    // Date型への変換処理
-    const parsedTasks = tasks.map(task => ({
+    // 古いデータ形式から新しい形式に変換
+    const parsedTasks = tasks.map((task: any) => ({
       ...task,
-      todos: task.todos.map((todo: Todo) => ({
-        ...todo,
-        dueDate: todo.dueDate ? new Date(todo.dueDate) : new Date(),
-        plannedStartDate: todo.plannedStartDate ? new Date(todo.plannedStartDate) : undefined
-      }))
+      // タスクの日付をDate型に変換
+      dueDate: task.dueDate ? new Date(task.dueDate) : 
+               task.endDate ? parseDate(task.endDate) : new Date(),
+      completedDateTime: task.completedDateTime ? new Date(task.completedDateTime) : undefined,
+      // 古い日付フィールドを削除
+      startDate: undefined,
+      endDate: undefined,
+      // TODOも新しい形式に変換
+      todos: task.todos.map((todo: any) => {
+        // 基本フィールドを変換
+        const startDate = todo.startDate ? 
+          (typeof todo.startDate === 'string' ? parseDate(todo.startDate) : new Date(todo.startDate)) : 
+          new Date();
+        
+        // カレンダー表示用日時を生成
+        const { calendarStartDateTime, calendarEndDateTime } = todo.calendarStartDateTime ? 
+          { 
+            calendarStartDateTime: new Date(todo.calendarStartDateTime), 
+            calendarEndDateTime: new Date(todo.calendarEndDateTime) 
+          } : 
+          calculateCalendarDateTime(startDate, todo.estimatedHours || 1);
+        
+        return {
+          ...todo,
+          startDate,
+          calendarStartDateTime,
+          calendarEndDateTime,
+          completedDateTime: todo.completedDateTime ? new Date(todo.completedDateTime) : undefined,
+          actualHours: todo.actualHours || 0,
+          assigneeId: todo.assigneeIds && todo.assigneeIds.length > 0 ? todo.assigneeIds[0] : '',
+          // 古い日付フィールドを削除
+          dueDate: undefined,
+          endDate: undefined,
+          plannedStartDate: undefined
+        };
+      })
     }));
     
     return parsedTasks;
