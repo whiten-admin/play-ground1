@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import TaskDetail from '@/features/tasks/components/TaskDetail'
@@ -16,14 +16,55 @@ import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
 import UserFilter from '@/components/UserFilter'
 import ResizablePanel from '@/components/layout/ResizablePanel'
 import { FilterProvider } from '@/features/tasks/filters/FilterContext'
+import { useSearchParams } from 'next/navigation'
 
-export default function Home() {
+// 検索パラメータを使用するコンポーネント
+function HomeContent() {
   const { isAuthenticated, user, login, logout } = useAuth()
   const [activeTab, setActiveTab] = useState('todo')
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null)
   const { filteredTasks, setTasks, addTask } = useTaskContext()
   const { currentProject, updateProject, projects } = useProjectContext()
+  const searchParams = useSearchParams()
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+
+  // サイドバーの状態を監視
+  useEffect(() => {
+    const checkSidebarState = () => {
+      const collapsed = document.documentElement.getAttribute('data-sidebar-collapsed') === 'true'
+      setIsSidebarCollapsed(collapsed)
+    }
+    
+    // 初期状態をチェック
+    checkSidebarState()
+    
+    // データ属性の変更を監視
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'data-sidebar-collapsed') {
+          checkSidebarState()
+        }
+      })
+    })
+    
+    observer.observe(document.documentElement, { attributes: true })
+    
+    return () => observer.disconnect()
+  }, [])
+
+  // URLのクエリパラメータからタスクIDとTODO IDを取得
+  useEffect(() => {
+    const taskId = searchParams.get('taskId')
+    const todoId = searchParams.get('todoId')
+    
+    if (taskId) {
+      setSelectedTaskId(taskId)
+      if (todoId) {
+        setSelectedTodoId(todoId)
+      }
+    }
+  }, [searchParams])
 
   // タスク選択ハンドラーを修正
   const handleTaskSelect = (taskId: string, todoId?: string) => {
@@ -152,7 +193,7 @@ export default function Home() {
       <div className="flex h-screen bg-gray-100">
         <div className="flex-shrink-0 flex flex-col">
           <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-          <div className="p-2">
+          <div className={`p-2 ${isSidebarCollapsed ? 'w-16' : 'w-48'}`}>
             {currentProject && (
               <ProjectDetail 
                 project={currentProject} 
@@ -215,5 +256,14 @@ export default function Home() {
         </div>
       </div>
     </FilterProvider>
+  );
+}
+
+// メインコンポーネント
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="p-4 text-center">読み込み中...</div>}>
+      <HomeContent />
+    </Suspense>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Project } from '@/features/projects/types/project'
 import ProjectDetailModal from './ProjectDetailModal'
 
@@ -9,6 +9,31 @@ interface ProjectDetailProps {
 
 export default function ProjectDetail({ project, onUpdate }: ProjectDetailProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  
+  // サイドバーの状態を監視
+  useEffect(() => {
+    const checkSidebarState = () => {
+      const collapsed = document.documentElement.getAttribute('data-sidebar-collapsed') === 'true'
+      setIsSidebarCollapsed(collapsed)
+    }
+    
+    // 初期状態をチェック
+    checkSidebarState()
+    
+    // データ属性の変更を監視
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'data-sidebar-collapsed') {
+          checkSidebarState()
+        }
+      })
+    })
+    
+    observer.observe(document.documentElement, { attributes: true })
+    
+    return () => observer.disconnect()
+  }, [])
 
   // プロジェクト情報の入力度を計算
   const calculateCompletionRate = (project: Project): number => {
@@ -39,41 +64,55 @@ export default function ProjectDetail({ project, onUpdate }: ProjectDetailProps)
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow p-3 text-xs">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="font-bold text-gray-800">PJ詳細</h2>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="text-blue-600 hover:text-blue-700"
-          >
-            詳細を見る
-          </button>
-        </div>
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-gray-600">フェーズ</span>
-            <span className={getPhaseColor(project.phase)}>
-              {getPhaseLabel(project.phase)}
-            </span>
+      <div className={`sidebar-project-detail ${isSidebarCollapsed ? 'w-16' : 'w-auto'} bg-white rounded-lg shadow p-3 text-xs`}>
+        {/* 展開時の詳細表示 */}
+        <div className="sidebar-expanded-content">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="font-bold text-gray-800">PJ詳細</h2>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="text-blue-600 hover:text-blue-700"
+            >
+              詳細を見る
+            </button>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-gray-600">開発手法</span>
-            <span className="text-gray-800">
-              {getMethodologyLabel(project.methodology)}
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-gray-600">情報入力度</span>
-            <div className="flex items-center">
-              <div className="w-12 h-1 bg-gray-200 rounded-full mr-1">
-                <div 
-                  className="h-full bg-blue-600 rounded-full" 
-                  style={{ width: `${completionRate}%` }}
-                />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-600">フェーズ</span>
+              <span className={getPhaseColor(project.phase)}>
+                {getPhaseLabel(project.phase)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-600">開発手法</span>
+              <span className="text-gray-800">
+                {getMethodologyLabel(project.methodology)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-600">情報入力度</span>
+              <div className="flex items-center">
+                <div className="w-12 h-1 bg-gray-200 rounded-full mr-1">
+                  <div 
+                    className="h-full bg-blue-600 rounded-full" 
+                    style={{ width: `${completionRate}%` }}
+                  />
+                </div>
+                <span className="text-gray-900">{completionRate}%</span>
               </div>
-              <span className="text-gray-900">{completionRate}%</span>
             </div>
           </div>
+        </div>
+        
+        {/* 閉じた時のアイコン表示 */}
+        <div className="sidebar-collapsed-content flex justify-center">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="text-blue-600 hover:text-blue-700 p-2 rounded-full hover:bg-gray-100"
+            title="プロジェクト詳細を見る"
+          >
+            <span className="text-xl">📋</span>
+          </button>
         </div>
       </div>
 

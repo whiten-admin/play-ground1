@@ -30,7 +30,28 @@ module.exports = {
           '50%': { transform: 'translateY(-10px)' },
         },
       },
+      typography: {
+        DEFAULT: {
+          css: {
+            maxWidth: 'none',
+            code: {
+              color: '#1a56db',
+              backgroundColor: '#f3f4f6',
+              borderRadius: '0.25rem',
+              padding: '0.125rem 0.25rem',
+            },
+            'code::before': {
+              content: '""',
+            },
+            'code::after': {
+              content: '""',
+            },
+          },
+        },
+      },
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/typography'),
+  ],
 } 
