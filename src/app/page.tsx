@@ -26,6 +26,31 @@ export default function Home() {
   const { filteredTasks, setTasks, addTask } = useTaskContext()
   const { currentProject, updateProject, projects } = useProjectContext()
   const searchParams = useSearchParams()
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+
+  // サイドバーの状態を監視
+  useEffect(() => {
+    const checkSidebarState = () => {
+      const collapsed = document.documentElement.getAttribute('data-sidebar-collapsed') === 'true'
+      setIsSidebarCollapsed(collapsed)
+    }
+    
+    // 初期状態をチェック
+    checkSidebarState()
+    
+    // データ属性の変更を監視
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'data-sidebar-collapsed') {
+          checkSidebarState()
+        }
+      })
+    })
+    
+    observer.observe(document.documentElement, { attributes: true })
+    
+    return () => observer.disconnect()
+  }, [])
 
   // URLのクエリパラメータからタスクIDとTODO IDを取得
   useEffect(() => {
@@ -167,7 +192,7 @@ export default function Home() {
       <div className="flex h-screen bg-gray-100">
         <div className="flex-shrink-0 flex flex-col">
           <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-          <div className="p-2">
+          <div className={`p-2 ${isSidebarCollapsed ? 'w-16' : 'w-48'}`}>
             {currentProject && (
               <ProjectDetail 
                 project={currentProject} 

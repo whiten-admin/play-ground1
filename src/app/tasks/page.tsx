@@ -20,6 +20,7 @@ import KanbanView from '@/features/kanban/components/KanbanView'
 import GanttChartView from '@/features/gantt/components/GanttChartView'
 import TaskCreationForm from '@/features/tasks/components/TaskCreationForm'
 import TaskDetail from '@/features/tasks/components/TaskDetail'
+import ProjectDetail from '@/features/projects/components/ProjectDetail'
 
 type ViewMode = 'list' | 'kanban' | 'gantt'
 
@@ -41,7 +42,7 @@ export default function TasksPage() {
   const { isAuthenticated, user, login, logout } = useAuth()
   const [activeTab, setActiveTab] = useState('tasks')
   const { filteredTasks, addTask, setTasks } = useTaskContext()
-  const { projects, currentProject } = useProjectContext()
+  const { projects, currentProject, updateProject } = useProjectContext()
   const [isCreatingTask, setIsCreatingTask] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [viewModeButtons, setViewModeButtons] = useState<ViewModeButton[]>([
@@ -57,6 +58,31 @@ export default function TasksPage() {
   const [isTaskDetailModalOpen, setIsTaskDetailModalOpen] = useState(false)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  
+  // サイドバーの状態を監視
+  useEffect(() => {
+    const checkSidebarState = () => {
+      const collapsed = document.documentElement.getAttribute('data-sidebar-collapsed') === 'true'
+      setIsSidebarCollapsed(collapsed)
+    }
+    
+    // 初期状態をチェック
+    checkSidebarState()
+    
+    // データ属性の変更を監視
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'data-sidebar-collapsed') {
+          checkSidebarState()
+        }
+      })
+    })
+    
+    observer.observe(document.documentElement, { attributes: true })
+    
+    return () => observer.disconnect()
+  }, [])
   
   // 期日の状態に応じたスタイルを返す関数
   const getDueDateStyle = (dueDate: Date | string | undefined) => {
@@ -196,8 +222,16 @@ export default function TasksPage() {
   return (
     <FilterProvider>
       <div className="flex h-screen bg-gray-100">
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 flex flex-col">
           <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+          <div className={`p-2 ${isSidebarCollapsed ? 'w-16' : 'w-48'}`}>
+            {currentProject && (
+              <ProjectDetail 
+                project={currentProject} 
+                onUpdate={updateProject} 
+              />
+            )}
+          </div>
         </div>
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header onLogout={logout} user={user} />
@@ -220,48 +254,42 @@ export default function TasksPage() {
                       タスク追加
                     </button>
                   </div>
-                  <DragDropContext onDragEnd={handleDragEnd}>
-                    <Droppable droppableId="viewModeButtons" direction="horizontal">
-                      {(provided) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.droppableProps}
-                          className="flex gap-1"
-                        >
-                          {viewModeButtons.map((button, index) => (
-                            <Draggable key={button.id} draggableId={button.id} index={index}>
-                              {(provided) => (
-                                <div
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  className="relative"
-                                >
+                  
+                  <div className="flex gap-2">
+                    <DragDropContext onDragEnd={handleDragEnd}>
+                      <Droppable droppableId="viewModeButtons" direction="horizontal">
+                        {(provided) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            className="flex gap-1"
+                          >
+                            {viewModeButtons.map((button, index) => (
+                              <Draggable key={button.id} draggableId={button.id} index={index}>
+                                {(provided) => (
                                   <button
-                                    onClick={() => setViewMode(button.id)}
-                                    className={`p-2 rounded ${
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    onClick={() => setViewMode(button.id as ViewMode)}
+                                    className={`p-2 rounded-md flex items-center justify-center ${
                                       viewMode === button.id
                                         ? 'bg-blue-500 text-white'
                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                    } ${index === 0 ? 'border-2 border-gray-300' : ''}`}
+                                    }`}
                                     title={button.label}
                                   >
                                     {button.icon}
                                   </button>
-                                  {index === 0 && (
-                                    <div className="absolute -bottom-5 left-1/2 transform -translate-x-1/2">
-                                      <span className="text-xs text-gray-500">Default</span>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
-                          {provided.placeholder}
-                        </div>
-                      )}
-                    </Droppable>
-                  </DragDropContext>
+                                )}
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
+                          </div>
+                        )}
+                      </Droppable>
+                    </DragDropContext>
+                  </div>
                 </div>
 
                 {viewMode === 'list' && (
@@ -292,7 +320,7 @@ export default function TasksPage() {
                       <div
                         key={task.id}
                         onClick={() => handleTaskSelect(task.id)}
-                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                        className={`p-4 border rounded-lg cursor-pointer ${
                           calculateProgress(task.todos) === 100
                             ? 'bg-gray-50 opacity-60'
                             : 'hover:bg-gray-50'
