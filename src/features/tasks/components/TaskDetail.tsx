@@ -540,12 +540,6 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
               </>
             ) : (
               <>
-                <button
-                  onClick={() => onTaskSelect('')}
-                  className="p-1 text-gray-500 hover:text-gray-700 mr-2"
-                >
-                  ←戻る
-                </button>
                 <div className="flex-1">
                   <h2 className="text-xl font-bold text-gray-800">{selectedTask.title}</h2>
                   <div className="mt-1 flex items-center gap-2">
