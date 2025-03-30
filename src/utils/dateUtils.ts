@@ -3,7 +3,7 @@
  */
 
 import { addHours } from 'date-fns';
-import { Task, Todo } from '@/types/task';
+import { Task, Todo } from '@/features/tasks/types/task';
 
 /**
  * 文字列形式の日付からDateオブジェクトに変換する

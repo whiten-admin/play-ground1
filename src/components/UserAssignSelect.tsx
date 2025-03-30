@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { User } from '@/types/user';
-import { getAllUsers } from '@/utils/userUtils';
-import { getUserNamesByIds } from '@/utils/userUtils';
+import { User } from '@/features/tasks/types/user';
+import { getAllUsers } from '@/features/tasks/utils/userUtils';
+import { getUserNamesByIds } from '@/features/tasks/utils/userUtils';
 import { theme } from '@/styles/theme';
 
 interface UserAssignSelectProps {

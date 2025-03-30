@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import Sidebar from '@/components/Sidebar';
-import Header from '@/components/Header';
-import ProjectAnalysisDashboard from '@/components/analysis/ProjectAnalysisDashboard';
-import Auth from '@/components/Auth';
-import { useAuth } from '@/hooks/useAuth';
-import { Project } from '@/types/project';
-import ProjectDetail from '@/components/ProjectDetail';
-import { FilterProvider } from '@/contexts/FilterContext';
+import Sidebar from '@/components/layout/Sidebar';
+import Header from '@/components/layout/Header';
+import ProjectAnalysisDashboard from '@/features/analysis/components/ProjectAnalysisDashboard';
+import Auth from '@/services/auth/components/Auth';
+import { useAuth } from '@/services/auth/hooks/useAuth';
+import { Project } from '@/features/projects/types/project';
+import ProjectDetail from '@/features/projects/components/ProjectDetail';
+import { FilterProvider } from '@/features/tasks/filters/FilterContext';
 
 export default function AnalysisPage() {
   const { isAuthenticated, user, login, logout } = useAuth();

@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import SettingsView from '@/components/SettingsView';
-import Sidebar from '@/components/Sidebar';
-import Header from '@/components/Header';
-import Auth from '@/components/Auth';
-import { useAuth } from '@/hooks/useAuth';
-import { Project } from '@/types/project';
-import ProjectDetail from '@/components/ProjectDetail';
-import { FilterProvider } from '@/contexts/FilterContext';
+import SettingsView from '@/features/settings/components/SettingsView';
+import Sidebar from '@/components/layout/Sidebar';
+import Header from '@/components/layout/Header';
+import Auth from '@/services/auth/components/Auth';
+import { useAuth } from '@/services/auth/hooks/useAuth';
+import { Project } from '@/features/projects/types/project';
+import ProjectDetail from '@/features/projects/components/ProjectDetail';
+import { FilterProvider } from '@/features/tasks/filters/FilterContext';
 
 const SettingsPage = () => {
   const { isAuthenticated, user, login, logout } = useAuth();

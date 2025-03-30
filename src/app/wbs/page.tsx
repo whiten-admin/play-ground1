@@ -1,16 +1,16 @@
 'use client'
 
 import React, { useState } from 'react'
-import Sidebar from '@/components/Sidebar'
-import Header from '@/components/Header'
-import WBSView from '@/components/WBSView'
-import Auth from '@/components/Auth'
-import { useAuth } from '@/hooks/useAuth'
-import { Project } from '@/types/project'
-import ProjectDetail from '@/components/ProjectDetail'
-import { FilterProvider } from '@/contexts/FilterContext'
-import { Task } from '@/types/task'
-import { useTaskContext } from '@/contexts/TaskContext'
+import Sidebar from '@/components/layout/Sidebar'
+import Header from '@/components/layout/Header'
+import WBSView from '@/features/wbs/components/WBSView'
+import Auth from '@/services/auth/components/Auth'
+import { useAuth } from '@/services/auth/hooks/useAuth'
+import { Project } from '@/features/projects/types/project'
+import ProjectDetail from '@/features/projects/components/ProjectDetail'
+import { FilterProvider } from '@/features/tasks/filters/FilterContext'
+import { Task } from '@/features/tasks/types/task'
+import { useTaskContext } from '@/features/tasks/contexts/TaskContext'
 
 export default function WBSPage() {
   const { isAuthenticated, user, login, logout } = useAuth()
