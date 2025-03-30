@@ -17,6 +17,8 @@ import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
 import TaskCreationForm from './TaskCreationForm'
 import { FaClock } from 'react-icons/fa'
 import Link from 'next/link'
+import ReactMarkdown from 'react-markdown'
+import rehypeRaw from 'rehype-raw'
 
 type ViewMode = 'list' | 'kanban' | 'gantt'
 
@@ -683,12 +685,23 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
         <div className="mb-4 group rounded-lg">
           {editState.description ? (
             <div className="flex gap-2">
-              <textarea
-                value={editedTask?.description}
-                onChange={handleDescriptionChange}
-                className="w-full h-24 p-2 text-gray-600 border rounded-md focus:border-blue-500 focus:outline-none bg-white"
-                placeholder="タスクの説明を入力してください"
-              />
+              <div className="flex-1">
+                <textarea
+                  value={editedTask?.description}
+                  onChange={handleDescriptionChange}
+                  className="w-full h-60 p-2 text-gray-600 border rounded-md focus:border-blue-500 focus:outline-none bg-white font-mono text-sm"
+                  placeholder="タスクの説明を入力してください（マークダウン記法が使えます）"
+                />
+                <div className="mt-1 text-xs text-gray-500 flex items-center">
+                  <button
+                    onClick={() => window.open('https://www.markdownguide.org/cheat-sheet/', '_blank')}
+                    className="text-blue-500 hover:text-blue-700 mr-2"
+                  >
+                    マークダウン記法ヘルプ
+                  </button>
+                  <span>**太字**、*斜体*、`コード`、# 見出し、- リスト などが使えます</span>
+                </div>
+              </div>
               <div className="flex flex-col gap-2">
                 <button
                   onClick={() => handleSave('description')}
@@ -707,7 +720,11 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
           ) : (
             <div className="flex gap-2">
               {selectedTask.description ? (
-                <p className="flex-1 text-gray-700 whitespace-pre-wrap p-2 bg-white rounded-md border border-gray-100">{selectedTask.description}</p>
+                <div className="flex-1 prose prose-sm max-w-none p-3 bg-white rounded-md border border-gray-100">
+                  <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+                    {selectedTask.description}
+                  </ReactMarkdown>
+                </div>
               ) : (
                 <p className="flex-1 text-gray-400 italic p-2">説明はまだ入力されていません。</p>
               )}
