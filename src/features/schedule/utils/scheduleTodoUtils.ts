@@ -14,7 +14,7 @@ export const filterTodosForDisplay = (
   const todosByDate = new Map<string, TodoWithMeta[]>();
   
   tasks.forEach(task => {
-    task.todos.forEach(todo => {
+    task.todos.forEach(todo => {      
       // フィルタリング条件：担当者が選択されているか、未割り当てが表示対象か
       const todoAssigneeId = todo.assigneeId || '';
       const isAssignedToSelectedUser = todoAssigneeId && selectedUserIds.includes(todoAssigneeId);
@@ -108,13 +108,6 @@ export const organizeTodosForDate = (todos: Todo[], date: Date): Todo[] => {
     endMinutes = endMinutes % 60;
     
     endDateTime.setHours(endHour, endMinutes, 0, 0);
-
-    // 休憩時間をまたぐ場合は休憩時間を加算
-    if (startHour < BUSINESS_HOURS.BREAK_START && 
-        endHour + (endMinutes / 60) > BUSINESS_HOURS.BREAK_START) {
-      const breakDuration = BUSINESS_HOURS.BREAK_END - BUSINESS_HOURS.BREAK_START;
-      endDateTime.setHours(endDateTime.getHours() + breakDuration, endMinutes, 0, 0);
-    }
 
     // 営業時間を超える場合は翌日に
     if (endDateTime.getHours() > BUSINESS_HOURS.END_HOUR || 

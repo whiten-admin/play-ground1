@@ -120,10 +120,6 @@ export default function ScheduleCalendar({
     const options: string[] = [];
     for (let hour = BUSINESS_HOURS.START_HOUR; hour <= BUSINESS_HOURS.END_HOUR; hour++) {
       for (let minute = 0; minute < 60; minute += 15) {
-        // 休憩時間をスキップ
-        if (hour >= BUSINESS_HOURS.BREAK_START && hour < BUSINESS_HOURS.BREAK_END) {
-          continue;
-        }
         options.push(
           `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
         );
@@ -164,13 +160,8 @@ export default function ScheduleCalendar({
     // クリックした日付と時間を取得（引数から直接受け取る）
     const clickedDate = new Date(day);
     
-    // 休憩時間内の場合は営業時間または休憩後に調整
-    let clickedHour = hour;
-    if (clickedHour >= BUSINESS_HOURS.BREAK_START && clickedHour < BUSINESS_HOURS.BREAK_END) {
-      clickedHour = BUSINESS_HOURS.BREAK_END;
-    }
-    
     // 営業時間外の場合は営業開始時間に設定
+    let clickedHour = hour;
     if (clickedHour < BUSINESS_HOURS.START_HOUR || clickedHour >= BUSINESS_HOURS.END_HOUR) {
       clickedHour = BUSINESS_HOURS.START_HOUR;
     }

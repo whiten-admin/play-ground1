@@ -71,8 +71,7 @@ export const calculateTodoPosition = (todo: TodoWithMeta, quarterHeight: number)
 export const generateTimeOptions = (): string[] => {
   const options: string[] = [];
   for (let hour = BUSINESS_HOURS.START_HOUR; hour <= BUSINESS_HOURS.END_HOUR; hour++) {
-    if (hour >= BUSINESS_HOURS.BREAK_START && hour < BUSINESS_HOURS.BREAK_END) continue;
-    
+    // 休憩時間もオプションに含める
     for (let minute = 0; minute < 60; minute += 15) {
       options.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
     }
