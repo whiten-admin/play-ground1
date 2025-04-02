@@ -12,6 +12,7 @@ import DayView from './DayView'
 import MonthView from './MonthView'
 import ScheduleHeader from './ScheduleHeader'
 import { Task, Todo } from '@/features/tasks/types/task'
+import { scheduleTodos } from '../utils/scheduleTodoUtils'
 
 const WeeklyScheduleDnd = dynamic(
   () => import('./WeeklyScheduleDnd').then(mod => mod.default),
@@ -62,7 +63,9 @@ export default function ScheduleCalendar({
         tasksLength: tasks.length,
         totalTodos: tasks.reduce((acc, task) => acc + task.todos.length, 0)
       });
-      const schedule = scheduleTodos();
+      
+      // 共通化したユーティリティ関数を使用してスケジュールを計算
+      const schedule = scheduleTodos(tasks, selectedUserIds, showUnassigned);
       setTodoSchedule(schedule);
     }
   }, [tasks, selectedUserIds, showUnassigned, isClient]);
@@ -134,120 +137,6 @@ export default function ScheduleCalendar({
   const goToToday = () => {
     setCurrentDate(new Date())
   }
-
-  // TODOをカレンダーに配置するための処理
-  const scheduleTodos = () => {
-    console.log('ScheduleCalendar - scheduleTodos 開始', { 
-      tasksCount: tasks.length, 
-      selectedUserIds, 
-      showUnassigned 
-    });
-    
-    // TODOを日付ごとにグループ化するためのMap
-    const todosByDate = new Map<string, TodoWithMeta[]>();
-    
-    // すべてのタスクからTODOを抽出し、フィルタリングして処理
-    tasks.forEach(task => {
-      task.todos.forEach(todo => {
-        // フィルタリング条件：担当者が選択されているか、未割り当てが表示対象か
-        const todoAssigneeId = todo.assigneeId || '';
-        const isAssignedToSelectedUser = todoAssigneeId && selectedUserIds.includes(todoAssigneeId);
-        const isUnassigned = !todoAssigneeId;
-        
-        // フィルタリング条件に合わない場合はスキップ
-        if (!(isAssignedToSelectedUser || (showUnassigned && isUnassigned))) {
-          return;
-        }
-        
-        // 日付キーを取得
-        const dateKey = format(todo.startDate, 'yyyy-MM-dd');
-        
-        // 該当日付のTODOリストがなければ初期化
-        if (!todosByDate.has(dateKey)) {
-          todosByDate.set(dateKey, []);
-        }
-        
-        // 見積時間は最大8時間に制限
-        const displayEstimatedHours = Math.min(todo.estimatedHours, BUSINESS_HOURS.MAX_HOURS);
-        
-        // カレンダー表示用の開始時間を設定
-        const startTime = todo.calendarStartDateTime 
-          ? todo.calendarStartDateTime.getHours() 
-          : BUSINESS_HOURS.START_HOUR;
-        
-        // TodoWithMetaオブジェクトを作成
-        todosByDate.get(dateKey)?.push({
-          todo: {
-            ...todo,
-            startTime,
-            estimatedHours: displayEstimatedHours,
-            originalEstimatedHours: todo.estimatedHours,
-            dueDate: task.dueDate,
-          },
-          taskId: task.id,
-          taskTitle: task.title,
-          priority: 0,
-          isNextTodo: false
-        });
-      });
-    });
-    
-    // 今日の日付を取得
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
-    
-    // 各日付のTODOに対して処理
-    todosByDate.forEach((todos, dateKey) => {
-      // カレンダーの開始時間でソート
-      todos.sort((a, b) => {
-        const aStartTime = a.todo.startTime || BUSINESS_HOURS.START_HOUR;
-        const bStartTime = b.todo.startTime || BUSINESS_HOURS.START_HOUR;
-        return aStartTime - bStartTime;
-      });
-      
-      // 今日の日付の場合、最初の未完了TODOをNEXTTODOとしてマーク
-      if (dateKey === todayStr) {
-        const incompleteTodo = todos.find(item => !item.todo.completed);
-        if (incompleteTodo) {
-          incompleteTodo.isNextTodo = true;
-        }
-      }
-      
-      // 休憩時間の調整とTODOの時間調整
-      adjustTodoTiming(todos, dateKey === todayStr);
-    });
-    
-    console.log('ScheduleCalendar - scheduleTodos 完了', { 
-      dateCount: todosByDate.size,
-      todoCount: Array.from(todosByDate.values()).reduce((sum, todos) => sum + todos.length, 0)
-    });
-    
-    return todosByDate;
-  };
-  
-  // TODOの時間調整を行う補助関数
-  const adjustTodoTiming = (todos: TodoWithMeta[], isToday: boolean) => {
-    todos.forEach(todoWithMeta => {
-      const { todo } = todoWithMeta;
-      
-      // 既に設定された開始時間を取得または初期値を設定
-      let startTime = todo.startTime || BUSINESS_HOURS.START_HOUR;
-      
-      // 休憩時間を避ける
-      if (startTime >= BUSINESS_HOURS.BREAK_START && startTime < BUSINESS_HOURS.BREAK_END) {
-        startTime = BUSINESS_HOURS.BREAK_END;
-      }
-      
-      // 終了時間が休憩時間にかかる場合の調整は省略（単純化のため）
-      
-      // 営業時間内に収まるように調整
-      if (startTime + todo.estimatedHours > BUSINESS_HOURS.END_HOUR) {
-        todo.estimatedHours = Math.max(1, BUSINESS_HOURS.END_HOUR - startTime);
-      }
-      
-      // 調整後の開始時間を設定
-      todo.startTime = startTime;
-    });
-  };
 
   // カレンダー部分のクリックイベントハンドラー
   const handleCalendarClick = (e: React.MouseEvent<HTMLDivElement>, day: Date, hour: number) => {
@@ -343,7 +232,7 @@ export default function ScheduleCalendar({
       
       // すぐにカレンダー上にTODOを表示するためにスケジュールを再計算
       setTimeout(() => {
-        const updatedSchedule = scheduleTodos();
+        const updatedSchedule = scheduleTodos(tasks, selectedUserIds, showUnassigned);
         setTodoSchedule(updatedSchedule);
         console.log('ScheduleCalendar - handleCreateTodo: スケジュール再計算完了', {
           updatedSchedule: updatedSchedule.size,
