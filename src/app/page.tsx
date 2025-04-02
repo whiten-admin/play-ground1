@@ -118,8 +118,8 @@ function HomeContent() {
     );
   };
 
-  const handleTodoUpdate = (todoId: string, taskId: string, newDate: Date, isPlannedDate?: boolean) => {
-    console.log('Home: handleTodoUpdate called with:', { todoId, taskId, newDate, isPlannedDate });
+  const handleTodoUpdate = (todoId: string, taskId: string, newDate: Date, isPlannedDate?: boolean, endDate?: Date) => {
+    console.log('Home: handleTodoUpdate called with:', { todoId, taskId, newDate, isPlannedDate, endDate });
     
     setTasks((prevTasks) => {
       const updatedTasks = prevTasks.map((task) => {
@@ -132,11 +132,25 @@ function HomeContent() {
                 const updatedDate = new Date(newDate);
                 // 時間を保持
                 updatedDate.setHours(newDate.getHours());
-                updatedDate.setMinutes(0);
+                updatedDate.setMinutes(newDate.getMinutes());
                 updatedDate.setSeconds(0);
                 updatedDate.setMilliseconds(0);
 
-                if (isPlannedDate) {
+                // 終了日時が指定されている場合
+                if (endDate) {
+                  const updatedEndDate = new Date(endDate);
+                  updatedEndDate.setHours(endDate.getHours());
+                  updatedEndDate.setMinutes(endDate.getMinutes());
+                  updatedEndDate.setSeconds(0);
+                  updatedEndDate.setMilliseconds(0);
+                  
+                  return {
+                    ...todo,
+                    calendarStartDateTime: updatedDate,
+                    calendarEndDateTime: updatedEndDate,
+                    estimatedHours: (updatedEndDate.getTime() - updatedDate.getTime()) / (1000 * 60 * 60)
+                  };
+                } else if (isPlannedDate) {
                   // 着手予定日を更新
                   return {
                     ...todo,

@@ -12,7 +12,7 @@ import DayView from './DayView'
 import MonthView from './MonthView'
 import ScheduleHeader from './ScheduleHeader'
 import { Task, Todo } from '@/features/tasks/types/task'
-import { scheduleTodos } from '../utils/scheduleTodoUtils'
+import { filterTodosForDisplay } from '../utils/scheduleTodoUtils'
 
 const WeeklyScheduleDnd = dynamic(
   () => import('./WeeklyScheduleDnd').then(mod => mod.default),
@@ -35,6 +35,8 @@ export default function ScheduleCalendar({
   const [newTodoTaskId, setNewTodoTaskId] = useState<string | null>(null)
   const [newTodoText, setNewTodoText] = useState('')
   const [newTodoEstimatedHours, setNewTodoEstimatedHours] = useState(0.5)
+  const [newTodoStartTime, setNewTodoStartTime] = useState<string>('09:00')
+  const [newTodoEndTime, setNewTodoEndTime] = useState<string>('10:00')
   const [viewModeButtons, setViewModeButtons] = useState<ViewModeButton[]>([
     { id: 'day', icon: <IoCalendarClearOutline className="w-5 h-5" />, label: '日' },
     { id: 'week', icon: <IoCalendarOutline className="w-5 h-5" />, label: '週' },
@@ -65,7 +67,7 @@ export default function ScheduleCalendar({
       });
       
       // 共通化したユーティリティ関数を使用してスケジュールを計算
-      const schedule = scheduleTodos(tasks, selectedUserIds, showUnassigned);
+      const schedule = filterTodosForDisplay(tasks, selectedUserIds, showUnassigned);
       setTodoSchedule(schedule);
     }
   }, [tasks, selectedUserIds, showUnassigned, isClient]);
@@ -110,6 +112,23 @@ export default function ScheduleCalendar({
 
   // 時間帯の設定
   const timeSlots = generateTimeSlots()
+
+  // 15分単位の時間オプションを生成する関数
+  const generateTimeOptions = () => {
+    const options: string[] = [];
+    for (let hour = BUSINESS_HOURS.START_HOUR; hour <= BUSINESS_HOURS.END_HOUR; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) {
+        // 休憩時間をスキップ
+        if (hour >= BUSINESS_HOURS.BREAK_START && hour < BUSINESS_HOURS.BREAK_END) {
+          continue;
+        }
+        options.push(
+          `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+        );
+      }
+    }
+    return options;
+  };
 
   // 前へ移動
   const movePrevious = () => {
@@ -165,6 +184,11 @@ export default function ScheduleCalendar({
     });
     
     setNewTodoDate(clickedDate);
+    // クリックした時間を開始時間として設定
+    setNewTodoStartTime(`${clickedHour.toString().padStart(2, '0')}:00`);
+    // 終了時間は開始時間の1時間後（ただし、営業時間内に収まるように調整）
+    const endHour = Math.min(clickedHour + 1, BUSINESS_HOURS.END_HOUR);
+    setNewTodoEndTime(`${endHour.toString().padStart(2, '0')}:00`);
     setNewTodoText(''); // テキストをリセット
     setIsCreatingTodo(true);
   };
@@ -186,12 +210,19 @@ export default function ScheduleCalendar({
       return;
     }
 
-    // カレンダー表示用の日時を計算
+    // 開始時間と終了時間を設定
+    const [startHour, startMinute] = newTodoStartTime.split(':').map(Number);
+    const [endHour, endMinute] = newTodoEndTime.split(':').map(Number);
+
     const calendarStartDateTime = new Date(newTodoDate);
-    calendarStartDateTime.setHours(newTodoDate.getHours(), 0, 0, 0);
+    calendarStartDateTime.setHours(startHour, startMinute, 0, 0);
     
-    const calendarEndDateTime = new Date(calendarStartDateTime);
-    calendarEndDateTime.setHours(calendarStartDateTime.getHours() + newTodoEstimatedHours);
+    const calendarEndDateTime = new Date(newTodoDate);
+    calendarEndDateTime.setHours(endHour, endMinute, 0, 0);
+
+    // 見積もり工数を計算（時間単位）
+    const estimatedHours = 
+      (endHour + endMinute / 60) - (startHour + startMinute / 60);
 
     const newTodo: Todo = {
       id: `todo-${Date.now()}`,
@@ -200,7 +231,7 @@ export default function ScheduleCalendar({
       startDate: new Date(newTodoDate),
       calendarStartDateTime,
       calendarEndDateTime,
-      estimatedHours: newTodoEstimatedHours,
+      estimatedHours,
       actualHours: 0,
       assigneeId: ''
     };
@@ -228,17 +259,9 @@ export default function ScheduleCalendar({
       setNewTodoDate(null);
       setNewTodoTaskId(null);
       setNewTodoText('');
-      setNewTodoEstimatedHours(0.5); // デフォルト値にリセット
-      
-      // すぐにカレンダー上にTODOを表示するためにスケジュールを再計算
-      setTimeout(() => {
-        const updatedSchedule = scheduleTodos(tasks, selectedUserIds, showUnassigned);
-        setTodoSchedule(updatedSchedule);
-        console.log('ScheduleCalendar - handleCreateTodo: スケジュール再計算完了', {
-          updatedSchedule: updatedSchedule.size,
-          newTodoId: newTodo.id
-        });
-      }, 100);
+      setNewTodoEstimatedHours(0.5);
+      setNewTodoStartTime('09:00');
+      setNewTodoEndTime('10:00');
     }
   };
 
@@ -351,6 +374,8 @@ export default function ScheduleCalendar({
                 setNewTodoTaskId(null);
                 setNewTodoText('');
                 setNewTodoEstimatedHours(0.5);
+                setNewTodoStartTime('09:00');
+                setNewTodoEndTime('10:00');
               }}
               onCreateTodo={handleCreateTodo}
             />
@@ -379,7 +404,63 @@ export default function ScheduleCalendar({
                   日付
                 </label>
                 <div className="text-sm text-gray-600">
-                  {newTodoDate ? format(newTodoDate, 'yyyy年M月d日 (E) HH:mm', { locale: ja }) : ''}
+                  {newTodoDate ? format(newTodoDate, 'yyyy年M月d日 (E)', { locale: ja }) : ''}
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    開始時間
+                  </label>
+                  <select
+                    value={newTodoStartTime}
+                    onChange={(e) => {
+                      setNewTodoStartTime(e.target.value);
+                      // 開始時間が終了時間より後の場合、終了時間を調整
+                      if (e.target.value >= newTodoEndTime) {
+                        const [hour, minute] = e.target.value.split(':').map(Number);
+                        const newEndHour = hour + 1;
+                        if (newEndHour <= BUSINESS_HOURS.END_HOUR) {
+                          setNewTodoEndTime(
+                            `${newEndHour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+                          );
+                        }
+                      }
+                    }}
+                    className="w-full p-2 border rounded-md"
+                  >
+                    {generateTimeOptions().map((time) => (
+                      <option key={time} value={time}>
+                        {time}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    終了時間
+                  </label>
+                  <select
+                    value={newTodoEndTime}
+                    onChange={(e) => {
+                      setNewTodoEndTime(e.target.value);
+                      // 終了時間が開始時間より前の場合、開始時間を調整
+                      if (e.target.value <= newTodoStartTime) {
+                        const [hour, minute] = e.target.value.split(':').map(Number);
+                        const newStartHour = Math.max(BUSINESS_HOURS.START_HOUR, hour - 1);
+                        setNewTodoStartTime(
+                          `${newStartHour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+                        );
+                      }
+                    }}
+                    className="w-full p-2 border rounded-md"
+                  >
+                    {generateTimeOptions().map((time) => (
+                      <option key={time} value={time}>
+                        {time}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div>
@@ -411,20 +492,6 @@ export default function ScheduleCalendar({
                   placeholder="TODOの名前を入力"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  見積もり工数（時間）
-                </label>
-                <input
-                  type="number"
-                  min="0.1"
-                  step="0.1"
-                  value={newTodoEstimatedHours}
-                  onChange={(e) => setNewTodoEstimatedHours(Number(e.target.value))}
-                  className="w-full p-2 border rounded-md"
-                  placeholder="見積もり工数を入力"
-                />
-              </div>
             </div>
             <div className="mt-6 flex justify-end gap-2">
               <button
@@ -434,6 +501,8 @@ export default function ScheduleCalendar({
                   setNewTodoTaskId(null);
                   setNewTodoText('');
                   setNewTodoEstimatedHours(0.5);
+                  setNewTodoStartTime('09:00');
+                  setNewTodoEndTime('10:00');
                 }}
                 className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md"
               >

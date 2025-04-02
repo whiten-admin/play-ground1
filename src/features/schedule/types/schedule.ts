@@ -12,15 +12,7 @@ export interface ViewModeButton {
 
 // 拡張したTodo情報の型定義
 export interface TodoWithMeta {
-  todo: {
-    id: string
-    text: string
-    completed: boolean
-    startDate: Date
-    calendarStartDateTime?: Date
-    calendarEndDateTime?: Date
-    completedDateTime?: Date
-    estimatedHours: number
+  todo: Todo & {
     originalEstimatedHours?: number
     startTime?: number
     dueDate?: Date
@@ -35,7 +27,7 @@ export interface TodoWithMeta {
 export interface ScheduleCalendarProps {
   tasks: Task[]
   onTaskSelect: (taskId: string, todoId?: string) => void
-  onTodoUpdate: (todoId: string, taskId: string, newDate: Date, isPlannedDate?: boolean) => void
+  onTodoUpdate: (todoId: string, taskId: string, newDate: Date, isPlannedDate?: boolean, endDate?: Date) => void
   selectedTodoId?: string | null
   onTaskUpdate?: (updatedTask: Task) => void
 }
@@ -57,7 +49,7 @@ export interface WeekViewProps {
   todoSchedule: Map<string, TodoWithMeta[]>
   selectedTodoId?: string | null
   onTaskSelect: (taskId: string, todoId?: string) => void
-  onTodoUpdate?: (todoId: string, taskId: string, newDate: Date, isPlannedDate?: boolean) => void
+  onTodoUpdate?: (todoId: string, taskId: string, newDate: Date, isPlannedDate?: boolean, endDate?: Date) => void
   onCalendarClick: (e: React.MouseEvent<HTMLDivElement>, day: Date, hour: number) => void
   isCreatingTodo: boolean
   newTodoDate: Date | null
