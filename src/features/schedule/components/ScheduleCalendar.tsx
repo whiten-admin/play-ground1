@@ -13,6 +13,7 @@ import MonthView from './MonthView'
 import ScheduleHeader from './ScheduleHeader'
 import { Task, Todo } from '@/features/tasks/types/task'
 import { filterTodosForDisplay } from '../utils/scheduleTodoUtils'
+import { getAllUsers } from '@/features/tasks/utils/userUtils'
 
 const WeeklyScheduleDnd = dynamic(
   () => import('./WeeklyScheduleDnd').then(mod => mod.default),
@@ -37,6 +38,7 @@ export default function ScheduleCalendar({
   const [newTodoEstimatedHours, setNewTodoEstimatedHours] = useState(0.5)
   const [newTodoStartTime, setNewTodoStartTime] = useState<string>('09:00')
   const [newTodoEndTime, setNewTodoEndTime] = useState<string>('10:00')
+  const [newTodoAssigneeId, setNewTodoAssigneeId] = useState<string>('')
   const [viewModeButtons, setViewModeButtons] = useState<ViewModeButton[]>([
     { id: 'day', icon: <IoCalendarClearOutline className="w-5 h-5" />, label: '日' },
     { id: 'week', icon: <IoCalendarOutline className="w-5 h-5" />, label: '週' },
@@ -233,7 +235,7 @@ export default function ScheduleCalendar({
       calendarEndDateTime,
       estimatedHours,
       actualHours: 0,
-      assigneeId: ''
+      assigneeId: newTodoAssigneeId
     };
 
     console.log('ScheduleCalendar - handleCreateTodo: 新しいTODOを作成', {
@@ -262,6 +264,7 @@ export default function ScheduleCalendar({
       setNewTodoEstimatedHours(0.5);
       setNewTodoStartTime('09:00');
       setNewTodoEndTime('10:00');
+      setNewTodoAssigneeId('');
     }
   };
 
@@ -328,6 +331,8 @@ export default function ScheduleCalendar({
             todoSchedule={todoSchedule}
             selectedTodoId={selectedTodoId}
             onTaskSelect={onTaskSelect}
+            onTodoUpdate={onTodoUpdate}
+            onCalendarClick={(e: React.MouseEvent<HTMLDivElement>, day: Date, hour: number) => handleCalendarClick(e, day, hour)}
           />
         }
         {viewMode === 'week' && (
@@ -376,6 +381,7 @@ export default function ScheduleCalendar({
                 setNewTodoEstimatedHours(0.5);
                 setNewTodoStartTime('09:00');
                 setNewTodoEndTime('10:00');
+                setNewTodoAssigneeId('');
               }}
               onCreateTodo={handleCreateTodo}
             />
@@ -492,6 +498,23 @@ export default function ScheduleCalendar({
                   placeholder="TODOの名前を入力"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  担当者
+                </label>
+                <select
+                  value={newTodoAssigneeId}
+                  onChange={(e) => setNewTodoAssigneeId(e.target.value)}
+                  className="w-full p-2 border rounded-md"
+                >
+                  <option value="">担当者を選択</option>
+                  {getAllUsers().map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="mt-6 flex justify-end gap-2">
               <button
@@ -503,6 +526,7 @@ export default function ScheduleCalendar({
                   setNewTodoEstimatedHours(0.5);
                   setNewTodoStartTime('09:00');
                   setNewTodoEndTime('10:00');
+                  setNewTodoAssigneeId('');
                 }}
                 className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md"
               >

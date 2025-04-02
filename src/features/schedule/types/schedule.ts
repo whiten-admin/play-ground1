@@ -39,6 +39,8 @@ export interface DayViewProps {
   todoSchedule: Map<string, TodoWithMeta[]>
   selectedTodoId?: string | null
   onTaskSelect: (taskId: string, todoId?: string) => void
+  onTodoUpdate: (todoId: string, taskId: string, newDate: Date, isPlannedDate?: boolean, endDate?: Date) => void
+  onCalendarClick: (e: React.MouseEvent<HTMLDivElement>, day: Date, hour: number) => void
 }
 
 // 週表示コンポーネントのプロパティ型定義
