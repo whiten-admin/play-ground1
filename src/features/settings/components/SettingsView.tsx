@@ -1,9 +1,8 @@
 'use client';
 
 import React from 'react';
-import { FiUser, FiBell, FiLock, FiGlobe, FiDatabase } from 'react-icons/fi';
+import { FiUser, FiBell, FiLock, FiGlobe } from 'react-icons/fi';
 import { useTaskContext } from '@/features/tasks/contexts/TaskContext';
-import DataManagement from './DataManagement';
 
 // シンプルなカードコンポーネント
 const SettingsCard = ({ title, children }: { title: string, children: React.ReactNode }) => (
@@ -25,20 +24,6 @@ const SettingsView = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* データ管理 */}
-          <div className="col-span-1 md:col-span-2">
-            <SettingsCard title="開発用シードデータ管理">
-              <div className="flex items-center mb-4">
-                <div className="p-3 bg-blue-100 rounded-full">
-                  <FiDatabase className="w-6 h-6 text-blue-600" />
-                </div>
-                <p className="text-gray-600 ml-4">開発用シードデータのエクスポート、インポート、リセットなどを行います</p>
-              </div>
-              
-              <DataManagement />
-            </SettingsCard>
-          </div>
-
           {/* アカウント設定 */}
           <div>
             <SettingsCard title="アカウント設定">
