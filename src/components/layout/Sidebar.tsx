@@ -144,7 +144,7 @@ export default function Sidebar({ activeTab, onTabChange, initialCollapsed = fal
 
       <div className="p-4 flex flex-col flex-grow">
         <div className="space-y-2 mt-2">
-          {tabs.map((tab) => (
+          {tabs.filter(tab => tab.id !== 'guide').map((tab) => (
             <Link
               key={tab.id}
               href={tab.href}
@@ -161,6 +161,26 @@ export default function Sidebar({ activeTab, onTabChange, initialCollapsed = fal
             </Link>
           ))}
         </div>
+      </div>
+      
+      {/* 使い方メニュー */}
+      <div className="px-4 py-2">
+        {tabs.filter(tab => tab.id === 'guide').map((tab) => (
+          <Link
+            key={tab.id}
+            href={tab.href}
+            onClick={() => onTabChange(tab.id)}
+            className={`w-full flex items-center ${collapsed ? 'justify-center' : 'justify-start space-x-3'} px-4 py-2 rounded-lg ${
+              activeTab === tab.id
+                ? 'bg-blue-500 text-white'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+            title={collapsed ? tab.label : undefined}
+          >
+            <span className="flex-shrink-0">{tab.icon}</span>
+            {!collapsed && <span className="truncate">{tab.label}</span>}
+          </Link>
+        ))}
       </div>
       
       {/* 開発用データ管理セクション（サイドバーの一番下） */}
