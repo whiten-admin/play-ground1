@@ -12,7 +12,6 @@ import { useAuth } from '@/services/auth/hooks/useAuth'
 import { Task } from '@/features/tasks/types/task'
 import { useTaskContext } from '@/features/tasks/contexts/TaskContext'
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
-import UserFilter from '@/components/UserFilter'
 import ResizablePanel from '@/components/layout/ResizablePanel'
 import { FilterProvider } from '@/features/tasks/filters/FilterContext'
 import { useSearchParams } from 'next/navigation'
@@ -181,10 +180,7 @@ function HomeContent() {
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header onLogout={logout} user={user} project={currentProject || undefined} />
           <main className="flex-1 overflow-y-auto p-3">
-            {/* ユーザーフィルター */}
-            <div className="mb-3">
-              <UserFilter />
-            </div>
+            {/* ホーム画面ではユーザーフィルターを表示しない */}
             
             <ResizablePanel
               leftPanel={
