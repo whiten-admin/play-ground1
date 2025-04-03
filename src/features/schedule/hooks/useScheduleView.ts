@@ -45,7 +45,9 @@ export default function useScheduleView({
 
     // 開始時間と終了時間の両方を更新するために、第5引数に終了時間を渡す
     onTodoUpdate(todo.id, taskId, updatedStartDateTime, false, updatedEndDateTime);
-    setEditingTodo(null);
+    
+    // 編集状態を維持するため、editingTodoのリセットを削除
+    // 時間更新後も操作が継続できるようにする
   };
   
   // TODOの時間帯ごとの表示を処理
@@ -61,10 +63,22 @@ export default function useScheduleView({
     };
   };
   
+  // 編集フォームを閉じるだけで選択状態は維持する関数
+  const closeEditForm = () => {
+    setEditingTodo(null);
+    // 選択状態は維持する（onTaskSelectは呼び出さない）
+  };
+  
   // TODOをクリックした時にフォームを表示するハンドラー
   const handleTodoClick = (todo: Todo, taskId: string) => {
     const startDateTime = new Date(todo.calendarStartDateTime);
     const endDateTime = new Date(todo.calendarEndDateTime);
+    
+    // すでに選択されていて編集中のTODOの場合は、編集フォームを閉じるだけ
+    if (editingTodo?.todo.id === todo.id) {
+      closeEditForm();
+      return;
+    }
     
     onTaskSelect(taskId, todo.id);
     setEditingTodo({
@@ -242,6 +256,7 @@ export default function useScheduleView({
     handleStartTimeChange,
     handleEndTimeChange,
     handleTodoDragEnd,
-    handleTodoResizeEnd
+    handleTodoResizeEnd,
+    closeEditForm
   };
 } 

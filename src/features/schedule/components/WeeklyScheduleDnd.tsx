@@ -66,7 +66,8 @@ export default function WeeklyScheduleDnd({
     handleStartTimeChange,
     handleEndTimeChange,
     handleTodoDragEnd,
-    handleTodoResizeEnd
+    handleTodoResizeEnd,
+    closeEditForm
   } = useScheduleView({
     quarterHeight,
     selectedTodoId,
@@ -144,7 +145,7 @@ export default function WeeklyScheduleDnd({
                     onTodoClick={(todoWithMeta) => handleTodoClick(todoWithMeta.todo, todoWithMeta.taskId)}
                     onStartTimeChange={handleStartTimeChange}
                     onEndTimeChange={handleEndTimeChange}
-                    onCancelEdit={() => setEditingTodo(null)}
+                    onCancelEdit={closeEditForm}
                     onUpdateTime={handleTimeUpdate}
                     onDragEnd={handleTodoDragEnd}
                     onResizeEnd={handleTodoResizeEnd}

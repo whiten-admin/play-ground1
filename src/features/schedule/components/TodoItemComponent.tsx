@@ -109,7 +109,7 @@ const TodoItemComponent: React.FC<TodoItemComponentProps> = ({
         }}
         onStart={handleDragStart}
         onStop={handleDragStop}
-        disabled={isEditing || isResizing}
+        disabled={isResizing} // 編集中でもドラッグ可能にする
       >
         <div ref={nodeRef} style={{ position: 'absolute', top, width: '100%', zIndex: isDragging ? 100 : 1 }}>
           <TodoItem
@@ -152,7 +152,7 @@ const TodoItemComponent: React.FC<TodoItemComponentProps> = ({
               }}
               onStart={handleResizeStart}
               onStop={handleResizeStop}
-              disabled={isEditing || isDragging}
+              disabled={isDragging} // 編集中でもリサイズ可能にする
             >
               <ResizeHandle ref={resizeRef} />
             </Draggable>
