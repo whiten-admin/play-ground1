@@ -5,7 +5,7 @@ import { FiUser, FiBell, FiLock, FiGlobe, FiUsers, FiCalendar, FiCreditCard, FiS
 import { useAuth } from '@/services/auth/hooks/useAuth';
 
 // タブの種類を定義
-type TabType = 'account' | 'team' | 'calendar' | 'payment' | 'other';
+type TabType = 'account' | 'calendar' | 'payment' | 'other';
 
 const SettingsView = () => {
   // アクティブなタブを状態として管理
@@ -29,7 +29,6 @@ const SettingsView = () => {
   // タブの定義
   const tabs = [
     { id: 'account', label: 'アカウント設定', icon: <FiUser className="w-5 h-5" /> },
-    { id: 'team', label: 'チーム設定', icon: <FiUsers className="w-5 h-5" /> },
     { id: 'calendar', label: 'カレンダー設定', icon: <FiCalendar className="w-5 h-5" /> },
     { id: 'payment', label: '支払い設定', icon: <FiCreditCard className="w-5 h-5" /> },
     { id: 'other', label: 'その他', icon: <FiSettings className="w-5 h-5" /> },
