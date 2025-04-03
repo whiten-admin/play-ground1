@@ -1,5 +1,5 @@
 import { Task, Todo } from '@/features/tasks/types/task';
-import { format } from 'date-fns';
+import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { BUSINESS_HOURS } from '@/utils/constants/constants';
 import { TodoWithMeta } from '../types/schedule';
 
@@ -134,4 +134,54 @@ export const organizeTodosForDate = (todos: Todo[], date: Date): Todo[] => {
 
   // 完了済みのTODOと未完了のTODOを結合
   return [...completedTodos, ...organizedTodos];
-}; 
+};
+
+// 選択された日付のTODOをフィルタリングする関数
+export function filterTodosForSelectedDate(
+  todos: Todo[], 
+  selectedDate: Date, 
+  selectedUserIds: string[], 
+  showUnassigned: boolean
+): Todo[] {
+  // 選択された日付の開始と終了
+  const startDate = startOfDay(selectedDate);
+  const endDate = endOfDay(selectedDate);
+
+  return todos.filter(todo => {
+    // 日付でフィルタリング - カレンダー表示用の日時が選択日の範囲内かチェック
+    const isInSelectedDateRange = isWithinInterval(todo.calendarStartDateTime, {
+      start: startDate,
+      end: endDate
+    });
+
+    // ユーザー/未アサインでフィルタリング
+    const todoAssigneeId = todo.assigneeId || '';
+    const isAssignedToSelectedUser = todoAssigneeId && selectedUserIds.includes(todoAssigneeId);
+    const isUnassigned = !todoAssigneeId;
+
+    // 日付の条件を満たし、かつ（選択ユーザーに割り当てられているか、未割り当てで表示設定がONの場合）
+    return isInSelectedDateRange && (isAssignedToSelectedUser || (isUnassigned && showUnassigned));
+  });
+}
+
+// 指定された期間内のTODOを取得する関数
+export function getTodosInDateRange(todos: Todo[], startDate: Date, endDate: Date): Todo[] {
+  return todos.filter(todo => {
+    // TODO開始時刻が指定期間内にあるかチェック
+    return isWithinInterval(todo.calendarStartDateTime, {
+      start: startOfDay(startDate),
+      end: endOfDay(endDate)
+    });
+  });
+}
+
+// タスクからTODOを抽出し、親タスク情報も含めた形で返す関数
+export function flattenTasksToTodos(tasks: Task[]): (Todo & { taskId: string; taskTitle: string })[] {
+  return tasks.flatMap(task => 
+    task.todos.map(todo => ({
+      ...todo,
+      taskId: task.id,
+      taskTitle: task.title
+    }))
+  );
+} 

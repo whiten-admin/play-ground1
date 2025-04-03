@@ -13,7 +13,8 @@ import MonthView from './MonthView'
 import ScheduleHeader from './ScheduleHeader'
 import { Task, Todo } from '@/features/tasks/types/task'
 import { filterTodosForDisplay } from '../utils/scheduleTodoUtils'
-import { getAllUsers } from '@/features/tasks/utils/userUtils'
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
+import { getProjectMemberName } from '@/utils/memberUtils'
 
 const WeeklyScheduleDnd = dynamic(
   () => import('./WeeklyScheduleDnd').then(mod => mod.default),
@@ -35,10 +36,10 @@ export default function ScheduleCalendar({
   const [newTodoDate, setNewTodoDate] = useState<Date | null>(null)
   const [newTodoTaskId, setNewTodoTaskId] = useState<string | null>(null)
   const [newTodoText, setNewTodoText] = useState('')
+  const [newTodoAssigneeId, setNewTodoAssigneeId] = useState<string>('')
   const [newTodoEstimatedHours, setNewTodoEstimatedHours] = useState(0.5)
   const [newTodoStartTime, setNewTodoStartTime] = useState<string>('09:00')
   const [newTodoEndTime, setNewTodoEndTime] = useState<string>('10:00')
-  const [newTodoAssigneeId, setNewTodoAssigneeId] = useState<string>('')
   const [viewModeButtons, setViewModeButtons] = useState<ViewModeButton[]>([
     { id: 'day', icon: <IoCalendarClearOutline className="w-5 h-5" />, label: '日' },
     { id: 'week', icon: <IoCalendarOutline className="w-5 h-5" />, label: '週' },
@@ -48,6 +49,9 @@ export default function ScheduleCalendar({
   
   // フィルタリングコンテキストを使用
   const { selectedUserIds, showUnassigned } = useFilterContext()
+  
+  // プロジェクトコンテキストを使用
+  const { currentProject, getProjectMembers } = useProjectContext()
   
   // 選択状態の変更を検知するuseEffect
   useEffect(() => {
@@ -187,19 +191,19 @@ export default function ScheduleCalendar({
   };
 
   // 新しいTODOを作成する関数
-  const handleCreateTodo = (taskId: string) => {
-    if (!newTodoDate || !newTodoText.trim()) {
+  const handleCreateTodo = () => {
+    if (!newTodoText.trim() || !newTodoTaskId || !newTodoDate) {
       console.log('ScheduleCalendar - handleCreateTodo: 必要なデータが不足', {
-        newTodoDate,
-        onTaskUpdate: !!onTaskUpdate,
-        newTodoText: newTodoText.trim()
+        newTodoText: newTodoText.trim(),
+        newTodoTaskId,
+        newTodoDate
       });
       return;
     }
 
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) {
-      console.log('ScheduleCalendar - handleCreateTodo: タスクが見つからない', { taskId });
+    const selectedTask = tasks.find(task => task.id === newTodoTaskId);
+    if (!selectedTask) {
+      console.log('ScheduleCalendar - handleCreateTodo: タスクが見つからない', { taskId: newTodoTaskId });
       return;
     }
 
@@ -231,7 +235,7 @@ export default function ScheduleCalendar({
 
     console.log('ScheduleCalendar - handleCreateTodo: 新しいTODOを作成', {
       todoId: newTodo.id,
-      taskId: task.id,
+      taskId: selectedTask.id,
       date: newTodoDate,
       estimatedHours: newTodoEstimatedHours,
       todo: newTodo
@@ -239,8 +243,8 @@ export default function ScheduleCalendar({
 
     // 既存のタスクに新しいTODOを追加
     const updatedTask: Task = {
-      ...task,
-      todos: [...task.todos, newTodo]
+      ...selectedTask,
+      todos: [...selectedTask.todos, newTodo]
     };
 
     // 親コンポーネントに通知してタスクを更新
@@ -257,6 +261,15 @@ export default function ScheduleCalendar({
       setNewTodoEndTime('10:00');
       setNewTodoAssigneeId('');
     }
+  };
+
+  // イベントをキャンセル
+  const handleCancel = () => {
+    setIsCreatingTodo(false);
+    setNewTodoText('');
+    setNewTodoAssigneeId('');
+    setNewTodoEstimatedHours(0.5);
+    setNewTodoTaskId(null);
   };
 
   if (!isClient) {
@@ -364,16 +377,7 @@ export default function ScheduleCalendar({
               onNewTodoTaskIdChange={setNewTodoTaskId}
               onNewTodoTextChange={setNewTodoText}
               onNewTodoEstimatedHoursChange={setNewTodoEstimatedHours}
-              onCancelCreateTodo={() => {
-                setIsCreatingTodo(false);
-                setNewTodoDate(null);
-                setNewTodoTaskId(null);
-                setNewTodoText('');
-                setNewTodoEstimatedHours(0.5);
-                setNewTodoStartTime('09:00');
-                setNewTodoEndTime('10:00');
-                setNewTodoAssigneeId('');
-              }}
+              onCancelCreateTodo={handleCancel}
               onCreateTodo={handleCreateTodo}
             />
           </div>
@@ -499,9 +503,9 @@ export default function ScheduleCalendar({
                   className="w-full p-2 border rounded-md"
                 >
                   <option value="">担当者を選択</option>
-                  {getAllUsers().map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name}
+                  {currentProject && getProjectMembers(currentProject.id).map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {getProjectMemberName(member.id)}
                     </option>
                   ))}
                 </select>
@@ -509,23 +513,14 @@ export default function ScheduleCalendar({
             </div>
             <div className="mt-6 flex justify-end gap-2">
               <button
-                onClick={() => {
-                  setIsCreatingTodo(false);
-                  setNewTodoDate(null);
-                  setNewTodoTaskId(null);
-                  setNewTodoText('');
-                  setNewTodoEstimatedHours(0.5);
-                  setNewTodoStartTime('09:00');
-                  setNewTodoEndTime('10:00');
-                  setNewTodoAssigneeId('');
-                }}
+                onClick={handleCancel}
                 className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md"
               >
                 キャンセル
               </button>
               <button
-                onClick={() => newTodoTaskId && handleCreateTodo(newTodoTaskId)}
-                disabled={!newTodoTaskId || !newTodoText.trim()}
+                onClick={handleCreateTodo}
+                disabled={!newTodoText.trim() || !newTodoTaskId}
                 className="px-4 py-2 text-sm text-white bg-blue-500 rounded-md hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 作成

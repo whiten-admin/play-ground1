@@ -2,9 +2,9 @@
 
 import React, { useRef, useEffect } from 'react';
 import { IoFilter, IoCaretDown } from 'react-icons/io5';
-import { User } from '@/features/tasks/types/user';
-import { getUserNameById, getAllUsers } from '@/features/tasks/utils/userUtils';
 import { useFilterContext } from '@/features/tasks/filters/FilterContext';
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
+import { getProjectUsers } from '@/utils/memberUtils';
 
 export default function UserFilter() {
   const {
@@ -18,7 +18,29 @@ export default function UserFilter() {
     setSelectedUserIds
   } = useFilterContext();
   
-  const users = getAllUsers();
+  const { currentProject, getProjectMembers } = useProjectContext();
+  
+  // プロジェクトに所属するメンバーを取得
+  const projectMembers = currentProject 
+    ? getProjectMembers(currentProject.id)
+    : [];
+  
+  // プロジェクトメンバーとユーザー情報を結合
+  const projectMemberUsers = currentProject 
+    ? projectMembers.map(member => {
+        // プロジェクトユーザーを直接取得
+        const projectUsers = getProjectUsers(currentProject.id);
+        const user = projectUsers.find(user => user.id === member.userId);
+        
+        return {
+          assigneeId: member.id,
+          userId: member.userId,
+          name: user ? user.name : '不明なユーザー',
+          isCurrentUser: member.userId === currentUserId
+        };
+      })
+    : [];
+  
   const modalRef = useRef<HTMLDivElement>(null);
   
   // 外側をクリックしたときに閉じる処理
@@ -35,17 +57,30 @@ export default function UserFilter() {
     };
   }, [setIsFilterOpen]);
   
-  // 一括選択 - ユーザーと未アサインを全て選択
+  // 一括選択 - プロジェクトメンバーと未アサインを全て選択
   const selectAll = () => {
-    const allUserIds = users.map(user => user.id);
-    setSelectedUserIds(allUserIds);
+    const allMemberIds = projectMembers.map(member => member.id);
+    setSelectedUserIds(allMemberIds);
     setShowUnassigned(true); // 未アサインも選択
   };
   
-  // 一括解除 - 自分も含めて全て解除
+  // 一括解除 - 全て解除
   const deselectAll = () => {
     setSelectedUserIds([]);
     setShowUnassigned(false); // 未アサインも解除
+  };
+  
+  // メンバー名を取得
+  const getMemberName = (assigneeId: string): string => {
+    const member = projectMemberUsers.find(m => m.assigneeId === assigneeId);
+    return member ? member.name : '不明なメンバー';
+  };
+  
+  // 選択中のメンバー名のリストを取得
+  const getSelectedMemberNames = (): string => {
+    return selectedUserIds
+      .map(id => getMemberName(id))
+      .join(', ');
   };
   
   return (
@@ -60,7 +95,7 @@ export default function UserFilter() {
           <IoCaretDown className={`w-3 h-3 transition-transform ${isFilterOpen ? 'rotate-180' : ''}`} />
         </button>
         <div className="text-xs text-gray-500">
-          現在の表示: {selectedUserIds.map(id => getUserNameById(id)).join(', ')}
+          現在の表示: {getSelectedMemberNames()}
           {showUnassigned ? '、未アサイン' : ''}
         </div>
       </div>
@@ -88,18 +123,18 @@ export default function UserFilter() {
           </div>
           
           <div className="space-y-1.5 max-h-[250px] overflow-y-auto py-1">
-            {users.map((user: User) => (
-              <div key={user.id} className="flex items-center py-1 px-1 hover:bg-gray-50 rounded">
+            {projectMemberUsers.map((member) => (
+              <div key={member.assigneeId} className="flex items-center py-1 px-1 hover:bg-gray-50 rounded">
                 <input
                   type="checkbox"
-                  id={`user-${user.id}`}
-                  checked={selectedUserIds.includes(user.id)}
-                  onChange={() => toggleUserSelection(user.id)}
+                  id={`member-${member.assigneeId}`}
+                  checked={selectedUserIds.includes(member.assigneeId)}
+                  onChange={() => toggleUserSelection(member.assigneeId)}
                   className="mr-2"
                 />
-                <label htmlFor={`user-${user.id}`} className="text-sm flex items-center gap-2 cursor-pointer flex-1">
-                  {user.name}
-                  {user.id === currentUserId && <span className="text-xs bg-blue-100 px-1 py-0.5 rounded">自分</span>}
+                <label htmlFor={`member-${member.assigneeId}`} className="text-sm flex items-center gap-2 cursor-pointer flex-1">
+                  {member.name}
+                  {member.isCurrentUser && <span className="text-xs bg-blue-100 px-1 py-0.5 rounded">自分</span>}
                 </label>
               </div>
             ))}

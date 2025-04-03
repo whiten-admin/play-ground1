@@ -4,12 +4,15 @@ import { Fragment } from 'react'
 import { Project } from '@/features/projects/types/project'
 import { formatProjectInfo, extractProjectInfoFromFile } from '@/services/api/utils/openai'
 import { extractTextFromFile } from '@/services/api/utils/fileParser'
+import { User } from '@/features/tasks/types/user'
+import ProjectMemberList from './ProjectMemberList'
 
 interface ProjectDetailModalProps {
   isOpen: boolean
   onClose: () => void
   project: Project
   onUpdate: (updatedProject: Project) => void
+  users?: User[] // ユーザーリストを受け取るようにする
 }
 
 interface CompletionItem {
@@ -22,8 +25,9 @@ export default function ProjectDetailModal({
   onClose,
   project,
   onUpdate,
+  users = [] // デフォルト値を空配列に
 }: ProjectDetailModalProps) {
-  const [viewMode, setViewMode] = useState<'original' | 'summary'>('summary')
+  const [viewMode, setViewMode] = useState<'original' | 'summary' | 'members'>('summary')
   const [originalText, setOriginalText] = useState('')
   const [summaryText, setSummaryText] = useState('')
   const [isFormatting, setIsFormatting] = useState(false)
@@ -144,7 +148,7 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
   }
 
   // 表示モードを切り替え
-  const handleViewModeChange = (mode: 'original' | 'summary') => {
+  const handleViewModeChange = (mode: 'original' | 'summary' | 'members') => {
     setViewMode(mode)
   }
 
@@ -299,6 +303,17 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
                     >
                       原文テキスト
                     </button>
+                    <button
+                      type="button"
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md ${
+                        viewMode === 'members'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                      onClick={() => handleViewModeChange('members')}
+                    >
+                      メンバー管理
+                    </button>
                   </div>
                 </div>
 
@@ -310,96 +325,102 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
                   </div>
                 )}
 
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <h4 className="text-sm font-medium text-gray-700">
-                      {viewMode === 'original' ? 'プロジェクト情報（原文）' : 'プロジェクト情報（要約）'}
-                    </h4>
-                    {viewMode === 'original' && (
-                      <button
-                        type="button"
-                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-1"
-                        onClick={handleFormatText}
-                        disabled={isFormatting}
-                      >
-                        {isFormatting ? (
-                          <>
-                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            要約取り込み中...
-                          </>
-                        ) : (
-                          <>要約取り込み</>
-                        )}
-                      </button>
-                    )}
+                {viewMode === 'members' ? (
+                  <div className="space-y-4">
+                    <ProjectMemberList projectId={project.id} userList={users} />
                   </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <textarea
-                      className="w-full bg-gray-50 text-sm text-gray-700 font-mono border-none focus:ring-0 focus:outline-none"
-                      rows={20}
-                      value={viewMode === 'original' ? originalText : summaryText}
-                      onChange={viewMode === 'original' ? handleOriginalTextChange : handleSummaryTextChange}
-                      placeholder={
-                        viewMode === 'original'
-                          ? "プロジェクト情報を入力してください。ランダムなフォーマットでも、要約取り込みボタンを押すとAIが整形します。"
-                          : "要約されたプロジェクト情報が表示されます。"
-                      }
-                    />
-                  </div>
-                  {formatError && (
-                    <div className="bg-red-50 p-3 rounded-lg">
-                      <p className="text-xs text-red-700">
-                        <span className="font-medium">エラー:</span> {formatError}
-                      </p>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="text-sm font-medium text-gray-700">
+                        {viewMode === 'original' ? 'プロジェクト情報（原文）' : 'プロジェクト情報（要約）'}
+                      </h4>
+                      {viewMode === 'original' && (
+                        <button
+                          type="button"
+                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-1"
+                          onClick={handleFormatText}
+                          disabled={isFormatting}
+                        >
+                          {isFormatting ? (
+                            <>
+                              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              要約取り込み中...
+                            </>
+                          ) : (
+                            <>要約取り込み</>
+                          )}
+                        </button>
+                      )}
                     </div>
-                  )}
-                  {viewMode === 'summary' && (
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <div className="mb-3">
-                        <div className="flex justify-between items-center mb-1">
-                          <h5 className="text-sm font-medium text-gray-700">情報入力度</h5>
-                          <span className={`text-sm font-medium ${
-                            completionRate < 50 ? 'text-red-600' : 
-                            completionRate < 80 ? 'text-yellow-600' : 'text-green-600'
-                          }`}>
-                            {completionRate}%
-                          </span>
-                        </div>
-                        <div className="w-full h-2 bg-gray-200 rounded-full">
-                          <div 
-                            className={`h-full rounded-full ${
-                              completionRate < 50 ? 'bg-red-500' : 
-                              completionRate < 80 ? 'bg-yellow-500' : 'bg-green-500'
-                            }`} 
-                            style={{ width: `${completionRate}%` }}
-                          />
-                        </div>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <textarea
+                        className="w-full bg-gray-50 text-sm text-gray-700 font-mono border-none focus:ring-0 focus:outline-none"
+                        rows={20}
+                        value={viewMode === 'original' ? originalText : summaryText}
+                        onChange={viewMode === 'original' ? handleOriginalTextChange : handleSummaryTextChange}
+                        placeholder={
+                          viewMode === 'original'
+                            ? "プロジェクト情報を入力してください。ランダムなフォーマットでも、要約取り込みボタンを押すとAIが整形します。"
+                            : "要約されたプロジェクト情報が表示されます。"
+                        }
+                      />
+                    </div>
+                    {formatError && (
+                      <div className="bg-red-50 p-3 rounded-lg">
+                        <p className="text-xs text-red-700">
+                          <span className="font-medium">エラー:</span> {formatError}
+                        </p>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {completionItems.map((item, index) => (
-                          <div key={index} className="flex items-center gap-1.5">
-                            <span className={`w-1.5 h-1.5 rounded-full ${item.isComplete ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                            <span className={`text-xs ${item.isComplete ? 'text-gray-600' : 'text-red-600 font-medium'}`}>
-                              {item.name}
+                    )}
+                    {viewMode === 'summary' && (
+                      <div className="bg-white border border-gray-200 rounded-lg p-4">
+                        <div className="mb-3">
+                          <div className="flex justify-between items-center mb-1">
+                            <h5 className="text-sm font-medium text-gray-700">情報入力度</h5>
+                            <span className={`text-sm font-medium ${
+                              completionRate < 50 ? 'text-red-600' : 
+                              completionRate < 80 ? 'text-yellow-600' : 'text-green-600'
+                            }`}>
+                              {completionRate}%
                             </span>
                           </div>
-                        ))}
+                          <div className="w-full h-2 bg-gray-200 rounded-full">
+                            <div 
+                              className={`h-full rounded-full ${
+                                completionRate < 50 ? 'bg-red-500' : 
+                                completionRate < 80 ? 'bg-yellow-500' : 'bg-green-500'
+                              }`} 
+                              style={{ width: `${completionRate}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {completionItems.map((item, index) => (
+                            <div key={index} className="flex items-center gap-1.5">
+                              <span className={`w-1.5 h-1.5 rounded-full ${item.isComplete ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                              <span className={`text-xs ${item.isComplete ? 'text-gray-600' : 'text-red-600 font-medium'}`}>
+                                {item.name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
+                    )}
+                    <div className="bg-blue-50 p-3 rounded-lg">
+                      <p className="text-xs text-blue-700">
+                        <span className="font-medium">ヒント:</span> 
+                        {viewMode === 'original'
+                          ? "ランダムなフォーマットのテキストを入力し、「要約取り込み」ボタンをクリックするとAIが整形します。"
+                          : "要約されたテキストを確認・編集できます。必要に応じて修正してください。"
+                        }
+                      </p>
                     </div>
-                  )}
-                  <div className="bg-blue-50 p-3 rounded-lg">
-                    <p className="text-xs text-blue-700">
-                      <span className="font-medium">ヒント:</span> 
-                      {viewMode === 'original'
-                        ? "ランダムなフォーマットのテキストを入力し、「要約取り込み」ボタンをクリックするとAIが整形します。"
-                        : "要約されたテキストを確認・編集できます。必要に応じて修正してください。"
-                      }
-                    </p>
                   </div>
-                </div>
+                )}
 
                 <div className="mt-6 flex justify-end gap-3">
                   <button

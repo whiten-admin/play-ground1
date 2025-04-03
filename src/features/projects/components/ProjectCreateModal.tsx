@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { Project } from '@/features/projects/types/project'
 import { FiEdit3, FiFileText, FiUpload } from 'react-icons/fi'
 import { extractTextFromPDF, extractProjectInfoFromText } from '@/services/api/utils/pdfUtils'
@@ -8,70 +8,26 @@ import { generateProjectTasks } from '@/services/api/utils/openai'
 import { convertGeneratedTasksToTaskObjects } from '@/features/tasks/utils/taskUtils'
 import { useTaskContext } from '@/features/tasks/contexts/TaskContext'
 import { useRouter } from 'next/navigation'
+import TaskGenerationDialog from '@/features/projects/components/TaskGenerationDialog'
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
+import { User } from '@/features/tasks/types/user'
+import { ProjectMemberRole } from '@/features/projects/types/projectMember'
+import { useAuth } from '@/services/auth/hooks/useAuth'
 
 interface ProjectCreateModalProps {
   isOpen: boolean
   onClose: () => void
-  onCreateProject: (newProject: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => void
+  onCreateProject: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => void
+  users?: User[]
 }
 
 type TabType = 'manual' | 'document'
 
-// タスク生成確認ダイアログ
-interface TaskGenerationDialogProps {
-  isOpen: boolean
-  onClose: () => void
-  onConfirm: () => void
-  isLoading: boolean
-}
-
-function TaskGenerationDialog({ isOpen, onClose, onConfirm, isLoading }: TaskGenerationDialogProps) {
-  if (!isOpen) return null
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h3 className="text-lg font-semibold mb-3">タスク自動生成</h3>
-        <p className="mb-4 text-gray-700">
-          プロジェクトの情報から想定されるタスクを自動生成しますか？
-          <br />
-          プロジェクトの内容に基づいて、関連するタスクとTODOを自動的に作成します。
-        </p>
-        
-        <div className="flex justify-end space-x-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border border-gray-300 rounded-md"
-            disabled={isLoading}
-          >
-            いいえ
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className={`px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-md flex items-center ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                生成中...
-              </>
-            ) : 'はい、生成する'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-export default function ProjectCreateModal({ isOpen, onClose, onCreateProject }: ProjectCreateModalProps) {
+export default function ProjectCreateModal({ isOpen, onClose, onCreateProject, users = [] }: ProjectCreateModalProps) {
   const router = useRouter()
   const { addTask } = useTaskContext()
+  const { assignUserToProject } = useProjectContext()
+  const { user: currentUser } = useAuth()
   const [projectData, setProjectData] = useState<Omit<Project, 'id' | 'createdAt' | 'updatedAt'>>({
     title: '',
     code: '',
@@ -80,6 +36,7 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject }:
     endDate: '',
     phase: 'planning'
   })
+  const [selectedMembers, setSelectedMembers] = useState<Array<{ userId: string; role: ProjectMemberRole }>>([])
   const [documentText, setDocumentText] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -93,6 +50,17 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject }:
   const [isTaskGenerationDialogOpen, setIsTaskGenerationDialogOpen] = useState(false)
   const [isGeneratingTasks, setIsGeneratingTasks] = useState(false)
   const [createdProjectData, setCreatedProjectData] = useState<Omit<Project, 'id' | 'createdAt' | 'updatedAt'> | null>(null)
+
+  // 現在のユーザーをデフォルトでメンバーとして追加
+  useEffect(() => {
+    if (currentUser && isOpen && selectedMembers.length === 0) {
+      // 自分自身をマネージャーとして追加
+      setSelectedMembers([{
+        userId: currentUser.id,
+        role: 'manager' // デフォルトではマネージャー権限
+      }])
+    }
+  }, [currentUser, isOpen, selectedMembers.length])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -118,6 +86,18 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject }:
     
     // プロジェクトを作成
     onCreateProject(createdProjectData)
+    
+    // プロジェクトIDを取得（ローカルストレージから）
+    setTimeout(() => {
+      const projectId = localStorage.getItem('currentProjectId')
+      
+      if (projectId) {
+        // 選択されたメンバーをプロジェクトにアサイン
+        selectedMembers.forEach(member => {
+          assignUserToProject(projectId, member.userId, member.role)
+        })
+      }
+    }, 100)
     
     // タスク生成ダイアログを閉じる
     setIsTaskGenerationDialogOpen(false)
@@ -316,8 +296,27 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject }:
     }));
   }
 
+  // メンバーの選択状態を更新
+  const handleMemberChange = (userId: string, role: ProjectMemberRole) => {
+    setSelectedMembers(prev => {
+      const existing = prev.find(m => m.userId === userId)
+      if (existing) {
+        // すでに選択されている場合は更新
+        return prev.map(m => m.userId === userId ? { ...m, role } : m)
+      } else {
+        // 新規追加
+        return [...prev, { userId, role }]
+      }
+    })
+  }
+
+  // メンバーの選択を解除
+  const handleMemberRemove = (userId: string) => {
+    setSelectedMembers(prev => prev.filter(m => m.userId !== userId))
+  }
+
+  // フォームをリセット
   const resetForm = () => {
-    // フォームをリセット
     setProjectData({
       title: '',
       code: '',
@@ -326,6 +325,7 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject }:
       endDate: '',
       phase: 'planning'
     })
+    setSelectedMembers([])
     setDocumentText('')
     setFile(null)
     setExtractedText('')
@@ -339,7 +339,7 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject }:
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+        <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
           <h2 className="text-xl font-bold mb-4">新規プロジェクト作成</h2>
           
           <form onSubmit={handleSubmit}>
@@ -588,6 +588,51 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject }:
                 <option value="deployment">リリース</option>
                 <option value="maintenance">保守運用</option>
               </select>
+            </div>
+            
+            {/* メンバー選択セクション */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                プロジェクトメンバー
+              </label>
+              <div className="space-y-2">
+                {users.map(user => (
+                  <div key={user.id} className="flex items-center justify-between p-2 border rounded-md">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-medium">{user.name}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {selectedMembers.find(m => m.userId === user.id) ? (
+                        <>
+                          <select
+                            value={selectedMembers.find(m => m.userId === user.id)?.role || 'member'}
+                            onChange={(e) => handleMemberChange(user.id, e.target.value as ProjectMemberRole)}
+                            className="text-sm border-gray-300 rounded-md"
+                          >
+                            <option value="manager">マネージャー</option>
+                            <option value="member">メンバー</option>
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => handleMemberRemove(user.id)}
+                            className="p-1 text-sm text-red-600 hover:text-red-700"
+                          >
+                            削除
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleMemberChange(user.id, 'member')}
+                          className="px-3 py-1 text-sm text-blue-600 hover:text-blue-700 border border-blue-600 rounded-md"
+                        >
+                          追加
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
             
             <div className="flex justify-end space-x-3">

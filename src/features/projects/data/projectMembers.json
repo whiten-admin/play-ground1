@@ -1,0 +1,72 @@
+[
+  {
+    "id": "pm-1-taro",
+    "projectId": "1",
+    "userId": "taro",
+    "role": "manager",
+    "assignedAt": "2023-03-01T00:00:00.000Z"
+  },
+  {
+    "id": "pm-1-gonzo",
+    "projectId": "1",
+    "userId": "gonzo",
+    "role": "manager",
+    "assignedAt": "2023-03-01T00:00:00.000Z"
+  },
+  {
+    "id": "pm-1-jiro",
+    "projectId": "1",
+    "userId": "jiro",
+    "role": "member",
+    "assignedAt": "2023-03-01T00:00:00.000Z"
+  },
+  {
+    "id": "pm-1-saburo",
+    "projectId": "1",
+    "userId": "saburo",
+    "role": "member",
+    "assignedAt": "2023-03-01T00:00:00.000Z"
+  },
+  {
+    "id": "pm-1-hanako",
+    "projectId": "1",
+    "userId": "hanako",
+    "role": "member",
+    "assignedAt": "2023-03-01T00:00:00.000Z"
+  },
+  {
+    "id": "pm-2-taro",
+    "projectId": "2",
+    "userId": "taro",
+    "role": "manager",
+    "assignedAt": "2023-03-02T00:00:00.000Z"
+  },
+  {
+    "id": "pm-2-gonzo",
+    "projectId": "2",
+    "userId": "gonzo",
+    "role": "member",
+    "assignedAt": "2023-03-02T00:00:00.000Z"
+  },
+  {
+    "id": "pm-2-jiro",
+    "projectId": "2",
+    "userId": "jiro",
+    "role": "member",
+    "assignedAt": "2023-03-02T00:00:00.000Z"
+  },
+  {
+    "id": "pm-3-taro",
+    "projectId": "3",
+    "userId": "taro",
+    "role": "manager",
+    "assignedAt": "2023-03-03T00:00:00.000Z"
+  },
+  {
+    "id": "pm-3-saburo",
+    "projectId": "3",
+    "userId": "saburo",
+    "role": "member",
+    "assignedAt": "2023-03-03T00:00:00.000Z"
+  }
+] 

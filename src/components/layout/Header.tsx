@@ -1,28 +1,45 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Project } from '@/features/projects/types/project'
-import { User } from '@/features/tasks/types/user'
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
 import { ChevronDownIcon, PlusIcon } from '@heroicons/react/24/outline'
 import ProjectCreateModal from '@/features/projects/components/ProjectCreateModal'
 import ProjectDetailModal from '@/features/projects/components/ProjectDetailModal'
+import { getAllUsers, UserData } from '@/utils/memberUtils'
 
 interface HeaderProps {
   onLogout?: () => void
-  user?: User | null
+  user?: UserData | null
   project?: Project
 }
 
 export default function Header({ onLogout, user, project }: HeaderProps) {
-  const { currentProject, projects, switchProject, createProject, updateProject } = useProjectContext()
+  const { currentProject, filteredProjects, switchProject, createProject, updateProject, getProjectMembers, getProjectUsers, resetToDefaultProjects } = useProjectContext()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isProjectDetailModalOpen, setIsProjectDetailModalOpen] = useState(false)
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false)
   
   // projectプロパティが渡された場合はそちらを優先、なければcurrentProjectを使用
   const displayProject = project || currentProject
   
+  // 全ユーザーデータを取得
+  const allUsers = getAllUsers();
+  
+  // プロジェクトメンバー情報を取得
+  const projectMembers = displayProject ? getProjectMembers(displayProject.id) : []
+  const projectMemberUsers = displayProject 
+    ? projectMembers.map(member => {
+        const user = allUsers.find(u => u.id === member.userId);
+        return user ? {
+          id: user.id,
+          name: user.name, 
+          role: member.role
+        } : null;
+      }).filter(Boolean) as {id: string, name: string, role: string}[]
+    : []
+
   const formatDate = (date: string | undefined) => {
     if (!date) return '未定'
     return new Date(date).toLocaleDateString('ja-JP', {
@@ -118,7 +135,7 @@ export default function Header({ onLogout, user, project }: HeaderProps) {
     <header className="bg-white border-b border-gray-200 py-2 px-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          {projects.length > 0 ? (
+          {filteredProjects.length > 0 ? (
             <>
               <div className="relative">
                 <button
@@ -137,7 +154,7 @@ export default function Header({ onLogout, user, project }: HeaderProps) {
                 {isDropdownOpen && (
                   <div className="absolute top-full left-0 mt-1 w-60 bg-white border border-gray-200 rounded-md shadow-lg z-50">
                     <ul className="py-1">
-                      {projects.map(project => (
+                      {filteredProjects.map(project => (
                         <li key={project.id}>
                           <button
                             className={`w-full text-left px-3 py-2 text-sm ${displayProject?.id === project.id ? 'bg-gray-100 font-medium' : 'hover:bg-gray-50'}`}
@@ -175,6 +192,26 @@ export default function Header({ onLogout, user, project }: HeaderProps) {
                   </span>
                 )}
               </div>
+              
+              {displayProject && projectMemberUsers.length > 0 && (
+                <div className="flex items-center ml-4">
+                  <div className="flex -space-x-2 mr-2">
+                    {projectMemberUsers.slice(0, 3).map((memberUser) => (
+                      <div key={memberUser.id} className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center border-2 border-white text-xs font-medium text-gray-600">
+                        {memberUser.name.charAt(0)}
+                      </div>
+                    ))}
+                    {projectMemberUsers.length > 3 && (
+                      <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center border-2 border-white text-xs font-medium text-gray-600">
+                        +{projectMemberUsers.length - 3}
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-500">
+                    {projectMemberUsers.length}人のメンバー
+                  </span>
+                </div>
+              )}
               
               <div className="flex items-center gap-3">
               <button
@@ -242,21 +279,56 @@ export default function Header({ onLogout, user, project }: HeaderProps) {
           )}
         </div>
         <div className="flex items-center gap-4">
-          {user && (
-            <div className="px-3 py-1 text-sm bg-gray-100 rounded-lg flex items-center gap-1">
-              <span className="font-medium">{user.name}</span>
-              <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800 rounded">
-                {getRoleLabel(user.role)}
-              </span>
-            </div>
-          )}
-          {onLogout && (
+          <div className="relative">
             <button
-              onClick={onLogout}
-              className="px-3 py-1.5 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+              className="px-3 py-1 text-sm bg-gray-100 rounded-lg flex items-center gap-1"
             >
-              ログアウト
+              <span className="font-medium">{user?.name || 'ユーザー'}</span>
+              {user && (
+                <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800 rounded">
+                  {getRoleLabel(user.role)}
+                </span>
+              )}
+              <ChevronDownIcon className="h-3 w-3 ml-1" />
             </button>
+            
+            {/* ユーザー切り替えドロップダウン（デモ用） */}
+            {isUserDropdownOpen && (
+              <div className="absolute top-full right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                <div className="py-1">
+                  <div className="px-3 py-2 text-xs text-gray-500 font-medium">
+                    ユーザー切り替え（デモ用）
+                  </div>
+                  {allUsers.map(dummyUser => (
+                    <button
+                      key={dummyUser.id}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between"
+                      onClick={() => {
+                        setIsUserDropdownOpen(false)
+                        // ここで実際のユーザー切り替え処理を実装する
+                      }}
+                    >
+                      <span>{dummyUser.name}</span>
+                      <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded">
+                        {getRoleLabel(dummyUser.role)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {onLogout && (
+            <>
+              <button
+                onClick={onLogout}
+                className="px-3 py-1.5 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                ログアウト
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -266,6 +338,7 @@ export default function Header({ onLogout, user, project }: HeaderProps) {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onCreateProject={createProject}
+        users={allUsers as any}
       />
 
       {/* プロジェクト詳細モーダル */}
@@ -275,6 +348,7 @@ export default function Header({ onLogout, user, project }: HeaderProps) {
           onClose={() => setIsProjectDetailModalOpen(false)}
           project={displayProject}
           onUpdate={handleProjectUpdate}
+          users={allUsers as any}
         />
       )}
     </header>
