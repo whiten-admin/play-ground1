@@ -7,6 +7,7 @@ import { extractTextFromPDF, extractProjectInfoFromText } from '@/services/api/u
 import { generateProjectTasks } from '@/services/api/utils/openai'
 import { convertGeneratedTasksToTaskObjects } from '@/features/tasks/utils/taskUtils'
 import { useTaskContext } from '@/features/tasks/contexts/TaskContext'
+import { useRouter } from 'next/navigation'
 
 interface ProjectCreateModalProps {
   isOpen: boolean
@@ -69,6 +70,7 @@ function TaskGenerationDialog({ isOpen, onClose, onConfirm, isLoading }: TaskGen
 }
 
 export default function ProjectCreateModal({ isOpen, onClose, onCreateProject }: ProjectCreateModalProps) {
+  const router = useRouter()
   const { addTask } = useTaskContext()
   const [projectData, setProjectData] = useState<Omit<Project, 'id' | 'createdAt' | 'updatedAt'>>({
     title: '',
@@ -125,6 +127,9 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject }:
     
     // フォームをリセット
     resetForm()
+    
+    // タスク一覧画面に遷移
+    router.push('/tasks')
   }
 
   // タスク生成開始
@@ -168,6 +173,9 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject }:
         setIsTaskGenerationDialogOpen(false)
         onClose()
         resetForm()
+        
+        // タスク一覧画面に遷移
+        router.push('/tasks')
       }, 500)
     } catch (error) {
       console.error('タスク生成中にエラーが発生しました:', error)
