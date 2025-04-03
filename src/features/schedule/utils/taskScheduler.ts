@@ -29,7 +29,7 @@ const sortTodosByTaskDueDate = (todos: { todo: Todo; taskIndex: number }[], task
  * 日付に基づいて適切な開始時間を取得する
  * @param date 日付
  * @param hour 希望する時間
- * @returns 適切な開始時間（休憩時間を避ける）
+ * @returns 適切な開始時間
  */
 const getAppropriateHour = (date: Date, hour: number): number => {
   // 営業時間外の場合は営業開始時間に設定
@@ -37,11 +37,7 @@ const getAppropriateHour = (date: Date, hour: number): number => {
     return BUSINESS_HOURS.START_HOUR;
   }
   
-  // 休憩時間内の場合は休憩後に設定
-  if (hour >= BUSINESS_HOURS.BREAK_START && hour < BUSINESS_HOURS.BREAK_END) {
-    return BUSINESS_HOURS.BREAK_END;
-  }
-  
+  // 休憩時間内も許可する（自動調整なし）
   return hour;
 };
 
@@ -142,7 +138,7 @@ export const scheduleTodosByDueDate = (tasks: Task[]): Task[] => {
         // 開始時間を計算
         let startHour = BUSINESS_HOURS.START_HOUR + currentDailyHours;
         
-        
+        // 休憩時間を考慮せずにスケジュール
         // TODOのカレンダー表示用日時を設定
         const originalTodo = updatedTasks[taskIndex].todos.find(t => t.id === todo.id);
         if (originalTodo) {

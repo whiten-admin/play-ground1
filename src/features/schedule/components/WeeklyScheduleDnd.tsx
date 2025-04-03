@@ -64,12 +64,15 @@ export default function WeeklyScheduleDnd({
     renderTodosForHour,
     handleTodoClick,
     handleStartTimeChange,
-    handleEndTimeChange
+    handleEndTimeChange,
+    handleTodoDragEnd,
+    handleTodoResizeEnd
   } = useScheduleView({
     quarterHeight,
     selectedTodoId,
     onTaskSelect,
-    onTodoUpdate
+    onTodoUpdate,
+    todos
   });
 
   // マウント時とタスクまたはフィルターの変更時にTODOを更新
@@ -143,6 +146,8 @@ export default function WeeklyScheduleDnd({
                     onEndTimeChange={handleEndTimeChange}
                     onCancelEdit={() => setEditingTodo(null)}
                     onUpdateTime={handleTimeUpdate}
+                    onDragEnd={handleTodoDragEnd}
+                    onResizeEnd={handleTodoResizeEnd}
                   />
                 )}
               </div>

@@ -33,12 +33,15 @@ export default function DayView({
     renderTodosForHour,
     handleTodoClick,
     handleStartTimeChange,
-    handleEndTimeChange
+    handleEndTimeChange,
+    handleTodoDragEnd,
+    handleTodoResizeEnd
   } = useScheduleView({
     quarterHeight,
     selectedTodoId,
     onTaskSelect,
-    onTodoUpdate
+    onTodoUpdate,
+    todos: todoSchedule
   });
 
   return (
@@ -119,6 +122,8 @@ export default function DayView({
                     onEndTimeChange={handleEndTimeChange}
                     onCancelEdit={() => setEditingTodo(null)}
                     onUpdateTime={handleTimeUpdate}
+                    onDragEnd={handleTodoDragEnd}
+                    onResizeEnd={handleTodoResizeEnd}
                   />
                 )}
               </div>

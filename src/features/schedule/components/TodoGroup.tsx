@@ -14,6 +14,8 @@ interface TodoGroupProps {
   onEndTimeChange: (newEndTime: string) => void;
   onCancelEdit: () => void;
   onUpdateTime: () => void;
+  onDragEnd?: (todoId: string, taskId: string, diffMinutes: number) => void;
+  onResizeEnd?: (todoId: string, taskId: string, diffMinutes: number) => void;
 }
 
 const TodoGroup: React.FC<TodoGroupProps> = ({
@@ -25,7 +27,9 @@ const TodoGroup: React.FC<TodoGroupProps> = ({
   onStartTimeChange,
   onEndTimeChange,
   onCancelEdit,
-  onUpdateTime
+  onUpdateTime,
+  onDragEnd,
+  onResizeEnd
 }) => {
   return (
     <TodoContainer>
@@ -52,6 +56,8 @@ const TodoGroup: React.FC<TodoGroupProps> = ({
               onEndTimeChange={onEndTimeChange}
               onCancelEdit={onCancelEdit}
               onUpdateTime={onUpdateTime}
+              onDragEnd={onDragEnd}
+              onResizeEnd={onResizeEnd}
             />
           ))}
         </div>

@@ -121,7 +121,7 @@ export const organizeTodosForDate = (todos: Todo[], date: Date): Todo[] => {
       endDateTime.setHours(BUSINESS_HOURS.START_HOUR + Math.floor(estimatedHours));
       endDateTime.setMinutes(Math.round((estimatedHours % 1) * 60));
     }
-
+    
     organizedTodos.push({
       ...todo,
       calendarStartDateTime: new Date(currentDateTime),

@@ -7,6 +7,7 @@ export interface StyledTodoItemProps {
   isCompleted: boolean;
   isNextTodo: boolean;
   priority: number;
+  isDragging?: boolean;
 }
 
 export const TodoItem = styled.div<StyledTodoItemProps>`
@@ -45,10 +46,11 @@ export const TodoItem = styled.div<StyledTodoItemProps>`
       ? '1px solid #9c27b0'
       : '1px solid #bdbdbd'};
   opacity: ${(props: StyledTodoItemProps) => (props.isCompleted ? 0.7 : 1)};
-  z-index: ${(props: StyledTodoItemProps) => (props.isSelected ? 2 : 1)};
+  z-index: ${(props: StyledTodoItemProps) => (props.isSelected || props.isDragging ? 2 : 1)};
   pointer-events: auto;
   box-sizing: border-box;
   margin: 0 1px;
+  box-shadow: ${(props: StyledTodoItemProps) => (props.isDragging ? '0 3px 8px rgba(0, 0, 0, 0.2)' : 'none')};
 `;
 
 export const TodoContainer = styled.div`
@@ -72,4 +74,20 @@ export const TimeEditForm = styled.div`
   min-width: 240px;
   max-width: 300px;
   pointer-events: auto;
+`;
+
+export const ResizeHandle = styled.div`
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background-color: transparent;
+  cursor: ns-resize;
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+  &:active {
+    background-color: rgba(0, 0, 0, 0.2);
+  }
 `; 
