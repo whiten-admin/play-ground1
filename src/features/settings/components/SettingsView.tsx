@@ -1,19 +1,42 @@
 'use client';
 
-import React from 'react';
-import { FiUser, FiBell, FiLock, FiGlobe } from 'react-icons/fi';
-import { useTaskContext } from '@/features/tasks/contexts/TaskContext';
+import React, { useState } from 'react';
+import { FiUser, FiBell, FiLock, FiGlobe, FiUsers, FiCalendar, FiCreditCard, FiSettings } from 'react-icons/fi';
 
-// シンプルなカードコンポーネント
-const SettingsCard = ({ title, children }: { title: string, children: React.ReactNode }) => (
-  <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-    <h2 className="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">{title}</h2>
-    {children}
-  </div>
-);
+// タブの種類を定義
+type TabType = 'account' | 'team' | 'calendar' | 'payment' | 'other';
 
 const SettingsView = () => {
-  const { resetTasks, resetTasksWithSchedule } = useTaskContext();
+  // アクティブなタブを状態として管理
+  const [activeTab, setActiveTab] = useState<TabType>('account');
+
+  // タブを切り替える関数
+  const changeTab = (tab: TabType) => {
+    setActiveTab(tab);
+  };
+
+  // タブの定義
+  const tabs = [
+    { id: 'account', label: 'アカウント設定', icon: <FiUser className="w-5 h-5" /> },
+    { id: 'team', label: 'チーム設定', icon: <FiUsers className="w-5 h-5" /> },
+    { id: 'calendar', label: 'カレンダー設定', icon: <FiCalendar className="w-5 h-5" /> },
+    { id: 'payment', label: '支払い設定', icon: <FiCreditCard className="w-5 h-5" /> },
+    { id: 'other', label: 'その他', icon: <FiSettings className="w-5 h-5" /> },
+  ];
+
+  // タブコンテンツをレンダリングする関数
+  const renderTabContent = () => {
+    // 現在開発中の表示
+    return (
+      <div className="bg-white rounded-lg shadow-md p-8 mt-6">
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="text-6xl mb-4">🚧</div>
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">{tabs.find(tab => tab.id === activeTab)?.label}は現在開発中です</h3>
+          <p className="text-gray-600">この機能は近日公開予定です。今しばらくお待ちください。</p>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -23,66 +46,27 @@ const SettingsView = () => {
           <div className="w-16 h-1 bg-blue-500 mx-auto rounded-full"></div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* アカウント設定 */}
-          <div>
-            <SettingsCard title="アカウント設定">
-              <div className="flex items-center mb-4">
-                <div className="p-3 bg-gray-100 rounded-full">
-                  <FiUser className="w-6 h-6 text-gray-600" />
-                </div>
-                <p className="text-gray-600 ml-4">プロフィール情報の管理と更新</p>
-              </div>
-              <button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded transition-colors">
-                編集する
+        {/* タブナビゲーション */}
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="flex flex-wrap border-b">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => changeTab(tab.id as TabType)}
+                className={`flex items-center px-6 py-4 text-sm font-medium transition-colors ${
+                  activeTab === tab.id
+                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <span className="mr-2">{tab.icon}</span>
+                {tab.label}
               </button>
-            </SettingsCard>
+            ))}
           </div>
-
-          {/* 通知設定 */}
-          <div>
-            <SettingsCard title="通知設定">
-              <div className="flex items-center mb-4">
-                <div className="p-3 bg-gray-100 rounded-full">
-                  <FiBell className="w-6 h-6 text-gray-600" />
-                </div>
-                <p className="text-gray-600 ml-4">通知の受信設定と管理</p>
-              </div>
-              <button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded transition-colors">
-                設定する
-              </button>
-            </SettingsCard>
-          </div>
-
-          {/* セキュリティ */}
-          <div>
-            <SettingsCard title="セキュリティ">
-              <div className="flex items-center mb-4">
-                <div className="p-3 bg-gray-100 rounded-full">
-                  <FiLock className="w-6 h-6 text-gray-600" />
-                </div>
-                <p className="text-gray-600 ml-4">パスワードとセキュリティ設定</p>
-              </div>
-              <button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded transition-colors">
-                変更する
-              </button>
-            </SettingsCard>
-          </div>
-
-          {/* 言語と地域 */}
-          <div>
-            <SettingsCard title="言語と地域">
-              <div className="flex items-center mb-4">
-                <div className="p-3 bg-gray-100 rounded-full">
-                  <FiGlobe className="w-6 h-6 text-gray-600" />
-                </div>
-                <p className="text-gray-600 ml-4">表示言語と地域設定</p>
-              </div>
-              <button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded transition-colors">
-                設定する
-              </button>
-            </SettingsCard>
-          </div>
+          
+          {/* タブコンテンツ */}
+          {renderTabContent()}
         </div>
       </div>
     </div>
