@@ -8,8 +8,11 @@ import { ProjectProvider } from '@/features/projects/contexts/ProjectContext';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'プロジェクト管理',
+  title: 'devDash',
   description: 'プロジェクト管理システム',
+  icons: {
+    icon: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({
