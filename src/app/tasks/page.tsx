@@ -211,7 +211,7 @@ export default function TasksPage() {
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header onLogout={logout} user={user} />
           <main className="flex-1 overflow-y-auto">
-            <EmptyProjectState />
+            <EmptyProjectState onCreateProject={() => {}} />
           </main>
         </div>
       </div>

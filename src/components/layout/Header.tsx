@@ -7,10 +7,11 @@ import { ChevronDownIcon, PlusIcon } from '@heroicons/react/24/outline'
 import ProjectCreateModal from '@/features/projects/components/ProjectCreateModal'
 import ProjectDetailModal from '@/features/projects/components/ProjectDetailModal'
 import { getAllUsers, UserData } from '@/utils/memberUtils'
+import { User } from '@/features/tasks/types/user'
 
 interface HeaderProps {
   onLogout?: () => void
-  user?: UserData | null
+  user?: User | null
   project?: Project
 }
 
