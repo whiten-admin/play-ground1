@@ -6,6 +6,7 @@ import { User } from '@/features/tasks/types/user'
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
 import { ChevronDownIcon, PlusIcon } from '@heroicons/react/24/outline'
 import ProjectCreateModal from '@/features/projects/components/ProjectCreateModal'
+import ProjectDetailModal from '@/features/projects/components/ProjectDetailModal'
 
 interface HeaderProps {
   onLogout?: () => void
@@ -14,9 +15,10 @@ interface HeaderProps {
 }
 
 export default function Header({ onLogout, user, project }: HeaderProps) {
-  const { currentProject, projects, switchProject, createProject } = useProjectContext()
+  const { currentProject, projects, switchProject, createProject, updateProject } = useProjectContext()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isProjectDetailModalOpen, setIsProjectDetailModalOpen] = useState(false)
   
   // projectプロパティが渡された場合はそちらを優先、なければcurrentProjectを使用
   const displayProject = project || currentProject
@@ -42,7 +44,31 @@ export default function Header({ onLogout, user, project }: HeaderProps) {
     return diffDays
   }
 
+  // プロジェクト情報の入力度を計算
+  const calculateCompletionRate = (project: Project): number => {
+    if (!project) return 0
+    
+    const requiredFields = [
+      project.title,
+      project.description,
+      project.purpose,
+      project.startDate,
+      project.endDate,
+      project.methodology,
+      project.phase,
+      project.scale,
+      project.budget,
+      project.client,
+      project.projectManager,
+      project.risks
+    ]
+
+    const filledFields = requiredFields.filter(field => field !== undefined && field !== '')
+    return Math.round((filledFields.length / requiredFields.length) * 100)
+  }
+
   const remainingDays = displayProject?.endDate ? calculateRemainingDays(displayProject.endDate) : null
+  const completionRate = displayProject ? calculateCompletionRate(displayProject) : 0
 
   // ユーザーロールの日本語表示
   const getRoleLabel = (role?: string) => {
@@ -73,6 +99,19 @@ export default function Header({ onLogout, user, project }: HeaderProps) {
   // プロジェクトがない場合の新規作成ボタン
   const handleCreateProjectButton = () => {
     setIsCreateModalOpen(true)
+  }
+
+  // プロジェクト詳細モーダルを開く
+  const openProjectDetailModal = () => {
+    setIsProjectDetailModalOpen(true)
+  }
+
+  // プロジェクト更新時の処理
+  const handleProjectUpdate = (updatedProject: Project) => {
+    // ProjectContextのupdateProject関数があればそれを呼び出す
+    if (typeof updateProject === 'function') {
+      updateProject(updatedProject)
+    }
   }
 
   return (
@@ -130,6 +169,30 @@ export default function Header({ onLogout, user, project }: HeaderProps) {
               <div className="text-red-600 font-semibold text-sm">
                 PJ炎上リスク：50%
               </div>
+              
+              <button
+                onClick={openProjectDetailModal}
+                className="flex items-center gap-1 text-sm hover:bg-gray-50 rounded px-2 py-1 transition-colors"
+              >
+                <div className="flex items-center">
+                  <span className="text-gray-700 mr-1">情報入力度:</span>
+                  <div className="w-16 h-1.5 bg-gray-200 rounded-full mr-1 overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full ${
+                        completionRate < 50 ? 'bg-red-500' : 
+                        completionRate < 80 ? 'bg-yellow-500' : 'bg-green-500'
+                      }`}
+                      style={{ width: `${completionRate}%` }}
+                    />
+                  </div>
+                  <span className={`text-xs font-medium ${
+                    completionRate < 50 ? 'text-red-600' : 
+                    completionRate < 80 ? 'text-yellow-600' : 'text-green-600'
+                  }`}>
+                    {completionRate}%
+                  </span>
+                </div>
+              </button>
             </>
           ) : (
             <div className="text-lg font-bold text-gray-800">
@@ -163,6 +226,16 @@ export default function Header({ onLogout, user, project }: HeaderProps) {
         onClose={() => setIsCreateModalOpen(false)}
         onCreateProject={createProject}
       />
+
+      {/* プロジェクト詳細モーダル */}
+      {displayProject && (
+        <ProjectDetailModal
+          isOpen={isProjectDetailModalOpen}
+          onClose={() => setIsProjectDetailModalOpen(false)}
+          project={displayProject}
+          onUpdate={handleProjectUpdate}
+        />
+      )}
     </header>
   )
 } 

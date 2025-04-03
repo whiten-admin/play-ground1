@@ -7,7 +7,6 @@ import WBSView from '@/features/wbs/components/WBSView'
 import Auth from '@/services/auth/components/Auth'
 import { useAuth } from '@/services/auth/hooks/useAuth'
 import { Project } from '@/features/projects/types/project'
-import ProjectDetail from '@/features/projects/components/ProjectDetail'
 import { FilterProvider } from '@/features/tasks/filters/FilterContext'
 import { Task } from '@/features/tasks/types/task'
 import { useTaskContext } from '@/features/tasks/contexts/TaskContext'
@@ -66,20 +65,11 @@ export default function WBSPage() {
   return (
     <FilterProvider>
       <div className="flex h-screen bg-gray-100">
-        <div className="flex-shrink-0 flex flex-col">
-          <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-          <div className="p-2">
-            <ProjectDetail 
-              project={project} 
-              onUpdate={handleProjectUpdate} 
-            />
-          </div>
-        </div>
+        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header onLogout={logout} user={user} project={project} />
           <main className="flex-1 overflow-y-auto p-6">
             <div className="bg-white rounded-lg shadow">
-
               <WBSView 
                 onTaskSelect={handleTaskSelect}
                 onTaskCreate={handleTaskCreate}
