@@ -76,11 +76,56 @@ export const TimeEditForm = styled.div`
   border: 1px solid #e0e0e0;
   border-radius: 4px;
   padding: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   z-index: 1000;
-  min-width: 240px;
-  max-width: 300px;
+  width: calc(100% - 8px);
   pointer-events: auto;
+  animation: fadeIn 0.2s ease;
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  &::before {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: white;
+    border-left: 1px solid #e0e0e0;
+    border-top: 1px solid #e0e0e0;
+    left: 20px;
+  }
+  
+  &.below-todo::before {
+    top: -6px;
+    transform: rotate(45deg);
+  }
+  
+  &.above-todo::before {
+    bottom: -6px;
+    transform: rotate(-135deg);
+  }
+  
+  select {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  @media (max-width: 600px) {
+    padding: 6px;
+    font-size: 0.85rem;
+    
+    select {
+      padding: 2px;
+    }
+    
+    button {
+      padding: 2px 4px;
+      font-size: 0.8rem;
+    }
+  }
 `;
 
 export const ResizeHandle = styled.div`
