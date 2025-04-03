@@ -38,11 +38,15 @@ const TodoItemComponent: React.FC<TodoItemComponentProps> = ({
   const resizeRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
+  const [resizeOffset, setResizeOffset] = useState(0); // リサイズによる位置のオフセット
   
   if (!todo.calendarStartDateTime || !todo.calendarEndDateTime) return null;
   
   const { top, height } = calculateTodoPosition(todoWithMeta, quarterHeight);
   const isEditing = editingTodo?.todo.id === todo.id;
+  
+  // リサイズ中はその分の位置調整を行う
+  const currentHeight = height + resizeOffset;
   
   const startDateTime = new Date(todo.calendarStartDateTime);
   const endDateTime = new Date(todo.calendarEndDateTime);
@@ -75,11 +79,19 @@ const TodoItemComponent: React.FC<TodoItemComponentProps> = ({
   const handleResizeStart: DraggableEventHandler = (e, data) => {
     e.stopPropagation();
     setIsResizing(true);
+    setResizeOffset(0); // リサイズ開始時にオフセットをリセット
+  };
+  
+  // リサイズ中
+  const handleResize: DraggableEventHandler = (e, data) => {
+    // リサイズによる高さの変更をリアルタイムで反映
+    setResizeOffset(data.y);
   };
   
   // リサイズ終了時
   const handleResizeStop = (e: any, data: any) => {
     setIsResizing(false);
+    setResizeOffset(0); // リサイズ終了時にオフセットをリセット
     
     if (Math.abs(data.y) < 4) return; // 微小な移動は無視
     
@@ -95,6 +107,12 @@ const TodoItemComponent: React.FC<TodoItemComponentProps> = ({
       onResizeEnd(todo.id, taskId, diffMinutes);
     }
   };
+  
+  // 最小高さ（15分）
+  const minHeight = quarterHeight;
+  
+  // 上方向への縮小のための最大値（現在の高さから最小高さを引いた値の負数）
+  const topBound = -(height - minHeight);
   
   return (
     <React.Fragment>
@@ -115,12 +133,13 @@ const TodoItemComponent: React.FC<TodoItemComponentProps> = ({
           <TodoItem
             className="todo-item"
             top={0}
-            height={height}
+            height={currentHeight} // リサイズ中の高さを反映
             isSelected={selectedTodoId === todo.id}
             isCompleted={todo.completed}
             isNextTodo={isNextTodo}
             priority={priority || 0}
             isDragging={isDragging}
+            isResizing={isResizing} // リサイズ中のスタイル用
             onClick={(e) => {
               if (!isDragging && !isResizing) {
                 e.stopPropagation();
@@ -147,12 +166,13 @@ const TodoItemComponent: React.FC<TodoItemComponentProps> = ({
               axis="y"
               grid={[1, quarterHeight]}
               bounds={{ 
-                top: quarterHeight, // 最低15分の長さは確保
+                top: topBound, // 上方向には高さ-最小高さまで
                 bottom: 900 // 下方向に最大900px
               }}
               onStart={handleResizeStart}
+              onDrag={handleResize} // ドラッグ中の処理を追加
               onStop={handleResizeStop}
-              disabled={isDragging} // 編集中でもリサイズ可能にする
+              disabled={isDragging} // ドラッグ中はリサイズ不可
             >
               <ResizeHandle ref={resizeRef} />
             </Draggable>
@@ -164,7 +184,7 @@ const TodoItemComponent: React.FC<TodoItemComponentProps> = ({
         <TodoEditForm
           editingTodo={editingTodo}
           top={top}
-          height={height}
+          height={currentHeight} // リサイズ中の高さを反映
           onStartTimeChange={onStartTimeChange}
           onEndTimeChange={onEndTimeChange}
           onCancel={onCancelEdit}
