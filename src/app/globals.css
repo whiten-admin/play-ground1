@@ -19,52 +19,6 @@
   }
 } 
 
-/* サイドバーのスタイル */
-.sidebar-project-detail {
-  padding: 0.5rem;
-  margin: 0 auto;
-  width: auto;
-}
-
-/* 閉じた状態と開いた状態での表示切り替え */
-.sidebar-expanded-content {
-  opacity: 1;
-  visibility: visible;
-  max-height: 200px;
-}
-
-.sidebar-collapsed-content {
-  opacity: 0;
-  visibility: hidden;
-  max-height: 0;
-  overflow: hidden;
-}
-
-/* サイドバーが閉じている時の表示切り替え */
-html[data-sidebar-collapsed="true"] .sidebar-expanded-content {
-  opacity: 0;
-  visibility: hidden;
-  max-height: 0;
-  overflow: hidden;
-  padding: 0;
-  margin: 0;
-}
-
-html[data-sidebar-collapsed="true"] .sidebar-collapsed-content {
-  opacity: 1;
-  visibility: visible;
-  max-height: 100px;
-  padding: 0.5rem 0;
-  width: 100%;
-}
-
-html[data-sidebar-collapsed="true"] .sidebar-project-detail {
-  padding: 0;
-  width: 4rem; /* w-16 と同じ */
-  margin: 0 auto;
-  overflow: hidden;
-}
-
 /* サイドバー開閉ボタンのスタイル */
 button[aria-label="サイドバーを開く"],
 button[aria-label="サイドバーを閉じる"] {

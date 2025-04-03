@@ -4,17 +4,21 @@ import React, { useState } from 'react'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import WBSView from '@/features/wbs/components/WBSView'
+import ProjectAnalysisDashboard from '@/features/analysis/components/ProjectAnalysisDashboard'
 import Auth from '@/services/auth/components/Auth'
 import { useAuth } from '@/services/auth/hooks/useAuth'
 import { Project } from '@/features/projects/types/project'
-import ProjectDetail from '@/features/projects/components/ProjectDetail'
 import { FilterProvider } from '@/features/tasks/filters/FilterContext'
 import { Task } from '@/features/tasks/types/task'
 import { useTaskContext } from '@/features/tasks/contexts/TaskContext'
 
+// タブの種類を定義
+type TabView = 'wbs' | 'analysis';
+
 export default function WBSPage() {
   const { isAuthenticated, user, login, logout } = useAuth()
   const [activeTab, setActiveTab] = useState('wbs')
+  const [activeView, setActiveView] = useState<TabView>('wbs')
   const [selectedTaskId, setSelectedTaskId] = useState<string>('')
   const { setTasks, addTask } = useTaskContext()
   const [project, setProject] = useState<Project>({
@@ -27,6 +31,11 @@ export default function WBSPage() {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   })
+
+  // タブを切り替える関数
+  const changeView = (view: TabView) => {
+    setActiveView(view);
+  };
 
   // タスク選択処理
   const handleTaskSelect = (taskId: string) => {
@@ -66,26 +75,49 @@ export default function WBSPage() {
   return (
     <FilterProvider>
       <div className="flex h-screen bg-gray-100">
-        <div className="flex-shrink-0 flex flex-col">
-          <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-          <div className="p-2">
-            <ProjectDetail 
-              project={project} 
-              onUpdate={handleProjectUpdate} 
-            />
-          </div>
-        </div>
+        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header onLogout={logout} user={user} project={project} />
           <main className="flex-1 overflow-y-auto p-6">
-            <div className="bg-white rounded-lg shadow">
+            {/* タブナビゲーション */}
+            <div className="flex mb-4 bg-white rounded-lg shadow-sm border-b">
+              <button
+                onClick={() => changeView('wbs')}
+                className={`px-4 py-2 text-sm font-medium ${
+                  activeView === 'wbs'
+                    ? 'text-blue-600 border-b-2 border-blue-600'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                WBS
+              </button>
+              <button
+                onClick={() => changeView('analysis')}
+                className={`px-4 py-2 text-sm font-medium ${
+                  activeView === 'analysis'
+                    ? 'text-blue-600 border-b-2 border-blue-600'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                プロジェクト分析
+              </button>
+            </div>
 
-              <WBSView 
-                onTaskSelect={handleTaskSelect}
-                onTaskCreate={handleTaskCreate}
-                onTaskUpdate={handleTaskUpdate}
-                projectId={project.id}
-              />
+            {/* タブコンテンツ */}
+            <div className="bg-white rounded-lg shadow">
+              {activeView === 'wbs' ? (
+                <WBSView 
+                  onTaskSelect={handleTaskSelect}
+                  onTaskCreate={handleTaskCreate}
+                  onTaskUpdate={handleTaskUpdate}
+                  projectId={project.id}
+                />
+              ) : (
+                <div className="p-3">
+                  <p>※下記は開発中でハリボテです</p>
+                  <ProjectAnalysisDashboard />
+                </div>
+              )}
             </div>
           </main>
         </div>

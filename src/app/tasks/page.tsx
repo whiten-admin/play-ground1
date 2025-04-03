@@ -20,7 +20,6 @@ import KanbanView from '@/features/kanban/components/KanbanView'
 import GanttChartView from '@/features/gantt/components/GanttChartView'
 import TaskCreationForm from '@/features/tasks/components/TaskCreationForm'
 import TaskDetail from '@/features/tasks/components/TaskDetail'
-import ProjectDetail from '@/features/projects/components/ProjectDetail'
 
 type ViewMode = 'list' | 'kanban' | 'gantt'
 
@@ -222,19 +221,9 @@ export default function TasksPage() {
   return (
     <FilterProvider>
       <div className="flex h-screen bg-gray-100">
-        <div className="flex-shrink-0 flex flex-col">
-          <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-          <div className={`p-2 ${isSidebarCollapsed ? 'w-16' : 'w-48'}`}>
-            {currentProject && (
-              <ProjectDetail 
-                project={currentProject} 
-                onUpdate={updateProject} 
-              />
-            )}
-          </div>
-        </div>
+        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header onLogout={logout} user={user} />
+          <Header onLogout={logout} user={user} project={currentProject || undefined} />
           <main className="flex-1 overflow-y-auto p-4">
             {/* ユーザーフィルター */}
             <div className="mb-4">

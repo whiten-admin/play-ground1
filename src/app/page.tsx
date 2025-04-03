@@ -5,7 +5,6 @@ import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import TaskDetail from '@/features/tasks/components/TaskDetail'
 import TodayTodo from '@/features/tasks/components/TodayTodo'
-import ProjectDetail from '@/features/projects/components/ProjectDetail'
 import ScheduleCalendar from '@/features/schedule/components/ScheduleCalendar'
 import Auth from '@/services/auth/components/Auth'
 import EmptyProjectState from '@/features/projects/components/EmptyProjectState'
@@ -13,7 +12,6 @@ import { useAuth } from '@/services/auth/hooks/useAuth'
 import { Task } from '@/features/tasks/types/task'
 import { useTaskContext } from '@/features/tasks/contexts/TaskContext'
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
-import UserFilter from '@/components/UserFilter'
 import ResizablePanel from '@/components/layout/ResizablePanel'
 import { FilterProvider } from '@/features/tasks/filters/FilterContext'
 import { useSearchParams } from 'next/navigation'
@@ -27,31 +25,6 @@ function HomeContent() {
   const { filteredTasks, setTasks, addTask } = useTaskContext()
   const { currentProject, updateProject, projects } = useProjectContext()
   const searchParams = useSearchParams()
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
-
-  // サイドバーの状態を監視
-  useEffect(() => {
-    const checkSidebarState = () => {
-      const collapsed = document.documentElement.getAttribute('data-sidebar-collapsed') === 'true'
-      setIsSidebarCollapsed(collapsed)
-    }
-    
-    // 初期状態をチェック
-    checkSidebarState()
-    
-    // データ属性の変更を監視
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.attributeName === 'data-sidebar-collapsed') {
-          checkSidebarState()
-        }
-      })
-    })
-    
-    observer.observe(document.documentElement, { attributes: true })
-    
-    return () => observer.disconnect()
-  }, [])
 
   // URLのクエリパラメータからタスクIDとTODO IDを取得
   useEffect(() => {
@@ -184,9 +157,7 @@ function HomeContent() {
   if (projects.length === 0) {
     return (
       <div className="flex h-screen bg-gray-100">
-        <div className="flex-shrink-0">
-          <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-        </div>
+        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header onLogout={logout} user={user} />
           <main className="flex-1 overflow-y-auto">
@@ -205,24 +176,11 @@ function HomeContent() {
   return (
     <FilterProvider>
       <div className="flex h-screen bg-gray-100">
-        <div className="flex-shrink-0 flex flex-col">
-          <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-          <div className={`p-2 ${isSidebarCollapsed ? 'w-16' : 'w-48'}`}>
-            {currentProject && (
-              <ProjectDetail 
-                project={currentProject} 
-                onUpdate={updateProject} 
-              />
-            )}
-          </div>
-        </div>
+        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header onLogout={logout} user={user} />
+          <Header onLogout={logout} user={user} project={currentProject || undefined} />
           <main className="flex-1 overflow-y-auto p-3">
-            {/* ユーザーフィルター */}
-            <div className="mb-3">
-              <UserFilter />
-            </div>
+            {/* ホーム画面ではユーザーフィルターを表示しない */}
             
             <ResizablePanel
               leftPanel={
