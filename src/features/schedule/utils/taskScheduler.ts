@@ -29,7 +29,7 @@ const sortTodosByTaskDueDate = (todos: { todo: Todo; taskIndex: number }[], task
  * 日付に基づいて適切な開始時間を取得する
  * @param date 日付
  * @param hour 希望する時間
- * @returns 適切な開始時間（休憩時間を避ける）
+ * @returns 適切な開始時間
  */
 const getAppropriateHour = (date: Date, hour: number): number => {
   // 営業時間外の場合は営業開始時間に設定
@@ -37,11 +37,7 @@ const getAppropriateHour = (date: Date, hour: number): number => {
     return BUSINESS_HOURS.START_HOUR;
   }
   
-  // 休憩時間内の場合は休憩後に設定
-  if (hour >= BUSINESS_HOURS.BREAK_START && hour < BUSINESS_HOURS.BREAK_END) {
-    return BUSINESS_HOURS.BREAK_END;
-  }
-  
+  // 休憩時間内も許可する（自動調整なし）
   return hour;
 };
 
@@ -142,70 +138,21 @@ export const scheduleTodosByDueDate = (tasks: Task[]): Task[] => {
         // 開始時間を計算
         let startHour = BUSINESS_HOURS.START_HOUR + currentDailyHours;
         
-        // 休憩時間をまたぐ場合は調整
-        if (startHour < BUSINESS_HOURS.BREAK_START && 
-            startHour + allocatedHours > BUSINESS_HOURS.BREAK_START) {
-          // 休憩前に可能な工数
-          const beforeBreakHours = BUSINESS_HOURS.BREAK_START - startHour;
+        // 休憩時間を考慮せずにスケジュール
+        // TODOのカレンダー表示用日時を設定
+        const originalTodo = updatedTasks[taskIndex].todos.find(t => t.id === todo.id);
+        if (originalTodo) {
+          // カレンダー表示用の日時を設定
+          const calStartDateTime = new Date(currentDate);
+          calStartDateTime.setHours(startHour, 0, 0, 0);
           
-          if (beforeBreakHours > 0) {
-            // 休憩前に割り当て
-            const originalTodo = updatedTasks[taskIndex].todos.find(t => t.id === todo.id);
-            if (originalTodo) {
-              // カレンダー表示用の日時を設定
-              const calStartDateTime = new Date(currentDate);
-              calStartDateTime.setHours(startHour, 0, 0, 0);
-              
-              const calEndDateTime = new Date(calStartDateTime);
-              calEndDateTime.setHours(calStartDateTime.getHours() + beforeBreakHours, 0, 0, 0);
-              
-              originalTodo.calendarStartDateTime = calStartDateTime;
-              originalTodo.calendarEndDateTime = calEndDateTime;
-              originalTodo.estimatedHours = beforeBreakHours;
-              
-              // 休憩後に残りを割り当て（新しいTODOとして）
-              const afterBreakHours = allocatedHours - beforeBreakHours;
-              if (afterBreakHours > 0) {
-                // 新しいTODOを作成
-                const afterBreakStartDateTime = new Date(currentDate);
-                afterBreakStartDateTime.setHours(BUSINESS_HOURS.BREAK_END, 0, 0, 0);
-                
-                const afterBreakEndDateTime = new Date(afterBreakStartDateTime);
-                afterBreakEndDateTime.setHours(afterBreakStartDateTime.getHours() + afterBreakHours, 0, 0, 0);
-                
-                const newTodo: Todo = {
-                  ...JSON.parse(JSON.stringify(originalTodo)), // ディープコピー
-                  id: `${originalTodo.id}-after-break`,
-                  calendarStartDateTime: afterBreakStartDateTime,
-                  calendarEndDateTime: afterBreakEndDateTime,
-                  estimatedHours: afterBreakHours,
-                  startDate: new Date(currentDate),
-                };
-                updatedTasks[taskIndex].todos.push(newTodo);
-              }
-            }
-          }
+          const calEndDateTime = new Date(calStartDateTime);
+          calEndDateTime.setHours(calStartDateTime.getHours() + allocatedHours, 0, 0, 0);
+          
+          originalTodo.calendarStartDateTime = calStartDateTime;
+          originalTodo.calendarEndDateTime = calEndDateTime;
         } else {
-          // 休憩時間を考慮して開始時間を調整
-          if (startHour >= BUSINESS_HOURS.BREAK_START && startHour < BUSINESS_HOURS.BREAK_END) {
-            startHour = BUSINESS_HOURS.BREAK_END;
-          }
-          
-          // TODOのカレンダー表示用日時を設定
-          const originalTodo = updatedTasks[taskIndex].todos.find(t => t.id === todo.id);
-          if (originalTodo) {
-            // カレンダー表示用の日時を設定
-            const calStartDateTime = new Date(currentDate);
-            calStartDateTime.setHours(startHour, 0, 0, 0);
-            
-            const calEndDateTime = new Date(calStartDateTime);
-            calEndDateTime.setHours(calStartDateTime.getHours() + allocatedHours, 0, 0, 0);
-            
-            originalTodo.calendarStartDateTime = calStartDateTime;
-            originalTodo.calendarEndDateTime = calEndDateTime;
-          } else {
-            console.warn(`TODOが見つかりません: ID=${todo.id}`);
-          }
+          console.warn(`TODOが見つかりません: ID=${todo.id}`);
         }
         
         // 日付の割り当て済み工数を更新
