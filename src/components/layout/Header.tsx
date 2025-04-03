@@ -166,33 +166,64 @@ export default function Header({ onLogout, user, project }: HeaderProps) {
                 )}
               </div>
               
-              <div className="text-red-600 font-semibold text-sm">
-                PJ炎上リスク：50%
-              </div>
-              
+              <div className="flex items-center gap-3">
               <button
-                onClick={openProjectDetailModal}
-                className="flex items-center gap-1 text-sm hover:bg-gray-50 rounded px-2 py-1 transition-colors"
-              >
-                <div className="flex items-center">
-                  <span className="text-gray-700 mr-1">情報入力度:</span>
-                  <div className="w-16 h-1.5 bg-gray-200 rounded-full mr-1 overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full ${
-                        completionRate < 50 ? 'bg-red-500' : 
-                        completionRate < 80 ? 'bg-yellow-500' : 'bg-green-500'
-                      }`}
-                      style={{ width: `${completionRate}%` }}
-                    />
+                  onClick={openProjectDetailModal}
+                  className="flex items-center gap-2 text-sm border border-gray-200 hover:bg-gray-50 rounded-md px-3 py-1.5 transition-all hover:shadow-sm focus:ring-2 focus:ring-blue-300 focus:outline-none"
+                  title="クリックで詳細を表示"
+                >
+                  <div className="flex flex-col">
+                    <div className="flex items-center mb-0.5">
+                      <span className="text-gray-700 mr-2 font-medium text-xs">情報入力度</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-blue-500">
+                        <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-20 h-2 bg-gray-200 rounded-full mr-2 overflow-hidden shadow-inner">
+                        <div 
+                          className={`h-full rounded-full ${
+                            completionRate < 50 ? 'bg-red-500' : 
+                            completionRate < 80 ? 'bg-yellow-500' : 'bg-green-500'
+                          }`}
+                          style={{ width: `${completionRate}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center">
+                        <span className={`text-xs font-bold ${
+                          completionRate < 50 ? 'text-red-600' : 
+                          completionRate < 80 ? 'text-yellow-600' : 'text-green-600'
+                        }`}>
+                          {completionRate}%
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <span className={`text-xs font-medium ${
-                    completionRate < 50 ? 'text-red-600' : 
-                    completionRate < 80 ? 'text-yellow-600' : 'text-green-600'
-                  }`}>
-                    {completionRate}%
-                  </span>
-                </div>
-              </button>
+                </button>
+
+                <button
+                  className="flex items-center gap-2 text-sm border border-gray-200 hover:bg-gray-50 rounded-md px-3 py-1.5 transition-all hover:shadow-sm"
+                >
+                  <div className="flex flex-col">
+                    <div className="flex items-center mb-0.5">
+                      <span className="text-gray-700 mr-2 font-medium text-xs">炎上リスク</span>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-20 h-2 bg-gray-200 rounded-full mr-2 overflow-hidden shadow-inner">
+                        <div 
+                          className="h-full rounded-full bg-red-500"
+                          style={{ width: `50%` }}
+                        />
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-xs font-bold text-red-600">
+                          50%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              </div>
             </>
           ) : (
             <div className="text-lg font-bold text-gray-800">
