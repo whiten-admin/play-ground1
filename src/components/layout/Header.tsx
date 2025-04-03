@@ -122,11 +122,16 @@ export default function Header({ onLogout, user, project }: HeaderProps) {
             <>
               <div className="relative">
                 <button
-                  className="flex items-center gap-1 text-lg font-bold text-gray-800 hover:text-gray-600 transition-colors"
+                  className="flex flex-col items-start gap-0.5 hover:text-gray-600 transition-colors"
                   onClick={toggleDropdown}
                 >
-                  {displayProject?.title || 'プロジェクト'} 
-                  <ChevronDownIcon className="h-4 w-4" />
+                  {displayProject?.code && (
+                    <span className="text-xs text-gray-400 font-normal">{displayProject.code}</span>
+                  )}
+                  <div className="flex items-center gap-1">
+                    <span className="text-lg font-bold text-gray-800">{displayProject?.title || 'プロジェクト'}</span> 
+                    <ChevronDownIcon className="h-4 w-4" />
+                  </div>
                 </button>
                 
                 {isDropdownOpen && (
@@ -138,7 +143,12 @@ export default function Header({ onLogout, user, project }: HeaderProps) {
                             className={`w-full text-left px-3 py-2 text-sm ${displayProject?.id === project.id ? 'bg-gray-100 font-medium' : 'hover:bg-gray-50'}`}
                             onClick={() => handleProjectSelect(project.id)}
                           >
-                            {project.title}
+                            <div className="flex flex-col">
+                              {project.code && (
+                                <span className="text-xs text-gray-400">{project.code}</span>
+                              )}
+                              <span>{project.title}</span>
+                            </div>
                           </button>
                         </li>
                       ))}
