@@ -2,18 +2,13 @@
 
 import React, { useState } from 'react';
 import {
-  format,
   isBefore,
   isToday,
-  addDays,
   startOfDay,
-  endOfDay,
-  parseISO,
 } from 'date-fns';
-import { ja } from 'date-fns/locale';
 import { Task, Todo } from '@/features/tasks/types/task';
-import { getUserNameById, getUserNamesByIds } from '@/features/tasks/utils/userUtils';
 import { useFilterContext } from '@/features/tasks/filters/FilterContext';
+import { getProjectMemberName } from '@/utils/memberUtils';
 
 interface TodayTodoProps {
   tasks: Task[];
@@ -230,7 +225,7 @@ export default function TodayTodo({
                 </div>
                 <div className="ml-4 text-xs flex justify-between">
                   <span className="text-gray-500">タスク名：{todo.taskTitle}</span>
-                  <span className="text-gray-500">担当：{todo.assigneeId ? getUserNamesByIds([todo.assigneeId]) : '未割当'}</span>
+                  <span className="text-gray-500">担当：{todo.assigneeId ? getProjectMemberName(todo.assigneeId) : '未割当'}</span>
                 </div>
               </div>
             );
@@ -316,7 +311,7 @@ export default function TodayTodo({
                   </div>
                   <div className="ml-4 text-xs flex justify-between">
                     <span className="text-gray-500">タスク名：{todo.taskTitle}</span>
-                    <span className="text-gray-500">担当：{todo.assigneeId ? getUserNamesByIds([todo.assigneeId]) : '未割当'}</span>
+                    <span className="text-gray-500">担当：{todo.assigneeId ? getProjectMemberName(todo.assigneeId) : '未割当'}</span>
                   </div>
                 </div>
               );

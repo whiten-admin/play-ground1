@@ -13,6 +13,7 @@ export interface Project {
   client?: string
   projectManager?: string
   risks?: string
+  members?: string[]
   createdAt: string
   updatedAt: string
 } 

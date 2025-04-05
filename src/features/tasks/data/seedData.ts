@@ -1,7 +1,27 @@
 import { Task } from '@/features/tasks/types/task';
 import { parseDate, calculateCalendarDateTime } from '@/utils/dateUtils';
 
-// プロジェクトA（ECサイト構築）のシードデータ
+// プロジェクトメンバーIDは、ProjectMember.idと完全に一致する必要があります
+// JSONから読み込んだデータと一致させるために、projectMembers.jsonの値をそのまま使用します
+const PROJECT_MEMBER_IDS = {
+  // プロジェクト1（ECサイト構築）のメンバー
+  'taro_proj1': 'pm-1-taro',    // プロジェクト1の太郎
+  'gonzo_proj1': 'pm-1-gonzo',  // プロジェクト1のゴンゾウ
+  'jiro_proj1': 'pm-1-jiro',    // プロジェクト1の次郎
+  'saburo_proj1': 'pm-1-saburo', // プロジェクト1の三郎
+  'hanako_proj1': 'pm-1-hanako',  // プロジェクト1の花子
+
+  // プロジェクト2（海外への販路拡大）のメンバー
+  'taro_proj2': 'pm-2-taro',    // プロジェクト2の太郎
+  'gonzo_proj2': 'pm-2-gonzo',  // プロジェクト2のゴンゾウ
+  'jiro_proj2': 'pm-2-jiro',    // プロジェクト2の次郎
+
+  // プロジェクト3（コーポレートサイト保守運用）のメンバー
+  'taro_proj3': 'pm-3-taro',    // プロジェクト3の太郎
+  'saburo_proj3': 'pm-3-saburo' // プロジェクト3の三郎
+};
+
+// シードデータ
 export const seedTasks: Task[] = [
   {
     id: 'task-1',
@@ -20,7 +40,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 4,
         actualHours: 0,
-        assigneeId: 'taro' // 太郎が担当
+        assigneeId: PROJECT_MEMBER_IDS.taro_proj1 // 太郎が担当
       },
       {
         id: 'todo-1-2',
@@ -31,7 +51,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 3,
         actualHours: 0,
-        assigneeId: 'gonzo' // ゴンゾウが担当
+        assigneeId: PROJECT_MEMBER_IDS.gonzo_proj1 // ゴンゾウが担当
       },
       {
         id: 'todo-1-3',
@@ -42,7 +62,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 2,
         actualHours: 0,
-        assigneeId: 'taro' // 太郎とゴンゾウが共同で担当
+        assigneeId: PROJECT_MEMBER_IDS.taro_proj1 // 太郎が担当
       },
       {
         id: 'todo-1-4',
@@ -53,7 +73,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 2,
         actualHours: 0,
-        assigneeId: 'taro' // 全員参加
+        assigneeId: PROJECT_MEMBER_IDS.taro_proj1 // 太郎が担当
       }
     ]
   },
@@ -74,7 +94,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 3,
         actualHours: 0,
-        assigneeId: 'jiro' // 次郎が担当
+        assigneeId: PROJECT_MEMBER_IDS.jiro_proj1 // 次郎が担当
       },
       {
         id: 'todo-2-2',
@@ -85,7 +105,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 4,
         actualHours: 0,
-        assigneeId: 'saburo' // 三郎が担当
+        assigneeId: PROJECT_MEMBER_IDS.saburo_proj1 // 三郎が担当
       },
       {
         id: 'todo-2-3',
@@ -96,7 +116,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 3,
         actualHours: 0,
-        assigneeId: 'jiro' // 次郎と三郎が共同で担当
+        assigneeId: PROJECT_MEMBER_IDS.jiro_proj1 // 次郎が担当
       },
       {
         id: 'todo-2-4',
@@ -107,61 +127,61 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 2,
         actualHours: 0,
-        assigneeId: 'taro' // マネージャーと担当者
+        assigneeId: PROJECT_MEMBER_IDS.taro_proj1 // マネージャーが担当
       }
     ]
   },
   {
     id: 'task-3',
-    title: 'UI/UXデザイン',
-    description: 'ECサイトのユーザーインターフェースを設計します。使いやすさと視覚的な魅力を両立させることが目標です。',
-    dueDate: parseDate('2025-03-17'),
+    title: 'フロントエンド設計',
+    description: 'ECサイトのフロントエンド設計を行います。UI/UXデザインと画面遷移を検討します。',
+    dueDate: parseDate('2025-03-15'),
     completedDateTime: undefined,
     projectId: '1', // プロジェクトA
     todos: [
       {
         id: 'todo-3-1',
-        text: 'ワイヤーフレームの作成',
+        text: 'デザインコンセプトの検討',
         completed: false,
         startDate: parseDate('2025-03-11'),
-        ...calculateCalendarDateTime(parseDate('2025-03-11'), 4),
-        completedDateTime: undefined,
-        estimatedHours: 4,
-        actualHours: 0,
-        assigneeId: 'hanako' // 花子が担当
-      },
-      {
-        id: 'todo-3-2',
-        text: 'デザインシステムの構築',
-        completed: false,
-        startDate: parseDate('2025-03-13'),
-        ...calculateCalendarDateTime(parseDate('2025-03-13'), 3),
+        ...calculateCalendarDateTime(parseDate('2025-03-11'), 3),
         completedDateTime: undefined,
         estimatedHours: 3,
         actualHours: 0,
-        assigneeId: 'hanako' // 花子が担当
+        assigneeId: PROJECT_MEMBER_IDS.hanako_proj1 // 花子が担当
+      },
+      {
+        id: 'todo-3-2',
+        text: 'ワイヤーフレーム作成',
+        completed: false,
+        startDate: parseDate('2025-03-12'),
+        ...calculateCalendarDateTime(parseDate('2025-03-12'), 5),
+        completedDateTime: undefined,
+        estimatedHours: 5,
+        actualHours: 0,
+        assigneeId: PROJECT_MEMBER_IDS.hanako_proj1 // 花子が担当
       },
       {
         id: 'todo-3-3',
-        text: '主要画面のモックアップ作成',
+        text: 'UIコンポーネント設計',
         completed: false,
-        startDate: parseDate('2025-03-14'),
-        ...calculateCalendarDateTime(parseDate('2025-03-14'), 4),
+        startDate: parseDate('2025-03-13'),
+        ...calculateCalendarDateTime(parseDate('2025-03-13'), 4),
         completedDateTime: undefined,
         estimatedHours: 4,
         actualHours: 0,
-        assigneeId: 'hanako' // 花子が担当
+        assigneeId: PROJECT_MEMBER_IDS.hanako_proj1 // 花子が担当
       },
       {
         id: 'todo-3-4',
         text: 'デザインレビュー会議',
         completed: false,
-        startDate: parseDate('2025-03-17'),
-        ...calculateCalendarDateTime(parseDate('2025-03-17'), 2),
+        startDate: parseDate('2025-03-15'),
+        ...calculateCalendarDateTime(parseDate('2025-03-15'), 2),
         completedDateTime: undefined,
         estimatedHours: 2,
         actualHours: 0,
-        assigneeId: 'taro' // マネージャーとデザイナー
+        assigneeId: PROJECT_MEMBER_IDS.taro_proj1 // マネージャーと担当者
       }
     ]
   },
@@ -236,7 +256,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 2,
         actualHours: 0,
-        assigneeId: 'jiro' // 次郎が担当
+        assigneeId: PROJECT_MEMBER_IDS.jiro_proj1 // 次郎が担当
       },
       {
         id: 'todo-5-2',
@@ -247,7 +267,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 4,
         actualHours: 0,
-        assigneeId: 'jiro' // 次郎が担当
+        assigneeId: PROJECT_MEMBER_IDS.jiro_proj1 // 次郎が担当
       },
       {
         id: 'todo-5-3',
@@ -258,7 +278,7 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 4,
         actualHours: 0,
-        assigneeId: 'hanako' // 花子が担当
+        assigneeId: PROJECT_MEMBER_IDS.hanako_proj1 // 花子が担当
       },
       {
         id: 'todo-5-4',
@@ -269,7 +289,71 @@ export const seedTasks: Task[] = [
         completedDateTime: undefined,
         estimatedHours: 3,
         actualHours: 0,
-        assigneeId: 'jiro' // 次郎と花子が共同で担当
+        assigneeId: PROJECT_MEMBER_IDS.jiro_proj1 // 次郎が担当
+      }
+    ]
+  },
+  {
+    id: 'task-b1',
+    title: '海外市場調査',
+    description: '進出候補国の市場規模、競合状況、規制環境などを調査します。',
+    dueDate: parseDate('2025-04-15'),
+    completedDateTime: undefined,
+    projectId: '2', // プロジェクトB
+    todos: [
+      {
+        id: 'todo-b1-1',
+        text: '市場規模の調査',
+        completed: false,
+        startDate: parseDate('2025-04-03'),
+        ...calculateCalendarDateTime(parseDate('2025-04-03'), 4),
+        completedDateTime: undefined,
+        estimatedHours: 4,
+        actualHours: 0,
+        assigneeId: PROJECT_MEMBER_IDS.gonzo_proj2 // ゴンゾウが担当
+      },
+      {
+        id: 'todo-b1-2',
+        text: '競合分析',
+        completed: false,
+        startDate: parseDate('2025-04-05'),
+        ...calculateCalendarDateTime(parseDate('2025-04-05'), 3),
+        completedDateTime: undefined,
+        estimatedHours: 3,
+        actualHours: 0,
+        assigneeId: PROJECT_MEMBER_IDS.jiro_proj2 // 次郎が担当
+      }
+    ]
+  },
+  {
+    id: 'task-c1',
+    title: 'セキュリティ監査',
+    description: 'コーポレートサイトのセキュリティ監査を実施し、脆弱性があれば対策を行います。',
+    dueDate: parseDate('2025-05-20'),
+    completedDateTime: undefined,
+    projectId: '3', // プロジェクトC
+    todos: [
+      {
+        id: 'todo-c1-1',
+        text: '脆弱性診断ツールによるスキャン',
+        completed: false,
+        startDate: parseDate('2025-05-16'),
+        ...calculateCalendarDateTime(parseDate('2025-05-16'), 2),
+        completedDateTime: undefined,
+        estimatedHours: 2,
+        actualHours: 0,
+        assigneeId: PROJECT_MEMBER_IDS.saburo_proj3 // 三郎が担当
+      },
+      {
+        id: 'todo-c1-2',
+        text: '認証機能のレビュー',
+        completed: false,
+        startDate: parseDate('2025-05-17'),
+        ...calculateCalendarDateTime(parseDate('2025-05-17'), 3),
+        completedDateTime: undefined,
+        estimatedHours: 3,
+        actualHours: 0,
+        assigneeId: PROJECT_MEMBER_IDS.taro_proj3 // 太郎が担当
       }
     ]
   }

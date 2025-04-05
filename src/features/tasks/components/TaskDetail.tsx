@@ -4,16 +4,11 @@ import React, { useState, useEffect, useRef } from 'react'
 import { IoAdd, IoTrash, IoPencil, IoSave, IoClose, IoBulb, IoList, IoGrid, IoBarChart, IoCaretDown, IoCaretUp, IoFilter, IoCheckbox } from 'react-icons/io5'
 import { Task, Todo } from '@/features/tasks/types/task'
 import { format, startOfDay, isBefore, isToday } from 'date-fns'
-import { ja } from 'date-fns/locale'
 import { suggestTodos } from '@/services/api/utils/openai'
-import KanbanView from '@/features/kanban/components/KanbanView'
-import GanttChartView from '@/features/gantt/components/GanttChartView'
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
-import { getUserNameById, getUserNamesByIds, getAllUsers } from '@/features/tasks/utils/userUtils'
-import UserAssignSelect from '@/components/UserAssignSelect'
-import { User } from '@/features/tasks/types/user'
+import ProjectMemberAssignSelect from '@/components/ProjectMemberAssignSelect'
 import { useFilterContext } from '@/features/tasks/filters/FilterContext'
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
+import { getProjectMemberName } from '@/utils/memberUtils'
 import TaskCreationForm from './TaskCreationForm'
 import { FaClock } from 'react-icons/fa'
 import Link from 'next/link'
@@ -203,7 +198,7 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
       }
     });
     
-    // 配列に変換して返す
+    // ユニークなアサインIDのリストを返す
     return Array.from(assigneeIdsSet);
   };
 
@@ -673,7 +668,7 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
                   });
                   const assigneeIdArray = Array.from(assigneeIds);
                   return assigneeIdArray.length > 0 
-                    ? getUserNamesByIds(assigneeIdArray)
+                    ? assigneeIdArray.map(id => getProjectMemberName(id)).join(', ')
                     : '担当者なし';
                 })()}
               </div>
@@ -838,11 +833,10 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
                           </div>
                           <div className="flex items-center">
                             <span className="mr-1">担当:</span>
-                            <UserAssignSelect
-                              assigneeIds={[todo.assigneeId].filter(Boolean)}
-                              onAssigneeChange={(newAssigneeIds) => {
+                            <ProjectMemberAssignSelect
+                              assigneeId={todo.assigneeId}
+                              onAssigneeChange={(newAssigneeId) => {
                                 // TODOの担当者を更新
-                                const newAssigneeId = newAssigneeIds.length > 0 ? newAssigneeIds[0] : '';
                                 const updatedTodo = { ...todo, assigneeId: newAssigneeId };
                                 
                                 // タスクのTODOリストを更新
@@ -953,11 +947,10 @@ export default function TaskDetail({ selectedTask, selectedTodoId, onTaskUpdate,
                           </div>
                           <div className="flex items-center">
                             <span className="mr-1">担当:</span>
-                            <UserAssignSelect
-                              assigneeIds={[todo.assigneeId].filter(Boolean)}
-                              onAssigneeChange={(newAssigneeIds) => {
+                            <ProjectMemberAssignSelect
+                              assigneeId={todo.assigneeId}
+                              onAssigneeChange={(newAssigneeId) => {
                                 // TODOの担当者を更新
-                                const newAssigneeId = newAssigneeIds.length > 0 ? newAssigneeIds[0] : '';
                                 const updatedTodo = { ...todo, assigneeId: newAssigneeId };
                                 
                                 // タスクのTODOリストを更新

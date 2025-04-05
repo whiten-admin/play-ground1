@@ -1,93 +1,66 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { Project } from '@/features/projects/types/project'
 import { FiEdit3, FiFileText, FiUpload } from 'react-icons/fi'
 import { extractTextFromPDF, extractProjectInfoFromText } from '@/services/api/utils/pdfUtils'
 import { generateProjectTasks } from '@/services/api/utils/openai'
 import { convertGeneratedTasksToTaskObjects } from '@/features/tasks/utils/taskUtils'
 import { useTaskContext } from '@/features/tasks/contexts/TaskContext'
+import { useRouter } from 'next/navigation'
+import TaskGenerationDialog from '@/features/projects/components/TaskGenerationDialog'
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
+import { User } from '@/features/tasks/types/user'
+import { ProjectMemberRole } from '@/features/projects/types/projectMember'
+import { useAuth } from '@/services/auth/hooks/useAuth'
 
 interface ProjectCreateModalProps {
   isOpen: boolean
   onClose: () => void
-  onCreateProject: (newProject: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => void
+  onCreateProject: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => void
+  users?: User[]
 }
 
 type TabType = 'manual' | 'document'
 
-// タスク生成確認ダイアログ
-interface TaskGenerationDialogProps {
-  isOpen: boolean
-  onClose: () => void
-  onConfirm: () => void
-  isLoading: boolean
-}
-
-function TaskGenerationDialog({ isOpen, onClose, onConfirm, isLoading }: TaskGenerationDialogProps) {
-  if (!isOpen) return null
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h3 className="text-lg font-semibold mb-3">タスク自動生成</h3>
-        <p className="mb-4 text-gray-700">
-          プロジェクトの情報から想定されるタスクを自動生成しますか？
-          <br />
-          プロジェクトの内容に基づいて、関連するタスクとTODOを自動的に作成します。
-        </p>
-        
-        <div className="flex justify-end space-x-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border border-gray-300 rounded-md"
-            disabled={isLoading}
-          >
-            いいえ
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className={`px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-md flex items-center ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                生成中...
-              </>
-            ) : 'はい、生成する'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-export default function ProjectCreateModal({ isOpen, onClose, onCreateProject }: ProjectCreateModalProps) {
+export default function ProjectCreateModal({ isOpen, onClose, onCreateProject, users = [] }: ProjectCreateModalProps) {
+  const router = useRouter()
   const { addTask } = useTaskContext()
-  const [activeTab, setActiveTab] = useState<TabType>('manual')
+  const { assignUserToProject } = useProjectContext()
+  const { user: currentUser } = useAuth()
   const [projectData, setProjectData] = useState<Omit<Project, 'id' | 'createdAt' | 'updatedAt'>>({
     title: '',
+    code: '',
     description: '',
     startDate: '',
     endDate: '',
     phase: 'planning'
   })
+  const [selectedMembers, setSelectedMembers] = useState<Array<{ userId: string; role: ProjectMemberRole }>>([])
   const [documentText, setDocumentText] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [extractedText, setExtractedText] = useState('')
   const [extractionError, setExtractionError] = useState('')
   
+  // 概要を手動入力するか資料から生成するかの選択状態
+  const [descriptionInputMode, setDescriptionInputMode] = useState<'manual' | 'document'>('manual')
+  
   // タスク生成関連の状態
   const [isTaskGenerationDialogOpen, setIsTaskGenerationDialogOpen] = useState(false)
   const [isGeneratingTasks, setIsGeneratingTasks] = useState(false)
   const [createdProjectData, setCreatedProjectData] = useState<Omit<Project, 'id' | 'createdAt' | 'updatedAt'> | null>(null)
+
+  // 現在のユーザーをデフォルトでメンバーとして追加
+  useEffect(() => {
+    if (currentUser && isOpen && selectedMembers.length === 0) {
+      // 自分自身をマネージャーとして追加
+      setSelectedMembers([{
+        userId: currentUser.id,
+        role: 'manager' // デフォルトではマネージャー権限
+      }])
+    }
+  }, [currentUser, isOpen, selectedMembers.length])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -114,6 +87,18 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject }:
     // プロジェクトを作成
     onCreateProject(createdProjectData)
     
+    // プロジェクトIDを取得（ローカルストレージから）
+    setTimeout(() => {
+      const projectId = localStorage.getItem('currentProjectId')
+      
+      if (projectId) {
+        // 選択されたメンバーをプロジェクトにアサイン
+        selectedMembers.forEach(member => {
+          assignUserToProject(projectId, member.userId, member.role)
+        })
+      }
+    }, 100)
+    
     // タスク生成ダイアログを閉じる
     setIsTaskGenerationDialogOpen(false)
     
@@ -122,6 +107,9 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject }:
     
     // フォームをリセット
     resetForm()
+    
+    // タスク一覧画面に遷移
+    router.push('/tasks')
   }
 
   // タスク生成開始
@@ -165,6 +153,9 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject }:
         setIsTaskGenerationDialogOpen(false)
         onClose()
         resetForm()
+        
+        // タスク一覧画面に遷移
+        router.push('/tasks')
       }, 500)
     } catch (error) {
       console.error('タスク生成中にエラーが発生しました:', error)
@@ -212,7 +203,7 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject }:
           }
           // その他のファイル形式の場合はファイル名のみ使用
           else {
-            textToExtract = `プロジェクト名: ${file.name.replace(/\.[^/.]+$/, "")}\n説明: ${file.name}から生成されたプロジェクト`
+            textToExtract = `プロジェクト名: ${file.name.replace(/\.[^/.]+$/, "")}\n概要: ${file.name}から生成されたプロジェクト`
           }
         } catch (error) {
           console.error('ファイルの解析中にエラーが発生しました:', error)
@@ -221,7 +212,7 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject }:
           
           // エラーがあってもファイル名を使ってプロジェクト情報を生成
           if (file) {
-            textToExtract = `プロジェクト名: ${file.name.replace(/\.[^/.]+$/, "").replace(/_/g, " ")}\n説明: ${file.name}から生成されたプロジェクト`
+            textToExtract = `プロジェクト名: ${file.name.replace(/\.[^/.]+$/, "").replace(/_/g, " ")}\n概要: ${file.name}から生成されたプロジェクト`
           }
           
           // 処理は続行（エラーメッセージを表示しつつ、ファイル名からプロジェクト情報を生成）
@@ -277,20 +268,69 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject }:
     setFile(null)
   }
 
+  // 概要テンプレートを挿入する関数
+  const insertDescriptionTemplate = () => {
+    const template = `# プロジェクト概要
+
+## 目的
+このプロジェクトの目的は、[目的を記述]することです。
+
+## 背景
+[プロジェクトの背景情報を記述]
+
+## 主な成果物
+- [成果物1]
+- [成果物2]
+- [成果物3]
+
+## 主要マイルストーン
+- 企画：[日付]
+- 要件定義：[日付]
+- 開発完了：[日付]
+- テスト完了：[日付]
+- リリース：[日付]`;
+
+    setProjectData(prev => ({
+      ...prev,
+      description: template
+    }));
+  }
+
+  // メンバーの選択状態を更新
+  const handleMemberChange = (userId: string, role: ProjectMemberRole) => {
+    setSelectedMembers(prev => {
+      const existing = prev.find(m => m.userId === userId)
+      if (existing) {
+        // すでに選択されている場合は更新
+        return prev.map(m => m.userId === userId ? { ...m, role } : m)
+      } else {
+        // 新規追加
+        return [...prev, { userId, role }]
+      }
+    })
+  }
+
+  // メンバーの選択を解除
+  const handleMemberRemove = (userId: string) => {
+    setSelectedMembers(prev => prev.filter(m => m.userId !== userId))
+  }
+
+  // フォームをリセット
   const resetForm = () => {
-    // フォームをリセット
     setProjectData({
       title: '',
+      code: '',
       description: '',
       startDate: '',
       endDate: '',
       phase: 'planning'
     })
+    setSelectedMembers([])
     setDocumentText('')
     setFile(null)
     setExtractedText('')
     setExtractionError('')
-    setActiveTab('manual')
+    setDescriptionInputMode('manual')
     setCreatedProjectData(null)
   }
 
@@ -299,38 +339,12 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject }:
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
           <h2 className="text-xl font-bold mb-4">新規プロジェクト作成</h2>
           
-          {/* タブ切り替え */}
-          <div className="flex border-b mb-4">
-            <button
-              className={`flex items-center py-2 px-4 ${
-                activeTab === 'manual'
-                  ? 'border-b-2 border-blue-500 text-blue-600 font-medium'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              onClick={() => setActiveTab('manual')}
-            >
-              <FiEdit3 className="mr-2" />
-              手動入力
-            </button>
-            <button
-              className={`flex items-center py-2 px-4 ${
-                activeTab === 'document'
-                  ? 'border-b-2 border-blue-500 text-blue-600 font-medium'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              onClick={() => setActiveTab('document')}
-            >
-              <FiFileText className="mr-2" />
-              資料から生成
-            </button>
-          </div>
-          
-          {activeTab === 'manual' ? (
-            <form onSubmit={handleSubmit}>
-              <div className="mb-4">
+          <form onSubmit={handleSubmit}>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="title">
                   プロジェクト名<span className="text-red-500">*</span>
                 </label>
@@ -344,106 +358,72 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject }:
                   required
                 />
               </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="description">
-                  説明
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="code">
+                  プロジェクトコード
                 </label>
+                <input
+                  type="text"
+                  id="code"
+                  name="code"
+                  value={projectData.code}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder="例: PROJ-001"
+                />
+              </div>
+            </div>
+            
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-gray-700" htmlFor="description">
+                  概要
+                </label>
+                <div className="flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setDescriptionInputMode('manual')}
+                    className={`text-xs px-2 py-1 rounded ${
+                      descriptionInputMode === 'manual' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    手動入力
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDescriptionInputMode('document')}
+                    className={`text-xs px-2 py-1 rounded ${
+                      descriptionInputMode === 'document' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    資料から生成
+                  </button>
+                  {descriptionInputMode === 'manual' && (
+                    <button
+                      type="button"
+                      onClick={insertDescriptionTemplate}
+                      className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200"
+                    >
+                      テンプレート挿入
+                    </button>
+                  )}
+                </div>
+              </div>
+              
+              {descriptionInputMode === 'manual' ? (
                 <textarea
                   id="description"
                   name="description"
                   value={projectData.description}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  rows={3}
+                  rows={8}
                 />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="startDate">
-                    開始日
-                  </label>
-                  <input
-                    type="date"
-                    id="startDate"
-                    name="startDate"
-                    value={projectData.startDate}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="endDate">
-                    終了日
-                  </label>
-                  <input
-                    type="date"
-                    id="endDate"
-                    name="endDate"
-                    value={projectData.endDate}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  />
-                </div>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="phase">
-                  フェーズ
-                </label>
-                <select
-                  id="phase"
-                  name="phase"
-                  value={projectData.phase}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  <option value="planning">企画</option>
-                  <option value="requirements">要件定義</option>
-                  <option value="design">設計</option>
-                  <option value="development">開発</option>
-                  <option value="testing">テスト</option>
-                  <option value="deployment">リリース</option>
-                  <option value="maintenance">保守運用</option>
-                </select>
-              </div>
-              
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border border-gray-300 rounded-md"
-                >
-                  キャンセル
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-md"
-                >
-                  作成
-                </button>
-              </div>
-            </form>
-          ) : (
-            <form onSubmit={handleDocumentSubmit}>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  プロジェクト資料
-                </label>
-                <p className="text-sm text-gray-500 mb-3">
-                  プロジェクト計画書やテキストを入力すると、自動的にプロジェクト情報を抽出します。
-                  <br />
-                  <span className="text-xs text-red-500">※現在開発中のため機能しません</span>
-                </p>
-                
-                {/* エラーメッセージ */}
-                {extractionError && (
-                  <div className="mb-3 p-2 bg-red-50 text-red-700 rounded-md text-sm">
-                    {extractionError}
-                  </div>
-                )}
-                
+              ) : (
                 <div className="space-y-4">
                   <div className="border-2 border-dashed border-gray-300 rounded-md p-4">
                     <div className="text-center">
@@ -530,36 +510,147 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject }:
                       </p>
                     </div>
                   )}
+                  
+                  {/* エラーメッセージ */}
+                  {extractionError && (
+                    <div className="p-2 bg-red-50 text-red-700 rounded-md text-sm">
+                      {extractionError}
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleDocumentSubmit}
+                      className={`px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-md flex items-center ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          生成中...
+                        </>
+                      ) : '情報を抽出'}
+                    </button>
+                  </div>
                 </div>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="startDate">
+                  開始日
+                </label>
+                <input
+                  type="date"
+                  id="startDate"
+                  name="startDate"
+                  value={projectData.startDate}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
               </div>
-              
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border border-gray-300 rounded-md"
-                  disabled={isLoading}
-                >
-                  キャンセル
-                </button>
-                <button
-                  type="submit"
-                  className={`px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-md flex items-center ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      生成中...
-                    </>
-                  ) : '生成して作成'}
-                </button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="endDate">
+                  終了日
+                </label>
+                <input
+                  type="date"
+                  id="endDate"
+                  name="endDate"
+                  value={projectData.endDate}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
               </div>
-            </form>
-          )}
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="phase">
+                現在のフェーズ
+              </label>
+              <select
+                id="phase"
+                name="phase"
+                value={projectData.phase}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              >
+                <option value="planning">企画</option>
+                <option value="requirements">要件定義</option>
+                <option value="design">設計</option>
+                <option value="development">開発</option>
+                <option value="testing">テスト</option>
+                <option value="deployment">リリース</option>
+                <option value="maintenance">保守運用</option>
+              </select>
+            </div>
+            
+            {/* メンバー選択セクション */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                プロジェクトメンバー
+              </label>
+              <div className="space-y-2">
+                {users.map(user => (
+                  <div key={user.id} className="flex items-center justify-between p-2 border rounded-md">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-medium">{user.name}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {selectedMembers.find(m => m.userId === user.id) ? (
+                        <>
+                          <select
+                            value={selectedMembers.find(m => m.userId === user.id)?.role || 'member'}
+                            onChange={(e) => handleMemberChange(user.id, e.target.value as ProjectMemberRole)}
+                            className="text-sm border-gray-300 rounded-md"
+                          >
+                            <option value="manager">マネージャー</option>
+                            <option value="member">メンバー</option>
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => handleMemberRemove(user.id)}
+                            className="p-1 text-sm text-red-600 hover:text-red-700"
+                          >
+                            削除
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleMemberChange(user.id, 'member')}
+                          className="px-3 py-1 text-sm text-blue-600 hover:text-blue-700 border border-blue-600 rounded-md"
+                        >
+                          追加
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border border-gray-300 rounded-md"
+              >
+                キャンセル
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-md"
+              >
+                作成
+              </button>
+            </div>
+          </form>
         </div>
       </div>
 

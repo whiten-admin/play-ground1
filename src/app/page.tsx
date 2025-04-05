@@ -23,8 +23,17 @@ function HomeContent() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null)
   const { filteredTasks, setTasks, addTask } = useTaskContext()
-  const { currentProject, updateProject, projects } = useProjectContext()
+  const { currentProject, updateProject, projects, filteredProjects } = useProjectContext()
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const searchParams = useSearchParams()
+
+  // ユーザーデータを取得
+  const userData = user ? {
+    id: user.id,
+    name: user.name,
+    role: user.role,
+    password: '' // HeaderコンポーネントではパスワードはUI表示に使用されないため、空文字を設定
+  } : null;
 
   // URLのクエリパラメータからタスクIDとTODO IDを取得
   useEffect(() => {
@@ -38,6 +47,11 @@ function HomeContent() {
       }
     }
   }, [searchParams])
+
+  // プロジェクト作成モーダルを開く
+  const handleOpenCreateModal = () => {
+    setIsCreateModalOpen(true)
+  }
 
   // タスク選択ハンドラーを修正
   const handleTaskSelect = (taskId: string, todoId?: string) => {
@@ -153,15 +167,18 @@ function HomeContent() {
     return <Auth onLogin={login} />;
   }
 
-  // プロジェクトが存在しない場合は専用画面を表示
-  if (projects.length === 0) {
+  // ユーザーがアサインされているプロジェクトが存在しない場合は専用画面を表示
+  if (filteredProjects.length === 0) {
     return (
       <div className="flex h-screen bg-gray-100">
         <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header onLogout={logout} user={user} />
-          <main className="flex-1 overflow-y-auto">
-            <EmptyProjectState />
+          <Header onLogout={logout} user={userData} />
+          <main className="flex-1 overflow-y-auto p-4">
+            <EmptyProjectState 
+              onCreateProject={handleOpenCreateModal} 
+              showAllProjects={projects.length === 0}
+            />
           </main>
         </div>
       </div>
@@ -178,7 +195,7 @@ function HomeContent() {
       <div className="flex h-screen bg-gray-100">
         <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header onLogout={logout} user={user} project={currentProject || undefined} />
+          <Header onLogout={logout} user={userData} project={currentProject || undefined} />
           <main className="flex-1 overflow-y-auto p-3">
             {/* ホーム画面ではユーザーフィルターを表示しない */}
             

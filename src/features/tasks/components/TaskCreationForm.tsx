@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { IoAdd, IoTrash, IoBulb } from 'react-icons/io5';
 import { Task, Todo } from '@/features/tasks/types/task';
 import { suggestTodos } from '@/services/api/utils/openai';
-import UserAssignSelect from '@/components/UserAssignSelect';
+import ProjectMemberAssignSelect from '@/components/ProjectMemberAssignSelect';
 
 interface TaskCreationFormProps {
   onCancel: () => void;
@@ -59,6 +59,15 @@ export default function TaskCreationForm({
   // 新規タスクからTODOを削除
   const handleRemoveNewTaskTodo = (todoId: string) => {
     setNewTaskTodos(newTaskTodos.filter(todo => todo.id !== todoId));
+  };
+
+  // TODO担当者を変更
+  const handleTodoAssigneeChange = (todoId: string, assigneeId: string) => {
+    setNewTaskTodos(
+      newTaskTodos.map(todo => 
+        todo.id === todoId ? { ...todo, assigneeId } : todo
+      )
+    );
   };
 
   // 新規タスク用のTODO提案を取得
@@ -215,8 +224,17 @@ export default function TaskCreationForm({
                 <div key={todo.id} className="flex items-center justify-between bg-gray-50 p-2 rounded border">
                   <div className="flex-1">
                     <div className="text-sm text-gray-800">{todo.text}</div>
-                    <div className="text-xs text-gray-500">
-                      見積もり工数: {todo.estimatedHours}時間
+                    <div className="flex justify-between items-center mt-1">
+                      <div className="text-xs text-gray-500">
+                        見積もり工数: {todo.estimatedHours}時間
+                      </div>
+                      <div className="w-32">
+                        <ProjectMemberAssignSelect
+                          assigneeId={todo.assigneeId}
+                          onAssigneeChange={(assigneeId) => handleTodoAssigneeChange(todo.id, assigneeId)}
+                          size="sm"
+                        />
+                      </div>
                     </div>
                   </div>
                   <button
@@ -318,4 +336,4 @@ export default function TaskCreationForm({
       </div>
     </div>
   );
-} 
+}
