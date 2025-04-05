@@ -7,6 +7,7 @@ import { IoChevronBack, IoChevronForward, IoSettingsSharp, IoCloudUpload, IoClou
 import { useTaskContext } from '@/features/tasks/contexts/TaskContext'
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
 import { exportTasksAsJson, importTasksFromJson } from '@/services/storage/utils/seedDataUtils'
+import { useAuth } from '@/services/auth/hooks/useAuth'
 
 interface SidebarProps {
   activeTab: string
@@ -20,6 +21,7 @@ export default function Sidebar({ activeTab, onTabChange, initialCollapsed = fal
   const [isDevMenuOpen, setIsDevMenuOpen] = useState(false)
   const { tasks, setTasks, resetTasks, clearAllTasks } = useTaskContext();
   const { resetToDefaultProjects, clearAllProjects } = useProjectContext();
+  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // ローカルストレージから開閉状態を読み込む
@@ -133,6 +135,9 @@ export default function Sidebar({ activeTab, onTabChange, initialCollapsed = fal
     reader.readAsText(file);
   };
 
+  // 管理者かどうかをチェック
+  const isAdmin = user?.role === 'admin';
+
   return (
     <div className={`relative bg-white shadow-md flex flex-col h-full ${collapsed ? 'w-16' : 'w-48'}`}>
       {/* 開閉ボタン（右端に配置） */}
@@ -185,8 +190,27 @@ export default function Sidebar({ activeTab, onTabChange, initialCollapsed = fal
         ))}
       </div>
       
-      {/* 開発用データ管理セクション（サイドバーの一番下） */}
-      <div className="mt-auto border-t border-gray-200 pt-2 pb-4 px-2">
+      {/* 管理者設定メニュー */}
+      {isAdmin && (
+        <div className="mt-auto border-t border-gray-200 pt-2 pb-2 px-2">
+          <Link
+            href="/admin"
+            onClick={() => onTabChange('admin')}
+            className={`w-full flex items-center ${collapsed ? 'justify-center' : 'justify-start'} px-4 py-2 rounded-lg ${
+              activeTab === 'admin'
+                ? 'bg-purple-500 text-white'
+                : 'text-purple-700 hover:bg-purple-100'
+            }`}
+            title={collapsed ? "管理者設定" : undefined}
+          >
+            <span className="flex-shrink-0">👑</span>
+            {!collapsed && <span className="ml-3 truncate">管理者設定</span>}
+          </Link>
+        </div>
+      )}
+      
+      {/* 開発用データ管理セクション */}
+      <div className={`${isAdmin ? '' : 'mt-auto'} border-t border-gray-200 pt-2 pb-4 px-2`}>
         <div 
           className={`${collapsed ? 'justify-center' : 'justify-start px-2'} flex items-center cursor-pointer py-2 text-gray-500 hover:text-gray-700`}
           onClick={() => setIsDevMenuOpen(!isDevMenuOpen)}

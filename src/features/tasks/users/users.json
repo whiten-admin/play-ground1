@@ -1,5 +1,11 @@
 [
   {
+    "id": "admin",
+    "password": "admin",
+    "name": "管理者",
+    "role": "admin"
+  },
+  {
     "id": "taro",
     "password": "aaa",
     "name": "太郎",
