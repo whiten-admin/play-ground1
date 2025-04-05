@@ -4,7 +4,6 @@ import React from 'react';
 import TaskProgressChart from './TaskProgressChart';
 import TeamPerformanceChart from './TeamPerformanceChart';
 import ProjectStatusSummary from './ProjectStatusSummary';
-import MilestoneTimeline from './MilestoneTimeline';
 import RiskAssessment from './RiskAssessment';
 import TeamWorkloadChart from './TeamWorkloadChart';
 import { useTaskContext } from '@/features/tasks/contexts/TaskContext';
@@ -41,12 +40,6 @@ const ProjectAnalysisDashboard: React.FC = () => {
       <div className="bg-white p-4 rounded-lg shadow-sm">
         <h2 className="text-lg font-semibold mb-3">リスク評価</h2>
         <RiskAssessment />
-      </div>
-      
-      {/* マイルストーンタイムライン */}
-      <div className="lg:col-span-3 bg-white p-4 rounded-lg shadow-sm">
-        <h2 className="text-lg font-semibold mb-3">マイルストーンタイムライン</h2>
-        <MilestoneTimeline />
       </div>
     </div>
   );
