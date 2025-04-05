@@ -114,7 +114,6 @@ export default function WBSPage() {
                 />
               ) : (
                 <div className="p-3">
-                  <p>※下記は開発中でハリボテです</p>
                   <ProjectAnalysisDashboard />
                 </div>
               )}
