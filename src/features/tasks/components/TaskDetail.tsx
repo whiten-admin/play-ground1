@@ -39,6 +39,7 @@ interface TaskDetailProps {
   tasks: Task[];
   onTaskSelect: (taskId: string, todoId?: string) => void;
   onTaskCreate?: (newTask: Task) => void;
+  onClose?: () => void;
 }
 
 interface EditState {
@@ -98,6 +99,7 @@ export default function TaskDetail({
   tasks,
   onTaskSelect,
   onTaskCreate,
+  onClose,
 }: TaskDetailProps) {
   const [editState, setEditState] = useState<EditState>({
     title: false,
@@ -789,7 +791,19 @@ export default function TaskDetail({
 
     // 選択されたタスクがある場合は、通常のタスク詳細を表示
     return (
-      <div className="bg-white rounded-lg p-6 h-full flex flex-col">
+      <div className="bg-white rounded-lg p-6 h-full flex flex-col relative">
+        {/* 閉じるボタン */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="absolute top-3 right-3 p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+            title="閉じる"
+          >
+            <IoClose className="w-5 h-5" />
+            <span className="sr-only">閉じる</span>
+          </button>
+        )}
+        
         {/* タイトルセクション */}
         <div className="mb-4 group border-b border-gray-200 pb-4">
           <div className="flex justify-between items-start mb-3">

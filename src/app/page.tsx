@@ -67,6 +67,12 @@ function HomeContent() {
     setSelectedTodoId(todoId);
   };
 
+  // タスク詳細を閉じる処理
+  const handleCloseTaskDetail = () => {
+    setSelectedTaskId(null);
+    setSelectedTodoId(null);
+  };
+
   // タスクの更新処理
   const handleTaskUpdate = (updatedTask: Task) => {
     console.log('Home: handleTaskUpdate called with:', updatedTask);
@@ -199,19 +205,68 @@ function HomeContent() {
           <main className="flex-1 overflow-y-auto p-3">
             {/* ホーム画面ではユーザーフィルターを表示しない */}
             
-            <ResizablePanel
-              leftPanel={
-                <div className="space-y-3">
-                  <div className="text-sm">
+            {selectedTaskId ? (
+              // タスクが選択されている場合は、現状のレイアウト
+              <ResizablePanel
+                leftPanel={
+                  <div className="space-y-3">
+                    <div className="text-sm">
+                      <TodayTodo
+                        tasks={filteredTasks}
+                        selectedTaskId={selectedTaskId}
+                        selectedTodoId={selectedTodoId}
+                        onTaskSelect={handleTodoSelect}
+                        onTodoStatusChange={handleTodoStatusChange}
+                      />
+                    </div>
+                    <div className="text-sm">
+                      <ScheduleCalendar
+                        tasks={filteredTasks}
+                        onTaskSelect={handleTaskSelect}
+                        onTodoUpdate={handleTodoUpdate}
+                        selectedTodoId={selectedTodoId}
+                        onTaskUpdate={handleTaskUpdate}
+                      />
+                    </div>
+                  </div>
+                }
+                rightPanel={
+                  <div className="space-y-3">
+                    <div className="text-sm">
+                      <TaskDetail
+                        selectedTask={selectedTask}
+                        selectedTodoId={selectedTodoId}
+                        onTaskUpdate={handleTaskUpdate}
+                        tasks={filteredTasks}
+                        onTaskSelect={handleTaskSelect}
+                        onTaskCreate={handleTaskCreate}
+                        onClose={handleCloseTaskDetail}
+                      />
+                    </div>
+                  </div>
+                }
+                defaultLeftWidth={450}
+                minLeftWidth={300}
+                maxLeftWidth={800}
+                storageKey="todoAppPanelWidth"
+              />
+            ) : (
+              // タスクが未選択の場合は、左右に横並びでコンポーネントを表示（ResizablePanelを使用）
+              <ResizablePanel
+                leftPanel={
+                  <div className="text-sm pr-2">
                     <TodayTodo
                       tasks={filteredTasks}
                       selectedTaskId={selectedTaskId}
                       selectedTodoId={selectedTodoId}
                       onTaskSelect={handleTodoSelect}
                       onTodoStatusChange={handleTodoStatusChange}
+                      isExpanded={true}
                     />
                   </div>
-                  <div className="text-sm">
+                }
+                rightPanel={
+                  <div className="text-sm h-full">
                     <ScheduleCalendar
                       tasks={filteredTasks}
                       onTaskSelect={handleTaskSelect}
@@ -220,27 +275,13 @@ function HomeContent() {
                       onTaskUpdate={handleTaskUpdate}
                     />
                   </div>
-                </div>
-              }
-              rightPanel={
-                <div className="space-y-3">
-                  <div className="text-sm">
-                    <TaskDetail
-                      selectedTask={selectedTask}
-                      selectedTodoId={selectedTodoId}
-                      onTaskUpdate={handleTaskUpdate}
-                      tasks={filteredTasks}
-                      onTaskSelect={handleTaskSelect}
-                      onTaskCreate={handleTaskCreate}
-                    />
-                  </div>
-                </div>
-              }
-              defaultLeftWidth={450}
-              minLeftWidth={300}
-              maxLeftWidth={800}
-              storageKey="todoAppPanelWidth"
-            />
+                }
+                defaultLeftWidth={450}
+                minLeftWidth={300}
+                maxLeftWidth={800}
+                storageKey="todoAppSplitViewWidth"
+              />
+            )}
           </main>
         </div>
       </div>

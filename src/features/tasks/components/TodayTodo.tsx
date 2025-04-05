@@ -16,6 +16,7 @@ interface TodayTodoProps {
   selectedTodoId: string | null;
   onTaskSelect: (taskId: string, todoId: string) => void;
   onTodoStatusChange: (taskId: string, todoId: string) => void;
+  isExpanded?: boolean; // 初期状態で展開するかどうか
 }
 
 export default function TodayTodo({
@@ -24,10 +25,11 @@ export default function TodayTodo({
   selectedTodoId,
   onTaskSelect,
   onTodoStatusChange,
+  isExpanded = false, // デフォルトは折りたたみ状態
 }: TodayTodoProps) {
   // アコーディオンの開閉状態を管理
-  const [isTodayExpanded, setIsTodayExpanded] = useState(false);
-  const [isOverdueExpanded, setIsOverdueExpanded] = useState(false);
+  const [isTodayExpanded, setIsTodayExpanded] = useState(isExpanded);
+  const [isOverdueExpanded, setIsOverdueExpanded] = useState(isExpanded);
   // 1日の最大工数（時間）
   const MAX_DAILY_HOURS = 8;
   
