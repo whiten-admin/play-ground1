@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { User } from '@/features/tasks/types/user'
 import { ProjectMember, ProjectMemberRole, Skill, SkillLevel } from '@/features/projects/types/projectMember'
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
-import { FiPlus, FiX, FiUserCheck, FiEdit2, FiTrash2, FiMail, FiUsers, FiUpload, FiFile, FiCheckCircle, FiInfo } from 'react-icons/fi'
+import { FiPlus, FiX, FiUserCheck, FiEdit2, FiTrash2, FiMail, FiUsers, FiUpload, FiFile, FiCheckCircle, FiInfo, FiTag } from 'react-icons/fi'
 import { getAllUsers } from '@/utils/memberUtils'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
@@ -13,6 +13,7 @@ import Auth from '@/services/auth/components/Auth'
 
 interface MemberWithUser extends ProjectMember {
   user: User
+  tags?: string[]
 }
 
 // 招待済みユーザーの型定義
@@ -50,6 +51,8 @@ export default function TeamManagement() {
   const [skillSheetFile, setSkillSheetFile] = useState<string | null>(null)
   const [showSkillDetailModal, setShowSkillDetailModal] = useState(false)
   const [newSkill, setNewSkill] = useState<Skill>({ name: '', level: 'intermediate' })
+  const [memberTags, setMemberTags] = useState<string[]>([])
+  const [newTag, setNewTag] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   // メール形式検証用の正規表現
@@ -116,6 +119,7 @@ export default function TeamManagement() {
     setMemberSkills(member.skills || [])
     setSkillDescription(member.skillDescription || '')
     setSkillSheetFile(member.skillSheetFile || null)
+    setMemberTags(member.tags || [])
     setShowSkillDetailModal(true)
   }
   
@@ -125,6 +129,7 @@ export default function TeamManagement() {
     setMemberSkills(member.skills || [])
     setSkillDescription(member.skillDescription || '')
     setSkillSheetFile(member.skillSheetFile || null)
+    setMemberTags(member.tags || [])
     setShowSkillModal(true)
   }
   
@@ -141,6 +146,27 @@ export default function TeamManagement() {
     const updatedSkills = [...memberSkills]
     updatedSkills.splice(index, 1)
     setMemberSkills(updatedSkills)
+  }
+  
+  // タグを追加
+  const addTag = () => {
+    if (!newTag.trim()) return
+    
+    // 重複チェック
+    if (memberTags.includes(newTag.trim())) {
+      setNewTag('')
+      return
+    }
+    
+    setMemberTags([...memberTags, newTag.trim()])
+    setNewTag('')
+  }
+  
+  // タグを削除
+  const removeTag = (index: number) => {
+    const updatedTags = [...memberTags]
+    updatedTags.splice(index, 1)
+    setMemberTags(updatedTags)
   }
   
   // スキルシートファイルを選択
@@ -168,7 +194,8 @@ export default function TeamManagement() {
           ...member,
           skills: memberSkills,
           skillDescription,
-          skillSheetFile: skillSheetFile || undefined
+          skillSheetFile: skillSheetFile || undefined,
+          tags: memberTags
         }
       }
       return member
@@ -358,6 +385,65 @@ export default function TeamManagement() {
                             <span className="ml-2 text-gray-500">
                               {formatDate(member.assignedAt)}から参加
                             </span>
+                            {/* タグ表示（アサイン日と同列） */}
+                            <div className="ml-2 flex flex-wrap items-center gap-1">
+                              {member.tags && member.tags.length > 0 ? (
+                                <>
+                                  {member.tags.map((tag, idx) => (
+                                    <span 
+                                      key={idx} 
+                                      className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-purple-100 text-purple-800 cursor-pointer hover:bg-purple-200"
+                                      onClick={() => {
+                                        // タグ編集用のモーダルではなく、直接編集
+                                        const newTags = [...(member.tags || [])];
+                                        newTags.splice(idx, 1);
+                                        
+                                        const updatedMembers = members.map(m => {
+                                          if (m.id === member.id) {
+                                            return { ...m, tags: newTags };
+                                          }
+                                          return m;
+                                        });
+                                        
+                                        setMembers(updatedMembers as MemberWithUser[]);
+                                      }}
+                                    >
+                                      <FiTag className="mr-1 h-3 w-3" />
+                                      {tag}
+                                      <FiX className="ml-1 h-3 w-3" />
+                                    </span>
+                                  ))}
+                                </>
+                              ) : null}
+                              {/* タグ追加ボタン */}
+                              <button
+                                onClick={() => {
+                                  // インラインでタグを追加するための簡易的なプロンプト
+                                  const newTag = prompt('新しいタグを入力してください');
+                                  if (newTag && newTag.trim()) {
+                                    const currentTags = [...(member.tags || [])];
+                                    // 重複チェック
+                                    if (!currentTags.includes(newTag.trim())) {
+                                      const updatedMembers = members.map(m => {
+                                        if (m.id === member.id) {
+                                          return { 
+                                            ...m, 
+                                            tags: [...currentTags, newTag.trim()] 
+                                          };
+                                        }
+                                        return m;
+                                      });
+                                      
+                                      setMembers(updatedMembers as MemberWithUser[]);
+                                    }
+                                  }
+                                }}
+                                className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
+                              >
+                                <FiPlus className="h-3 w-3" />
+                                <span className="ml-1">タグ追加</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -777,6 +863,48 @@ export default function TeamManagement() {
                   />
                 </div>
                 
+                {/* タグ設定 */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">タグ設定</label>
+                  <div className="flex items-center">
+                    <input
+                      type="text"
+                      value={newTag}
+                      onChange={(e) => setNewTag(e.target.value)}
+                      placeholder="エンジニア、デザイナーなど"
+                      className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={addTag}
+                      disabled={!newTag.trim()}
+                      className="ml-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    >
+                      追加
+                    </button>
+                  </div>
+                  
+                  {/* タグリスト */}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {memberTags.map((tag, index) => (
+                      <div key={index} className="inline-flex items-center px-2 py-1 rounded bg-purple-100 text-purple-800">
+                        <FiTag className="mr-1 h-3 w-3" />
+                        {tag}
+                        <button
+                          type="button"
+                          onClick={() => removeTag(index)}
+                          className="ml-1 text-purple-600 hover:text-purple-800"
+                        >
+                          <FiX className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 text-xs text-gray-500">
+                    ※ 職種や専門分野などを表すタグを設定できます（例: エンジニア、デザイナー、ディレクター、マーケティングなど）
+                  </div>
+                </div>
+                
                 {/* スキルシートアップロード */}
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">スキルシート</label>
@@ -888,6 +1016,23 @@ export default function TeamManagement() {
                     </h4>
                     <div className="mt-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-md whitespace-pre-wrap">
                       {skillDescription}
+                    </div>
+                  </div>
+                )}
+                
+                {/* タグ一覧 */}
+                {memberTags && memberTags.length > 0 && (
+                  <div className="mb-6">
+                    <h4 className="text-sm font-medium text-gray-700 flex items-center">
+                      <FiTag className="mr-2 h-4 w-4 text-purple-500" />
+                      タグ
+                    </h4>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {memberTags.map((tag, index) => (
+                        <span key={index} className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
+                          {tag}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 )}
