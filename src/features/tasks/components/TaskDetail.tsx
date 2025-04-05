@@ -15,10 +15,11 @@ import {
   IoCaretUp,
   IoFilter,
   IoCheckbox,
+  IoCalculator,
 } from 'react-icons/io5';
 import { Task, Todo } from '@/features/tasks/types/task';
 import { format, startOfDay, isBefore, isToday } from 'date-fns';
-import { suggestTodos } from '@/services/api/utils/openai';
+import { suggestTodos, estimateTodoHours } from '@/services/api/utils/openai';
 import ProjectMemberAssignSelect from '@/components/ProjectMemberAssignSelect';
 import { useFilterContext } from '@/features/tasks/filters/FilterContext';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
@@ -87,6 +88,9 @@ const getDueDateStyle = (date: Date | number) => {
   return 'text-blue-500'; // 期日が近い
 };
 
+// チェックボックス用のIDを生成するヘルパー関数
+const generateInputId = (prefix: string, id: string) => `${prefix}-${id}`;
+
 export default function TaskDetail({
   selectedTask,
   selectedTodoId,
@@ -138,6 +142,14 @@ export default function TaskDetail({
   const [newTaskSuggestedTodos, setNewTaskSuggestedTodos] = useState<
     { text: string; estimatedHours: number }[]
   >([]);
+  const [isEstimatingHours, setIsEstimatingHours] = useState<boolean>(false);
+  const [currentEstimatingTodoId, setCurrentEstimatingTodoId] = useState<
+    string | null
+  >(null);
+  const [estimationResult, setEstimationResult] = useState<{
+    estimatedHours: number;
+    reasoning: string;
+  } | null>(null);
 
   // フィルタリングコンテキストを使用
   const { selectedUserIds, showUnassigned } = useFilterContext();
@@ -644,6 +656,113 @@ export default function TaskDetail({
     ];
   };
 
+  // 工数見積もりをAIに依頼する関数
+  const handleEstimateHours = async (todoId: string, todoText: string) => {
+    if (!selectedTask) return;
+
+    try {
+      setIsEstimatingHours(true);
+      setCurrentEstimatingTodoId(todoId);
+
+      const result = await estimateTodoHours(
+        todoText,
+        selectedTask.title,
+        selectedTask.description
+      );
+
+      setEstimationResult(result);
+    } catch (error) {
+      console.error('Error estimating hours:', error);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : '工数見積もり中にエラーが発生しました。'
+      );
+    } finally {
+      setIsEstimatingHours(false);
+    }
+  };
+
+  // AI見積もりを適用する関数
+  const applyEstimatedHours = () => {
+    if (!editedTask || !currentEstimatingTodoId || !estimationResult) return;
+
+    const updatedTodos = editedTask.todos.map((todo) =>
+      todo.id === currentEstimatingTodoId
+        ? { ...todo, estimatedHours: estimationResult.estimatedHours }
+        : todo
+    );
+
+    const updatedTask = {
+      ...editedTask,
+      todos: updatedTodos,
+    };
+
+    setEditedTask(updatedTask);
+    onTaskUpdate?.(updatedTask);
+
+    // 後処理
+    setEstimationResult(null);
+    setCurrentEstimatingTodoId(null);
+  };
+
+  // ポップアップを閉じる関数
+  const closeEstimationPopup = () => {
+    setEstimationResult(null);
+    setCurrentEstimatingTodoId(null);
+  };
+
+  // 見積もり工数の入力欄を修正
+  const renderEstimatedHoursInput = (todo: Todo, isEditing: boolean) => {
+    return (
+      <div className="flex items-center">
+        <span className="mr-2">見積もり工数:</span>
+        <input
+          type="number"
+          min="0"
+          step="0.5"
+          value={todo.estimatedHours}
+          onChange={(e) => {
+            const newHours = parseFloat(e.target.value) || 0;
+            const updatedTodo = {
+              ...todo,
+              estimatedHours: newHours,
+            };
+            const updatedTodos = selectedTask!.todos.map((t) =>
+              t.id === todo.id ? updatedTodo : t
+            );
+            const updatedTask = {
+              ...selectedTask!,
+              todos: updatedTodos,
+            };
+            if (editedTask) {
+              setEditedTask(updatedTask);
+            }
+            onTaskUpdate?.(updatedTask);
+          }}
+          className={`w-16 p-1 border border-gray-200 rounded focus:border-blue-500 focus:outline-none text-gray-700 ${
+            todo.completed ? 'bg-gray-100' : 'bg-white'
+          }`}
+          title="TODO完了に必要な見積もり時間"
+        />
+        <span className="ml-1 mr-2">時間</span>
+        <button
+          onClick={() => handleEstimateHours(todo.id, todo.text)}
+          disabled={isEstimatingHours}
+          className={`p-1 rounded-md text-blue-500 hover:bg-blue-50 transition-colors ${
+            isEstimatingHours && currentEstimatingTodoId === todo.id
+              ? 'opacity-50 cursor-not-allowed'
+              : ''
+          }`}
+          title="AIに工数を見積もってもらう"
+        >
+          <IoCalculator className="w-4 h-4" />
+          <span className="sr-only">AI工数見積</span>
+        </button>
+      </div>
+    );
+  };
+
   // メイン部分のレンダリング関数
   const renderContent = () => {
     if (!selectedTask) {
@@ -683,18 +802,24 @@ export default function TaskDetail({
                       value={editedTask?.title}
                       onChange={handleTitleChange}
                       className="text-xl font-bold text-gray-800 w-full border-b border-gray-300 focus:border-blue-500 focus:outline-none"
+                      placeholder="タスクのタイトルを入力"
+                      aria-label="タスクのタイトル"
                     />
                     <button
                       onClick={() => handleSave('title')}
                       className="ml-2 p-1 text-green-600 hover:text-green-700"
+                      title="保存"
                     >
                       <IoSave className="w-5 h-5" />
+                      <span className="sr-only">保存</span>
                     </button>
                     <button
                       onClick={() => handleCancel('title')}
                       className="p-1 text-red-600 hover:text-red-700"
+                      title="キャンセル"
                     >
                       <IoClose className="w-5 h-5" />
+                      <span className="sr-only">キャンセル</span>
                     </button>
                   </div>
                 </div>
@@ -724,8 +849,10 @@ export default function TaskDetail({
                       <button
                         onClick={() => toggleEdit('title')}
                         className="ml-2 opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-gray-600"
+                        title="タイトルを編集"
                       >
                         <IoPencil className="w-4 h-4" />
+                        <span className="sr-only">タイトルを編集</span>
                       </button>
                     )}
                   </div>
@@ -811,6 +938,7 @@ export default function TaskDetail({
                       )
                     )
                   )}`}
+                  aria-label="タスク開始日"
                 />
               ) : (
                 <span className="text-gray-500">未設定</span>
@@ -885,14 +1013,18 @@ export default function TaskDetail({
                 <button
                   onClick={() => handleSave('description')}
                   className="p-1 text-green-600 hover:text-green-700"
+                  title="保存"
                 >
                   <IoSave className="w-5 h-5" />
+                  <span className="sr-only">保存</span>
                 </button>
                 <button
                   onClick={() => handleCancel('description')}
                   className="p-1 text-red-600 hover:text-red-700"
+                  title="キャンセル"
                 >
                   <IoClose className="w-5 h-5" />
+                  <span className="sr-only">キャンセル</span>
                 </button>
               </div>
             </div>
@@ -912,8 +1044,10 @@ export default function TaskDetail({
               <button
                 onClick={() => toggleEdit('description')}
                 className="p-1 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-gray-600 self-start"
+                title="説明を編集"
               >
                 <IoPencil className="w-4 h-4" />
+                <span className="sr-only">説明を編集</span>
               </button>
             </div>
           )}
@@ -927,8 +1061,52 @@ export default function TaskDetail({
           </div>
           <div className="space-y-2">
             {selectedTask.todos.length === 0 ? (
-              <div className="text-center py-6 text-gray-400 italic bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                このタスクにはまだTODOがありません。下部のフォームから追加してください。
+              <div>
+                <div className="text-center py-6 text-gray-400 italic bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                  このタスクにはまだTODOがありません。
+                  <br />
+                  または下部のフォームから手動で追加してください。
+                  {!suggestedTodos.length && !isSuggestingTodos && (
+                    <div className="flex justify-center mt-3 mb-1">
+                      <button
+                        onClick={async () => {
+                          try {
+                            setIsSuggestingTodos(true);
+                            // TODOが0件の場合の専用リクエスト
+                            const suggestions = await suggestTodos(
+                              selectedTask.title,
+                              selectedTask.description,
+                              [] // 空のTODOリストを送信
+                            );
+                            setSuggestedTodos(suggestions);
+                          } catch (error) {
+                            console.error(
+                              'Error getting todo suggestions:',
+                              error
+                            );
+                            setErrorMessage(
+                              error instanceof Error
+                                ? error.message
+                                : 'TODOの提案中にエラーが発生しました。'
+                            );
+                          } finally {
+                            setIsSuggestingTodos(false);
+                          }
+                        }}
+                        disabled={isSuggestingTodos}
+                        className={`p-2 rounded-md flex items-center gap-2 ${
+                          isSuggestingTodos
+                            ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                            : 'bg-yellow-500 text-white hover:bg-yellow-600'
+                        }`}
+                        title="AIにTODOを自動生成してもらう"
+                      >
+                        <IoBulb className="w-5 h-5" />
+                        <span>AIタスク自動生成</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               selectedTask.todos.map((todo) => (
@@ -944,11 +1122,19 @@ export default function TaskDetail({
                 >
                   <div className="p-2 border-r border-gray-200 flex items-center justify-center">
                     <input
+                      id={generateInputId('todo-status', todo.id)}
                       type="checkbox"
                       checked={todo.completed}
                       onChange={() => handleTodoStatusChange(todo.id)}
                       className="w-5 h-5"
+                      aria-label={`${todo.text}の完了状態`}
                     />
+                    <label
+                      htmlFor={generateInputId('todo-status', todo.id)}
+                      className="sr-only"
+                    >
+                      {todo.text}の完了状態
+                    </label>
                   </div>
                   {editState.todos[todo.id] ? (
                     <div
@@ -968,6 +1154,8 @@ export default function TaskDetail({
                               ? 'text-gray-500 bg-gray-100'
                               : 'text-gray-800 bg-white'
                           }`}
+                          placeholder="TODOの内容を入力"
+                          aria-label={`TODO: ${todo.text}`}
                         />
                         <div className="text-xs text-gray-500 mt-1 space-y-1 p-1 rounded flex flex-wrap items-center gap-x-4 gap-y-2">
                           <div className="flex items-center">
@@ -998,6 +1186,7 @@ export default function TaskDetail({
                               className={`p-1 border border-gray-200 rounded focus:border-blue-500 focus:outline-none text-gray-700 ${
                                 todo.completed ? 'bg-gray-100' : 'bg-white'
                               }`}
+                              aria-label={`${todo.text}の開始日`}
                             />
                           </div>
                           <div className="flex items-center">
@@ -1029,8 +1218,25 @@ export default function TaskDetail({
                               className={`w-16 p-1 border border-gray-200 rounded focus:border-blue-500 focus:outline-none text-gray-700 ${
                                 todo.completed ? 'bg-gray-100' : 'bg-white'
                               }`}
+                              title="TODO完了に必要な見積もり時間"
                             />
-                            <span className="ml-1">時間</span>
+                            <span className="ml-1 mr-2">時間</span>
+                            <button
+                              onClick={() =>
+                                handleEstimateHours(todo.id, todo.text)
+                              }
+                              disabled={isEstimatingHours}
+                              className={`p-1 rounded-md text-blue-500 hover:bg-blue-50 transition-colors ${
+                                isEstimatingHours &&
+                                currentEstimatingTodoId === todo.id
+                                  ? 'opacity-50 cursor-not-allowed'
+                                  : ''
+                              }`}
+                              title="AIに工数を見積もってもらう"
+                            >
+                              <IoCalculator className="w-4 h-4" />
+                              <span className="sr-only">AI工数見積</span>
+                            </button>
                           </div>
                           <div className="flex items-center">
                             <span className="mr-1">担当:</span>
@@ -1068,14 +1274,18 @@ export default function TaskDetail({
                         <button
                           onClick={() => handleSave(todo.id, true)}
                           className="p-1 text-green-600 hover:text-green-700"
+                          title="保存"
                         >
                           <IoSave className="w-5 h-5" />
+                          <span className="sr-only">保存</span>
                         </button>
                         <button
                           onClick={() => handleCancel(todo.id, true)}
                           className="p-1 text-red-600 hover:text-red-700"
+                          title="キャンセル"
                         >
                           <IoClose className="w-5 h-5" />
+                          <span className="sr-only">キャンセル</span>
                         </button>
                       </div>
                     </div>
@@ -1099,8 +1309,10 @@ export default function TaskDetail({
                           <button
                             onClick={() => toggleEdit(todo.id, true)}
                             className="ml-2 p-1 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100"
+                            title="TODOを編集"
                           >
                             <IoPencil className="w-4 h-4" />
+                            <span className="sr-only">TODOを編集</span>
                           </button>
                         </div>
                         <div className="text-xs text-gray-500 mt-1 space-y-1 p-1 rounded flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -1132,6 +1344,7 @@ export default function TaskDetail({
                               className={`p-1 border border-gray-200 rounded focus:border-blue-500 focus:outline-none text-gray-700 ${
                                 todo.completed ? 'bg-gray-100' : 'bg-white'
                               }`}
+                              aria-label={`${todo.text}の開始日`}
                             />
                           </div>
                           <div className="flex items-center">
@@ -1163,8 +1376,25 @@ export default function TaskDetail({
                               className={`w-16 p-1 border border-gray-200 rounded focus:border-blue-500 focus:outline-none text-gray-700 ${
                                 todo.completed ? 'bg-gray-100' : 'bg-white'
                               }`}
+                              title="TODO完了に必要な見積もり時間"
                             />
-                            <span className="ml-1">時間</span>
+                            <span className="ml-1 mr-2">時間</span>
+                            <button
+                              onClick={() =>
+                                handleEstimateHours(todo.id, todo.text)
+                              }
+                              disabled={isEstimatingHours}
+                              className={`p-1 flex items-center gap-1 rounded-md text-blue-500 hover:bg-blue-50 transition-colors ${
+                                isEstimatingHours &&
+                                currentEstimatingTodoId === todo.id
+                                  ? 'opacity-50 cursor-not-allowed'
+                                  : ''
+                              }`}
+                              title="AIに工数を見積もってもらう"
+                            >
+                              <IoCalculator className="w-4 h-4" />
+                              <span>AIに工数を見積もってもらう</span>
+                            </button>
                           </div>
                           <div className="flex items-center">
                             <span className="mr-1">担当:</span>
@@ -1202,8 +1432,10 @@ export default function TaskDetail({
                         <button
                           onClick={() => handleDeleteTodo(todo.id)}
                           className="p-1 text-red-500 hover:text-red-600"
+                          title="TODOを削除"
                         >
                           <IoTrash className="w-4 h-4" />
+                          <span className="sr-only">TODOを削除</span>
                         </button>
                       </div>
                     </div>
@@ -1327,27 +1559,22 @@ export default function TaskDetail({
                         handleAddTodo();
                       }
                     }}
+                    aria-label="新しいTODOを追加"
                   />
                   <button
                     onClick={handleAddTodo}
                     className="p-2 text-white bg-blue-500 hover:bg-blue-600 rounded-r-md"
+                    title="TODOを追加"
                   >
                     <IoAdd className="w-5 h-5" />
+                    <span className="sr-only">TODOを追加</span>
                   </button>
                 </div>
-                <button
-                  onClick={async () => {
-                    try {
-                      setIsSuggestingTodos(true);
-                      // TODOが0件の場合は、より多くのTODOを生成するための専用リクエスト
-                      if (selectedTask.todos.length === 0) {
-                        const suggestions = await suggestTodos(
-                          selectedTask.title,
-                          selectedTask.description,
-                          [] // 空のTODOリストを送信
-                        );
-                        setSuggestedTodos(suggestions);
-                      } else {
+                {selectedTask.todos.length > 0 && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        setIsSuggestingTodos(true);
                         // 既存のTODOがある場合は通常の提案
                         const suggestions = await suggestTodos(
                           selectedTask.title,
@@ -1355,37 +1582,31 @@ export default function TaskDetail({
                           selectedTask.todos.map((todo) => todo.text)
                         );
                         setSuggestedTodos(suggestions);
+                      } catch (error) {
+                        console.error('Error getting todo suggestions:', error);
+                        setErrorMessage(
+                          error instanceof Error
+                            ? error.message
+                            : 'TODOの提案中にエラーが発生しました。'
+                        );
+                      } finally {
+                        setIsSuggestingTodos(false);
                       }
-                    } catch (error) {
-                      console.error('Error getting todo suggestions:', error);
-                      setErrorMessage(
-                        error instanceof Error
-                          ? error.message
-                          : 'TODOの提案中にエラーが発生しました。'
-                      );
-                    } finally {
-                      setIsSuggestingTodos(false);
-                    }
-                  }}
-                  disabled={isSuggestingTodos}
-                  className={`ml-2 p-2 rounded-md flex items-center gap-1 ${
-                    isSuggestingTodos
-                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                      : 'bg-yellow-500 text-white hover:bg-yellow-600'
-                  }`}
-                  title={
-                    selectedTask.todos.length === 0
-                      ? 'AIにTODOを自動生成してもらう'
-                      : 'AIにTODO漏れをチェックしてもらう'
-                  }
-                >
-                  <IoBulb className="w-5 h-5" />
-                  <span className="hidden sm:inline">
-                    {selectedTask.todos.length === 0
-                      ? 'AIタスク自動生成'
-                      : 'AIタスク漏れチェック'}
-                  </span>
-                </button>
+                    }}
+                    disabled={isSuggestingTodos}
+                    className={`ml-2 p-2 rounded-md flex items-center gap-1 ${
+                      isSuggestingTodos
+                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                        : 'bg-yellow-500 text-white hover:bg-yellow-600'
+                    }`}
+                    title="AIにTODO漏れをチェックしてもらう"
+                  >
+                    <IoBulb className="w-5 h-5" />
+                    <span className="hidden sm:inline">
+                      AIタスク漏れチェック
+                    </span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1408,6 +1629,58 @@ export default function TaskDetail({
   return (
     <div className="h-full">
       {renderTaskList()}
+
+      {/* 工数見積もりポップアップ */}
+      {estimationResult && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 shadow-xl max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">
+                AI工数見積もり
+              </h3>
+              <button
+                onClick={closeEstimationPopup}
+                className="text-gray-500 hover:text-gray-700"
+                title="閉じる"
+              >
+                <IoClose className="w-5 h-5" />
+                <span className="sr-only">閉じる</span>
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <div className="text-sm text-gray-700 mb-2">見積もり工数:</div>
+              <div className="text-2xl font-bold text-blue-600">
+                {estimationResult.estimatedHours} 時間
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <div className="text-sm text-gray-700 mb-2">見積もり根拠:</div>
+              <div className="bg-gray-50 p-3 rounded-md text-gray-800 text-sm">
+                {estimationResult.reasoning}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={closeEstimationPopup}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                title="キャンセル"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={applyEstimatedHours}
+                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                title="この見積もりを採用"
+              >
+                この見積もりを採用
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* タスク作成フォーム */}
       {isCreatingTask && (
