@@ -262,6 +262,12 @@ export default function TeamManagement() {
     }
   }
 
+  // 日付のフォーマット
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+  }
+
   // 招待状態の日本語表示
   const getInviteStatusLabel = (status: InvitedUser['status']) => {
     switch (status) {
@@ -318,9 +324,6 @@ export default function TeamManagement() {
     return (
       <div className="p-6">
         <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-md overflow-hidden">
-          <div className="px-6 py-5 border-b border-gray-200">
-            <h1 className="text-xl font-semibold text-gray-900">チーム管理</h1>
-          </div>
           
           <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
             <h3 className="text-lg leading-6 font-medium text-gray-900">プロジェクトメンバー</h3>
@@ -351,6 +354,9 @@ export default function TeamManagement() {
                               'bg-green-100 text-green-800'
                             }`}>
                               {getRoleLabel(member.role)}
+                            </span>
+                            <span className="ml-2 text-gray-500">
+                              {formatDate(member.assignedAt)}から参加
                             </span>
                           </div>
                         </div>
