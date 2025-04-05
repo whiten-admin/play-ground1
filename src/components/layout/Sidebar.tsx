@@ -54,6 +54,8 @@ export default function Sidebar({ activeTab, onTabChange, initialCollapsed = fal
     { id: 'todo', label: 'やること', icon: '📝', href: '/' },
     { id: 'tasks', label: 'タスク一覧', icon: '📋', href: '/tasks' },
     { id: 'wbs', label: 'WBS・分析', icon: '📊', href: '/wbs' },
+    { id: 'project-info', label: 'PJ情報', icon: 'ℹ️', href: '/project-info' },
+    { id: 'team-management', label: 'チーム管理', icon: '🧑‍🤝‍🧑', href: '/team-management' },
     { id: 'settings', label: '設定', icon: '⚙️', href: '/settings' },
     { id: 'guide', label: '使い方', icon: '🎓', href: '/guide' },
   ]

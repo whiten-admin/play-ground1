@@ -1,13 +1,13 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Project } from '@/features/projects/types/project'
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
 import { ChevronDownIcon, PlusIcon } from '@heroicons/react/24/outline'
 import ProjectCreateModal from '@/features/projects/components/ProjectCreateModal'
 import ProjectDetailModal from '@/features/projects/components/ProjectDetailModal'
-import { getAllUsers, UserData } from '@/utils/memberUtils'
-import { User } from '@/features/tasks/types/user'
+import { getAllUsers } from '@/utils/memberUtils'
+import { User, UserRole } from '@/features/tasks/types/user'
 
 interface HeaderProps {
   onLogout?: () => void
@@ -62,31 +62,7 @@ export default function Header({ onLogout, user, project }: HeaderProps) {
     return diffDays
   }
 
-  // プロジェクト情報の入力度を計算
-  const calculateCompletionRate = (project: Project): number => {
-    if (!project) return 0
-    
-    const requiredFields = [
-      project.title,
-      project.description,
-      project.purpose,
-      project.startDate,
-      project.endDate,
-      project.methodology,
-      project.phase,
-      project.scale,
-      project.budget,
-      project.client,
-      project.projectManager,
-      project.risks
-    ]
-
-    const filledFields = requiredFields.filter(field => field !== undefined && field !== '')
-    return Math.round((filledFields.length / requiredFields.length) * 100)
-  }
-
   const remainingDays = displayProject?.endDate ? calculateRemainingDays(displayProject.endDate) : null
-  const completionRate = displayProject ? calculateCompletionRate(displayProject) : 0
 
   // ユーザーロールの日本語表示
   const getRoleLabel = (role?: string) => {
@@ -213,143 +189,87 @@ export default function Header({ onLogout, user, project }: HeaderProps) {
                   </span>
                 </div>
               )}
-              
-              <div className="flex items-center gap-3">
-              <button
-                  onClick={openProjectDetailModal}
-                  className="flex items-center gap-2 text-sm border border-gray-200 hover:bg-gray-50 rounded-md px-3 py-1.5 transition-all hover:shadow-sm focus:ring-2 focus:ring-blue-300 focus:outline-none"
-                  title="クリックで詳細を表示"
-                >
-                  <div className="flex flex-col">
-                    <div className="flex items-center mb-0.5">
-                      <span className="text-gray-700 mr-2 font-medium text-xs">情報入力度</span>
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-blue-500">
-                        <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-20 h-2 bg-gray-200 rounded-full mr-2 overflow-hidden shadow-inner">
-                        <div 
-                          className={`h-full rounded-full ${
-                            completionRate < 50 ? 'bg-red-500' : 
-                            completionRate < 80 ? 'bg-yellow-500' : 'bg-green-500'
-                          }`}
-                          style={{ width: `${completionRate}%` }}
-                        />
-                      </div>
-                      <div className="flex items-center">
-                        <span className={`text-xs font-bold ${
-                          completionRate < 50 ? 'text-red-600' : 
-                          completionRate < 80 ? 'text-yellow-600' : 'text-green-600'
-                        }`}>
-                          {completionRate}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </button>
-
-                <button
-                  className="flex items-center gap-2 text-sm border border-gray-200 hover:bg-gray-50 rounded-md px-3 py-1.5 transition-all hover:shadow-sm"
-                >
-                  <div className="flex flex-col">
-                    <div className="flex items-center mb-0.5">
-                      <span className="text-gray-700 mr-2 font-medium text-xs">炎上リスク</span>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-20 h-2 bg-gray-200 rounded-full mr-2 overflow-hidden shadow-inner">
-                        <div 
-                          className="h-full rounded-full bg-red-500"
-                          style={{ width: `50%` }}
-                        />
-                      </div>
-                      <div className="flex items-center">
-                        <span className="text-xs font-bold text-red-600">
-                          50%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              </div>
             </>
           ) : (
-            <div className="text-lg font-bold text-gray-800">
-              プロジェクト新規作成
+            // プロジェクトが1つもない場合
+            <div className="flex items-center">
+              <h1 className="text-lg font-bold text-gray-800">プロジェクト管理</h1>
+              <button
+                onClick={handleCreateProjectButton}
+                className="ml-4 inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+              >
+                <PlusIcon className="h-4 w-4 mr-1" />
+                新規プロジェクト
+              </button>
             </div>
           )}
         </div>
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <button
-              onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
-              className="px-3 py-1 text-sm bg-gray-100 rounded-lg flex items-center gap-1"
-            >
-              <span className="font-medium">{user?.name || 'ユーザー'}</span>
-              {user && (
-                <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800 rounded">
-                  {getRoleLabel(user.role)}
-                </span>
-              )}
-              <ChevronDownIcon className="h-3 w-3 ml-1" />
-            </button>
-            
-            {/* ユーザー切り替えドロップダウン（デモ用） */}
-            {isUserDropdownOpen && (
-              <div className="absolute top-full right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-                <div className="py-1">
-                  <div className="px-3 py-2 text-xs text-gray-500 font-medium">
-                    ユーザー切り替え（デモ用）
+        
+        <div className="flex items-center space-x-2">
+          {user && (
+            <div className="relative">
+              <button 
+                className="flex items-center space-x-2 rounded-full p-1 hover:bg-gray-100 group"
+                onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+              >
+                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shadow">
+                  <span className="text-gray-700 text-sm font-medium">{user.name.charAt(0)}</span>
+                </div>
+                <span className="text-sm text-gray-700 group-hover:text-gray-900 hidden sm:block">{user.name}</span>
+                <ChevronDownIcon className="h-4 w-4 text-gray-500 group-hover:text-gray-700" />
+              </button>
+              
+              {isUserDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
+                  <div className="px-4 py-2 border-b border-gray-100">
+                    <div className="text-sm font-medium text-gray-700">{user.name}</div>
+                    <div className="text-xs text-gray-500">{getRoleLabel(user.role)}</div>
                   </div>
-                  {allUsers.map(dummyUser => (
+                  
+                  {onLogout && (
                     <button
-                      key={dummyUser.id}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between"
+                      className="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       onClick={() => {
                         setIsUserDropdownOpen(false)
-                        // ここで実際のユーザー切り替え処理を実装する
+                        onLogout()
                       }}
                     >
-                      <span>{dummyUser.name}</span>
-                      <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded">
-                        {getRoleLabel(dummyUser.role)}
-                      </span>
+                      ログアウト
                     </button>
-                  ))}
+                  )}
                 </div>
-              </div>
-            )}
-          </div>
-          
-          {onLogout && (
-            <>
-              <button
-                onClick={onLogout}
-                className="px-3 py-1.5 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                ログアウト
-              </button>
-            </>
+              )}
+            </div>
           )}
         </div>
       </div>
       
       {/* プロジェクト作成モーダル */}
-      <ProjectCreateModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onCreateProject={createProject}
-        users={allUsers as any}
-      />
-
+      {isCreateModalOpen && (
+        <ProjectCreateModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onCreateProject={createProject}
+          users={allUsers.map(u => ({
+            id: u.id,
+            name: u.name,
+            role: u.role as UserRole
+          }))}
+        />
+      )}
+      
       {/* プロジェクト詳細モーダル */}
-      {displayProject && (
+      {isProjectDetailModalOpen && displayProject && (
         <ProjectDetailModal
           isOpen={isProjectDetailModalOpen}
           onClose={() => setIsProjectDetailModalOpen(false)}
           project={displayProject}
           onUpdate={handleProjectUpdate}
-          users={allUsers as any}
+          users={allUsers.map(u => ({
+            id: u.id,
+            name: u.name,
+            role: u.role as UserRole
+          }))}
         />
       )}
     </header>
