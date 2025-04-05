@@ -2,7 +2,6 @@
 
 import React from 'react';
 import TaskProgressChart from './TaskProgressChart';
-import TeamPerformanceChart from './TeamPerformanceChart';
 import ProjectStatusSummary from './ProjectStatusSummary';
 import RiskAssessment from './RiskAssessment';
 import TeamWorkloadChart from './TeamWorkloadChart';
@@ -28,12 +27,6 @@ const ProjectAnalysisDashboard: React.FC = () => {
       <div className="bg-white p-4 rounded-lg shadow-sm">
         <h2 className="text-lg font-semibold mb-3">タスク進捗状況</h2>
         <TaskProgressChart />
-      </div>
-      
-      {/* チームパフォーマンスチャート */}
-      <div className="bg-white p-4 rounded-lg shadow-sm">
-        <h2 className="text-lg font-semibold mb-3">チームパフォーマンス</h2>
-        <TeamPerformanceChart />
       </div>
       
       {/* リスク評価 */}
