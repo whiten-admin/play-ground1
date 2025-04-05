@@ -19,6 +19,7 @@ export interface ProjectMember {
   skills?: Skill[]; // スキル情報
   skillDescription?: string; // スキルに関する詳細説明
   skillSheetFile?: string; // スキルシートファイル名
+  workableHours?: number; // 1日あたりの稼働可能時間（設定しない場合はデフォルト値を使用）
 }
 
 // プロジェクトメンバーとユーザー情報を組み合わせたデータ型
@@ -31,6 +32,7 @@ export interface ProjectMemberWithUser {
   skills?: Skill[];
   skillDescription?: string;
   skillSheetFile?: string;
+  workableHours?: number; // 1日あたりの稼働可能時間
   user: {
     id: string;
     name: string;

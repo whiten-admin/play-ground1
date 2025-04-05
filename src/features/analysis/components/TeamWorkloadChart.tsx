@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Task } from '@/features/tasks/types/task';
-import { getProjectMemberName } from '@/utils/memberUtils';
+import { getProjectMemberName, getMemberWorkableHours, setMemberWorkableHours as saveMemberWorkableHours } from '@/utils/memberUtils';
 import { BUSINESS_HOURS } from '@/utils/constants/constants';
 import { addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, format, isWithinInterval, getDay } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -44,6 +44,7 @@ interface MemberWorkload {
   name: string;
   totalHours: number;
   workloadPercentage: number;
+  workableHours: number;
 }
 
 interface UnassignedTodos {
@@ -55,6 +56,10 @@ const TeamWorkloadChart: React.FC<TeamWorkloadChartProps> = ({ tasks }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [showModal, setShowModal] = useState(false);
+  // メンバーごとの稼働時間設定を管理するステート
+  const [memberWorkableHours, setMemberWorkableHoursState] = useState<Record<string, number>>({});
+  // メンバーごとの稼働時間設定を編集するためのステート
+  const [editWorkableHours, setEditWorkableHours] = useState<Record<string, number>>({});
 
   // 期間の開始日と終了日を計算
   const { periodStart, periodEnd, periodLabel } = useMemo(() => {
@@ -118,19 +123,20 @@ const TeamWorkloadChart: React.FC<TeamWorkloadChartProps> = ({ tasks }) => {
       });
     });
     
-    // 1人あたりの1日の稼働時間（デフォルト8時間）
-    const dailyHours = BUSINESS_HOURS.MAX_HOURS;
-    
-    // 期間中の合計稼働可能時間
-    const totalWorkableHours = dailyHours * workableDays;
-    
     // メンバーごとの負荷情報を作成
     const workloads: MemberWorkload[] = Object.entries(memberTodos).map(([memberId, hours]) => {
+      // 各メンバーの1日あたりの稼働可能時間を取得
+      const memberDailyHours = getMemberWorkableHours(memberId);
+      
+      // 期間中の合計稼働可能時間
+      const totalWorkableHours = memberDailyHours * workableDays;
+      
       return {
         memberId,
         name: getProjectMemberName(memberId),
         totalHours: hours,
-        workloadPercentage: Math.round((hours / totalWorkableHours) * 100)
+        workloadPercentage: Math.round((hours / totalWorkableHours) * 100),
+        workableHours: memberDailyHours
       };
     });
     
@@ -140,11 +146,11 @@ const TeamWorkloadChart: React.FC<TeamWorkloadChartProps> = ({ tasks }) => {
 
   // グラフ用のデータを準備
   const chartData = useMemo<ChartData<'bar' | 'line'>>(() => {
-    // 1人あたりの1日の稼働時間
-    const dailyHours = BUSINESS_HOURS.MAX_HOURS;
+    // 標準の1日あたりの稼働時間
+    const defaultDailyHours = BUSINESS_HOURS.MAX_HOURS;
     
-    // 期間中の合計稼働可能時間
-    const totalWorkableHours = dailyHours * workableDays;
+    // 標準の稼働可能時間（メンバー別設定がない場合のデフォルト）
+    const defaultWorkableHours = defaultDailyHours * workableDays;
     
     const labels = memberWorkloads.map(member => member.name);
     
@@ -171,12 +177,22 @@ const TeamWorkloadChart: React.FC<TeamWorkloadChartProps> = ({ tasks }) => {
         },
         {
           type: 'line' as const,
-          label: '稼働可能時間',
-          data: Array(labels.length).fill(totalWorkableHours),
+          label: '稼働可能時間（全員共通）',
+          data: Array(labels.length).fill(defaultWorkableHours),
           borderColor: 'rgba(100, 100, 100, 0.7)',
           borderWidth: 2,
           borderDash: [5, 5],
           pointRadius: 0,
+          fill: false,
+          tension: 0
+        },
+        {
+          type: 'line' as const,
+          label: '稼働可能時間（個人設定）',
+          data: memberWorkloads.map(member => member.workableHours * workableDays),
+          borderColor: 'rgba(54, 162, 235, 0.7)',
+          borderWidth: 2,
+          pointRadius: 3,
           fill: false,
           tension: 0
         }
@@ -283,37 +299,36 @@ const TeamWorkloadChart: React.FC<TeamWorkloadChartProps> = ({ tasks }) => {
     };
   }, [memberWorkloads, workableDays, unassignedTodos.totalHours]);
 
-  // 前の期間へ移動
+  // 前の期間に移動
   const goToPreviousPeriod = () => {
+    const newDate = new Date(currentDate);
     if (viewMode === 'week') {
-      setCurrentDate(addDays(currentDate, -7));
+      newDate.setDate(newDate.getDate() - 7);
     } else {
-      const newDate = new Date(currentDate);
-      newDate.setMonth(currentDate.getMonth() - 1);
-      setCurrentDate(newDate);
+      newDate.setMonth(newDate.getMonth() - 1);
     }
+    setCurrentDate(newDate);
   };
 
-  // 次の期間へ移動
+  // 次の期間に移動
   const goToNextPeriod = () => {
+    const newDate = new Date(currentDate);
     if (viewMode === 'week') {
-      setCurrentDate(addDays(currentDate, 7));
+      newDate.setDate(newDate.getDate() + 7);
     } else {
-      const newDate = new Date(currentDate);
-      newDate.setMonth(currentDate.getMonth() + 1);
-      setCurrentDate(newDate);
+      newDate.setMonth(newDate.getMonth() + 1);
     }
+    setCurrentDate(newDate);
   };
 
-  // 負荷率に基づいた色を返す関数
-  const getWorkloadColor = (percentage: number) => {
-    if (percentage < 70) return 'bg-green-500';
-    if (percentage < 100) return 'bg-yellow-500';
-    return 'bg-red-500';
-  };
-
-  // 負荷分散ボタンのクリックハンドラー
-  const handleBalanceWorkload = () => {
+  // モーダルを開く
+  const openModal = () => {
+    // 現在のメンバーごとの稼働時間設定を編集用にコピー
+    const initialEditValues: Record<string, number> = {};
+    memberWorkloads.forEach(member => {
+      initialEditValues[member.memberId] = member.workableHours;
+    });
+    setEditWorkableHours(initialEditValues);
     setShowModal(true);
   };
 
@@ -322,126 +337,155 @@ const TeamWorkloadChart: React.FC<TeamWorkloadChartProps> = ({ tasks }) => {
     setShowModal(false);
   };
 
+  // 稼働時間設定を保存
+  const saveWorkableHours = () => {
+    // 各メンバーの稼働時間設定を保存
+    Object.entries(editWorkableHours).forEach(([memberId, hours]) => {
+      saveMemberWorkableHours(memberId, hours);
+    });
+    
+    // 状態も更新
+    setMemberWorkableHoursState(editWorkableHours);
+    
+    // モーダルを閉じる
+    closeModal();
+  };
+
+  // 個別メンバーの稼働時間設定を変更するハンドラー
+  const handleWorkableHoursChange = (memberId: string, hours: number) => {
+    setEditWorkableHours(prev => ({
+      ...prev,
+      [memberId]: hours
+    }));
+  };
+
+  const getWorkloadColor = (percentage: number) => {
+    if (percentage < 70) return 'bg-green-600';
+    if (percentage < 100) return 'bg-yellow-500';
+    return 'bg-red-500';
+  };
+
   return (
-    <div>
+    <div className="bg-gray-50 p-4 rounded-lg">
       <div className="flex justify-between items-center mb-4">
-        <div className="flex space-x-2">
-          <button
-            onClick={() => setViewMode('week')}
-            className={`px-3 py-1 text-sm rounded-md ${
-              viewMode === 'week' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
-            }`}
-          >
-            週単位
-          </button>
-          <button
-            onClick={() => setViewMode('month')}
-            className={`px-3 py-1 text-sm rounded-md ${
-              viewMode === 'month' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
-            }`}
-          >
-            月単位
-          </button>
-        </div>
+        <h2 className="text-lg font-semibold text-gray-700">チームリソース状況</h2>
         
         <div className="flex items-center space-x-2">
+          <div className="bg-white rounded-md shadow-sm">
+            <button
+              className={`px-3 py-1 text-sm rounded-l-md ${viewMode === 'week' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700'}`}
+              onClick={() => setViewMode('week')}
+            >
+              週次
+            </button>
+            <button
+              className={`px-3 py-1 text-sm rounded-r-md ${viewMode === 'month' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700'}`}
+              onClick={() => setViewMode('month')}
+            >
+              月次
+            </button>
+          </div>
+          
+          <div className="flex items-center">
+            <button
+              className="p-1 rounded-full hover:bg-gray-200"
+              onClick={goToPreviousPeriod}
+            >
+              ◀
+            </button>
+            <span className="mx-2 text-sm font-medium">{periodLabel}</span>
+            <button
+              className="p-1 rounded-full hover:bg-gray-200"
+              onClick={goToNextPeriod}
+            >
+              ▶
+            </button>
+          </div>
+          
+          {/* 設定アイコン */}
           <button
-            onClick={goToPreviousPeriod}
-            className="p-1 rounded-md hover:bg-gray-100"
+            onClick={openModal}
+            className="p-1.5 text-gray-600 hover:bg-gray-200 rounded-full"
+            title="稼働時間設定"
           >
-            ←
-          </button>
-          <span className="text-sm font-medium">{periodLabel}</span>
-          <button
-            onClick={goToNextPeriod}
-            className="p-1 rounded-md hover:bg-gray-100"
-          >
-            →
+            ⚙️
           </button>
         </div>
       </div>
       
-      {memberWorkloads.length === 0 && unassignedTodos.count === 0 ? (
-        <div className="text-center py-10 text-gray-500">
-          この期間にTODOがありません
+      {/* リソース概要 */}
+      <div className="mb-6">
+        {/* グラフ表示 */}
+        <div className="bg-white p-4 rounded-lg shadow-sm" style={{ height: '300px' }}>
+          <Chart type="bar" data={chartData} options={chartOptions} />
         </div>
-      ) : (
-        <>
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="font-medium text-gray-700">メンバー別負荷</h3>
-            {unassignedTodos.count > 0 && memberWorkloads.length > 0 && (
-              <button 
-                onClick={handleBalanceWorkload}
-                className="px-3 py-1 text-xs bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                負荷分散
-              </button>
-            )}
-          </div>
-          {memberWorkloads.length === 0 ? (
-            <div className="text-center py-5 text-gray-500 mb-4">
-              この期間にアサインされたTODOがありません
+        
+        {/* 負荷率サマリー */}
+        <div className="mt-3 flex flex-wrap gap-2 justify-center">
+          {memberWorkloads.map((workload) => (
+            <div key={workload.memberId} className="flex items-center bg-white px-3 py-1.5 rounded-md shadow-sm">
+              <span className="font-medium text-sm">{workload.name}:</span>
+              <span className="ml-1 text-sm text-gray-600">{workload.totalHours}時間</span>
+              <span className={`ml-2 px-2 py-0.5 text-xs rounded-full font-medium bg-opacity-80 text-white ${getWorkloadColor(workload.workloadPercentage)}`}>
+                {workload.workloadPercentage}%
+              </span>
             </div>
-          ) : (
-            <div className="mb-6">
-              {/* グラフ表示 */}
-              <div className="bg-white p-4 rounded-lg shadow-sm" style={{ height: '300px' }}>
-                <Chart type="bar" data={chartData} options={chartOptions} />
-              </div>
-              
-              {/* 負荷率サマリー */}
-              <div className="mt-3 flex flex-wrap gap-2 justify-center">
-                {memberWorkloads.map((workload) => (
-                  <div key={workload.memberId} className="flex items-center bg-white px-3 py-1.5 rounded-md shadow-sm">
-                    <span className="font-medium text-sm">{workload.name}:</span>
-                    <span className="ml-1 text-sm text-gray-600">{workload.totalHours}時間</span>
-                    <span className={`ml-2 px-2 py-0.5 text-xs rounded-full font-medium bg-opacity-80 text-white ${getWorkloadColor(workload.workloadPercentage)}`}>
-                      {workload.workloadPercentage}%
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {/* 未アサインTODO情報 */}
-          <div className="bg-orange-50 p-4 rounded-lg shadow-sm mt-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-medium text-gray-700">未アサインTODO</h3>
-              <div className="flex items-center space-x-4">
-                <div className="text-sm">
-                  <span className="font-medium">{unassignedTodos.count}</span> 件
-                  <span className="mx-1">・</span>
-                  <span className="font-medium">{unassignedTodos.totalHours}</span> 時間
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* 開発中モーダル */}
+          ))}
+        </div>
+      </div>
+      
+      {/* 稼働時間設定モーダル */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-            <div className="text-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-              <h3 className="text-lg font-semibold mt-2">機能開発中</h3>
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">メンバー稼働時間設定</h3>
+              <button 
+                onClick={closeModal}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
             </div>
-            <p className="text-gray-600 mb-6">
-              負荷分散機能は現在開発中です。この機能は未アサインのTODOをチームメンバーの空きリソースに応じて最適に分散するもので、近日中にリリース予定です。
-            </p>
-            <div className="flex justify-center">
+            
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-2">
+                各メンバーの1日あたりの稼働可能時間を設定します。設定しない場合はデフォルト値（{BUSINESS_HOURS.MAX_HOURS}時間）が適用されます。
+              </p>
+            </div>
+            
+            <div className="space-y-4">
+              {memberWorkloads.map((member) => (
+                <div key={member.memberId} className="flex items-center justify-between">
+                  <div className="text-sm font-medium">{member.name}</div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="number"
+                      min="0"
+                      max="24"
+                      step="0.5"
+                      value={editWorkableHours[member.memberId] || member.workableHours}
+                      onChange={(e) => handleWorkableHoursChange(member.memberId, parseFloat(e.target.value))}
+                      className="border border-gray-300 rounded px-2 py-1 w-16 text-center"
+                    />
+                    <span className="text-sm text-gray-600">時間/日</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="mt-6 flex justify-end space-x-3">
               <button
                 onClick={closeModal}
-                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded hover:bg-gray-100"
               >
-                閉じる
+                キャンセル
+              </button>
+              <button
+                onClick={saveWorkableHours}
+                className="px-4 py-2 text-sm text-white bg-blue-500 rounded hover:bg-blue-600"
+              >
+                保存
               </button>
             </div>
           </div>
