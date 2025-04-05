@@ -9,6 +9,9 @@ import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import { useAuth } from '@/services/auth/hooks/useAuth'
 import Auth from '@/services/auth/components/Auth'
+import ReactMarkdown from 'react-markdown'
+import rehypeRaw from 'rehype-raw'
+import { IoPencil, IoEye } from 'react-icons/io5'
 
 // 情報入力項目の定義
 interface CompletionItem {
@@ -20,7 +23,7 @@ export default function ProjectInfo() {
   const { currentProject } = useProjectContext()
   const { isAuthenticated, user, login, logout } = useAuth()
   const [activeTab, setActiveTab] = useState('project-info')
-  const [viewMode, setViewMode] = useState<'original' | 'summary'>('summary')
+  const [viewMode, setViewMode] = useState<'edit' | 'preview'>('edit')
   const [originalText, setOriginalText] = useState('')
   const [summaryText, setSummaryText] = useState('')
   const [isFormatting, setIsFormatting] = useState(false)
@@ -141,13 +144,8 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
     `.trim()
   }
 
-  // 原文テキストの変更を処理
-  const handleOriginalTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setOriginalText(e.target.value)
-  }
-
-  // 要約テキストの変更を処理
-  const handleSummaryTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  // プロジェクト情報テキストの変更を処理
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setSummaryText(e.target.value)
   }
 
@@ -161,7 +159,7 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
     try {
       const formattedText = await formatProjectInfo(originalText)
       setSummaryText(formattedText)
-      setViewMode('summary')
+      setViewMode('edit')
     } catch (error) {
       setFormatError(error instanceof Error ? error.message : '整形中にエラーが発生しました')
     } finally {
@@ -186,7 +184,7 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
       
       setOriginalText(fileText)
       setSummaryText(projectInfo)
-      setViewMode('summary')
+      setViewMode('edit')
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : 'ファイル処理中にエラーが発生しました')
     } finally {
@@ -213,7 +211,7 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
     if (!currentProject) {
       return (
         <div className="p-6">
-          <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-md p-6">
+          <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-md p-6">
             <h1 className="text-xl font-semibold text-gray-900 mb-4">PJ情報</h1>
             <p className="text-gray-500">プロジェクトが選択されていません。</p>
           </div>
@@ -223,10 +221,10 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
 
     return (
       <div className="p-6">
-        <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-md p-6">
+        <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-md p-6">
           <h1 className="text-xl font-semibold text-gray-900 mb-4">PJ情報</h1>
           
-          <div className="flex justify-between items-center mb-4">
+          {/* <div className="flex justify-between items-center mb-4">
             <div className="flex space-x-2">
               <input
                 type="file"
@@ -256,91 +254,104 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
                 </button>
               </div>
             </div>
-            
-            <div className="flex space-x-2">
-              <button
-                type="button"
-                className={`px-3 py-1.5 text-xs font-medium rounded-md ${
-                  viewMode === 'summary'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-                onClick={() => setViewMode('summary')}
-              >
-                要約テキスト
-              </button>
-              <button
-                type="button"
-                className={`px-3 py-1.5 text-xs font-medium rounded-md ${
-                  viewMode === 'original'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-                onClick={() => setViewMode('original')}
-              >
-                原文テキスト
-              </button>
-            </div>
-          </div>
+          </div> */}
 
-          {uploadError && (
+          {/* {uploadError && (
             <div className="mb-4 bg-red-50 p-3 rounded-lg">
               <p className="text-xs text-red-700">
                 <span className="font-medium">エラー:</span> {uploadError}
               </p>
             </div>
-          )}
+          )} */}
 
-          <div className="space-y-4">
-            <div className="flex justify-between items-center mb-2">
-              <h4 className="text-sm font-medium text-gray-700">
-                {viewMode === 'original' ? 'プロジェクト情報（原文）' : 'プロジェクト情報（要約）'}
-              </h4>
-              {viewMode === 'original' && (
-                <button
-                  type="button"
-                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-1"
-                  onClick={handleFormatText}
-                  disabled={isFormatting}
-                >
-                  {isFormatting ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      要約取り込み中...
-                    </>
-                  ) : (
-                    <>要約取り込み</>
-                  )}
-                </button>
+          <div className="flex flex-col md:flex-row gap-6">
+            {/* 左側: プロジェクト情報 */}
+            <div className="flex-1 space-y-4">
+              <div className="flex justify-between items-center mb-2">
+                <h4 className="text-sm font-medium text-gray-700">
+                  プロジェクト概要
+                </h4>
+                <div className='flex space-x-2'>
+                {/* {viewMode === 'edit' && (
+                  <button
+                    type="button"
+                    className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-1"
+                    onClick={handleFormatText}
+                    disabled={isFormatting}
+                  >
+                    {isFormatting ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        要約取り込み中...
+                      </>
+                    ) : (
+                      <>要約取り込み</>
+                    )}
+                  </button>
+                )} */}
+                <div className="flex space-x-2">
+                    <button
+                        type="button"
+                        className={`px-3 py-1.5 text-xs font-medium rounded-md flex items-center gap-1 ${
+                        viewMode === 'edit'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                        onClick={() => setViewMode('edit')}
+                    >
+                        <IoPencil className="w-3.5 h-3.5" />
+                        編集モード
+                    </button>
+                    <button
+                        type="button"
+                        className={`px-3 py-1.5 text-xs font-medium rounded-md flex items-center gap-1 ${
+                        viewMode === 'preview'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                        onClick={() => setViewMode('preview')}
+                    >
+                        <IoEye className="w-3.5 h-3.5" />
+                        プレビュー
+                    </button>
+                    </div>
+                    </div>
+              </div>
+              
+              {viewMode === 'edit' ? (
+                <div className="">
+                  <textarea
+                    className="w-full border border-gray-200 rounded-lg text-sm text-gray-700 font-mono p-4 focus:outline-gray-300"
+                    rows={24}
+                    value={summaryText}
+                    onChange={handleTextChange}
+                    placeholder="プロジェクト情報を入力してください（マークダウン記法が使えます）"
+                  />
+                </div>
+              ) : (
+                <div className="bg-white border border-gray-100 p-6 rounded-lg prose prose-sm max-w-none">
+                  <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+                    {summaryText}
+                  </ReactMarkdown>
+                </div>
+              )}
+              
+              {formatError && (
+                <div className="bg-red-50 p-3 rounded-lg">
+                  <p className="text-xs text-red-700">
+                    <span className="font-medium">エラー:</span> {formatError}
+                  </p>
+                </div>
               )}
             </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <textarea
-                className="w-full bg-gray-50 text-sm text-gray-700 font-mono border-none focus:ring-0 focus:outline-none"
-                rows={20}
-                value={viewMode === 'original' ? originalText : summaryText}
-                onChange={viewMode === 'original' ? handleOriginalTextChange : handleSummaryTextChange}
-                placeholder={
-                  viewMode === 'original'
-                    ? "プロジェクト情報を入力してください。ランダムなフォーマットでも、要約取り込みボタンを押すとAIが整形します。"
-                    : "要約されたプロジェクト情報が表示されます。"
-                }
-              />
-            </div>
-            {formatError && (
-              <div className="bg-red-50 p-3 rounded-lg">
-                <p className="text-xs text-red-700">
-                  <span className="font-medium">エラー:</span> {formatError}
-                </p>
-              </div>
-            )}
             
-            {viewMode === 'summary' && (
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
-                <div className="mb-3">
+            {/* 右側: 情報入力度 */}
+            <div className="md:w-60 space-y-4">
+              <div className="bg-white border border-gray-200 rounded-lg p-4 sticky top-4">
+                <div className="mb-4">
                   <div className="flex justify-between items-center mb-1">
                     <h5 className="text-sm font-medium text-gray-700">情報入力度</h5>
                     <span className={`text-sm font-medium ${
@@ -360,7 +371,7 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2">
                   {completionItems.map((item, index) => (
                     <div key={index} className="flex items-center gap-1.5">
                       <span className={`w-1.5 h-1.5 rounded-full ${item.isComplete ? 'bg-green-500' : 'bg-red-500'}`}></span>
@@ -371,16 +382,6 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
                   ))}
                 </div>
               </div>
-            )}
-            
-            <div className="bg-blue-50 p-3 rounded-lg">
-              <p className="text-xs text-blue-700">
-                <span className="font-medium">ヒント:</span> 
-                {viewMode === 'original'
-                  ? "ランダムなフォーマットのテキストを入力し、「要約取り込み」ボタンをクリックするとAIが整形します。"
-                  : "要約されたテキストを確認・編集できます。必要に応じて修正してください。"
-                }
-              </p>
             </div>
           </div>
         </div>
