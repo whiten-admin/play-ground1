@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { User } from '@/features/tasks/types/user'
 import { ProjectMember, ProjectMemberRole } from '@/features/projects/types/projectMember'
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
-import { FiPlus, FiX, FiUserCheck, FiEdit2, FiTrash2 } from 'react-icons/fi'
+import { FiPlus, FiX, FiUserCheck, FiEdit2, FiTrash2, FiMail, FiUsers } from 'react-icons/fi'
 import { getAllUsers } from '@/utils/memberUtils'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
@@ -13,6 +13,15 @@ import Auth from '@/services/auth/components/Auth'
 
 interface MemberWithUser extends ProjectMember {
   user: User
+}
+
+// 招待済みユーザーの型定義
+interface InvitedUser {
+  id: string;
+  email: string;
+  role: ProjectMemberRole;
+  status: 'pending' | 'accepted' | 'declined';
+  invitedAt: Date;
 }
 
 export default function TeamManagement() {
@@ -26,6 +35,16 @@ export default function TeamManagement() {
   const [selectedRole, setSelectedRole] = useState<ProjectMemberRole>('member')
   const [selectedUserId, setSelectedUserId] = useState<string>('')
   const [allUsers, setAllUsers] = useState<User[]>([])
+  
+  // 招待関連の状態
+  const [addUserTab, setAddUserTab] = useState<'existing' | 'invite'>('existing')
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [isInviting, setIsInviting] = useState(false)
+  const [inviteSuccess, setInviteSuccess] = useState(false)
+  const [invitedUsers, setInvitedUsers] = useState<InvitedUser[]>([])
+  
+  // メール形式検証用の正規表現
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
   // ユーザーリストを初期化
   useEffect(() => {
@@ -69,6 +88,9 @@ export default function TeamManagement() {
   const openAddModal = () => {
     setSelectedUserId('')
     setSelectedRole('member')
+    setInviteEmail('')
+    setInviteSuccess(false)
+    setAddUserTab('existing')
     setShowAddModal(true)
   }
 
@@ -81,11 +103,55 @@ export default function TeamManagement() {
 
   // メンバーを追加
   const handleAddMember = () => {
-    if (!selectedUserId || !currentProject) return
+    if (addUserTab === 'existing') {
+      if (!selectedUserId || !currentProject) return
+      
+      assignUserToProject(currentProject.id, selectedUserId, selectedRole)
+      setShowAddModal(false)
+      updateMemberList()
+    } else {
+      handleInviteUser()
+    }
+  }
+
+  // 外部ユーザーを招待
+  const handleInviteUser = () => {
+    if (!inviteEmail || !emailRegex.test(inviteEmail) || !currentProject) return
     
-    assignUserToProject(currentProject.id, selectedUserId, selectedRole)
-    setShowAddModal(false)
-    updateMemberList()
+    setIsInviting(true)
+    
+    // 招待メール送信のシミュレーション
+    setTimeout(() => {
+      // 招待レコードを作成
+      const newInvite: InvitedUser = {
+        id: `invite-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        email: inviteEmail,
+        role: selectedRole,
+        status: 'pending',
+        invitedAt: new Date()
+      }
+      
+      // 招待リストに追加
+      setInvitedUsers(prev => [...prev, newInvite])
+      
+      // 状態をリセット
+      setInviteSuccess(true)
+      setIsInviting(false)
+      
+      // 3秒後にメッセージを非表示
+      setTimeout(() => {
+        setShowAddModal(false)
+        setInviteSuccess(false)
+        setInviteEmail('')
+      }, 3000)
+    }, 1500) // 1.5秒間の遅延でメール送信をシミュレート
+  }
+
+  // 招待をキャンセル
+  const handleCancelInvite = (inviteId: string) => {
+    if (confirm('この招待をキャンセルしますか？')) {
+      setInvitedUsers(prev => prev.filter(invite => invite.id !== inviteId))
+    }
   }
 
   // メンバー情報を更新
@@ -116,6 +182,20 @@ export default function TeamManagement() {
         return 'メンバー'
       default:
         return role
+    }
+  }
+
+  // 招待状態の日本語表示
+  const getInviteStatusLabel = (status: InvitedUser['status']) => {
+    switch (status) {
+      case 'pending':
+        return '招待中'
+      case 'accepted':
+        return '承諾済み'
+      case 'declined':
+        return '辞退'
+      default:
+        return status
     }
   }
 
@@ -219,6 +299,49 @@ export default function TeamManagement() {
             )}
           </div>
 
+          {/* 招待済みユーザー一覧 */}
+          {invitedUsers.length > 0 && (
+            <div className="border-t border-gray-200">
+              <div className="px-4 py-3 sm:px-6">
+                <h3 className="text-md leading-6 font-medium text-gray-700">招待中ユーザー</h3>
+              </div>
+              <ul className="divide-y divide-gray-200">
+                {invitedUsers.map((invite) => (
+                  <li key={invite.id} className="px-4 py-3 sm:px-6 flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10 bg-yellow-50 rounded-full flex items-center justify-center">
+                        <FiMail className="h-5 w-5 text-yellow-600" />
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">{invite.email}</div>
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                            invite.role === 'manager' ? 'bg-blue-100 text-blue-800' :
+                            'bg-green-100 text-green-800'
+                          }`}>
+                            {getRoleLabel(invite.role)}
+                          </span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                            {getInviteStatusLabel(invite.status)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => handleCancelInvite(invite.id)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <FiX className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* メンバー追加モーダル */}
           {showAddModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -233,27 +356,89 @@ export default function TeamManagement() {
                     <FiX className="h-5 w-5" />
                   </button>
                 </div>
-                <div className="mb-4">
-                  <label htmlFor="userId" className="block text-sm font-medium text-gray-700">ユーザー</label>
-                  <select
-                    id="userId"
-                    value={selectedUserId}
-                    onChange={(e) => setSelectedUserId(e.target.value)}
-                    className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                
+                {/* タブ切り替え */}
+                <div className="flex border-b border-gray-200 mb-4">
+                  <button
+                    type="button"
+                    className={`px-4 py-2 text-sm font-medium ${
+                      addUserTab === 'existing'
+                        ? 'text-blue-600 border-b-2 border-blue-500'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                    onClick={() => setAddUserTab('existing')}
                   >
-                    <option value="">選択してください</option>
-                    {allUsers
-                      .filter(user => !members.some(m => m.userId === user.id))
-                      .map(user => (
-                        <option key={user.id} value={user.id}>{user.name}</option>
-                      ))
-                    }
-                  </select>
+                    <div className="flex items-center">
+                      <FiUsers className="mr-2" />
+                      既存ユーザー
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    className={`px-4 py-2 text-sm font-medium ${
+                      addUserTab === 'invite'
+                        ? 'text-blue-600 border-b-2 border-blue-500'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                    onClick={() => setAddUserTab('invite')}
+                  >
+                    <div className="flex items-center">
+                      <FiMail className="mr-2" />
+                      外部招待
+                    </div>
+                  </button>
                 </div>
+                
+                {addUserTab === 'existing' ? (
+                  // 既存ユーザー追加フォーム
+                  <div className="mb-4">
+                    <label htmlFor="userId" className="block text-sm font-medium text-gray-700">ユーザー</label>
+                    <select
+                      id="userId"
+                      value={selectedUserId}
+                      onChange={(e) => setSelectedUserId(e.target.value)}
+                      className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    >
+                      <option value="">選択してください</option>
+                      {allUsers
+                        .filter(user => !members.some(m => m.userId === user.id))
+                        .map(user => (
+                          <option key={user.id} value={user.id}>{user.name}</option>
+                        ))
+                      }
+                    </select>
+                  </div>
+                ) : (
+                  // 外部ユーザー招待フォーム
+                  <div className="mb-4">
+                    <label htmlFor="inviteEmail" className="block text-sm font-medium text-gray-700">メールアドレス</label>
+                    <div className="mt-1">
+                      <input
+                        type="email"
+                        id="inviteEmail"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        placeholder="example@example.com"
+                      />
+                      {inviteEmail && !emailRegex.test(inviteEmail) && (
+                        <p className="mt-1 text-xs text-red-600">有効なメールアドレスを入力してください</p>
+                      )}
+                    </div>
+                    
+                    {inviteSuccess && (
+                      <div className="mt-3 p-2 bg-green-50 text-green-700 text-sm rounded-md">
+                        招待メールを送信しました。ユーザーの応答を待っています。
+                      </div>
+                    )}
+                  </div>
+                )}
+                
                 <div className="mb-4">
                   <label htmlFor="role" className="block text-sm font-medium text-gray-700">ロール</label>
                   <RoleSelect value={selectedRole} onChange={setSelectedRole} />
                 </div>
+                
                 <div className="flex justify-end space-x-3">
                   <button
                     type="button"
@@ -265,10 +450,22 @@ export default function TeamManagement() {
                   <button
                     type="button"
                     onClick={handleAddMember}
-                    disabled={!selectedUserId}
+                    disabled={(addUserTab === 'existing' && !selectedUserId) || 
+                             (addUserTab === 'invite' && (!inviteEmail || !emailRegex.test(inviteEmail))) || 
+                             isInviting}
                     className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
                   >
-                    追加
+                    {isInviting ? (
+                      <span className="flex items-center">
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        招待中...
+                      </span>
+                    ) : (
+                      addUserTab === 'existing' ? '追加' : '招待を送信'
+                    )}
                   </button>
                 </div>
               </div>
