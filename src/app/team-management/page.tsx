@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { User } from '@/features/tasks/types/user'
 import { ProjectMember, ProjectMemberRole, Skill, SkillLevel } from '@/features/projects/types/projectMember'
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
-import { FiPlus, FiX, FiUserCheck, FiEdit2, FiTrash2, FiMail, FiUsers, FiUpload, FiFile, FiCheckCircle, FiInfo, FiTag } from 'react-icons/fi'
+import { FiPlus, FiX, FiUserCheck, FiEdit2, FiTrash2, FiMail, FiUsers, FiUpload, FiFile, FiCheckCircle, FiInfo, FiTag, FiGitBranch, FiArrowRight, FiChevronDown, FiChevronRight, FiMove } from 'react-icons/fi'
 import { getAllUsers } from '@/utils/memberUtils'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
@@ -14,6 +14,7 @@ import Auth from '@/services/auth/components/Auth'
 interface MemberWithUser extends ProjectMember {
   user: User
   tags?: string[]
+  position?: { x: number, y: number } // メンバーカードの位置座標
 }
 
 // 招待済みユーザーの型定義
@@ -86,10 +87,13 @@ export default function TeamManagement() {
       .map(member => {
         const user = allUsers.find(u => u.id === member.userId)
         if (!user) return null
+        const existingMember = members.find(m => m.id === member.id);
         return {
           ...member,
-          user
-        }
+          user,
+          // 位置情報を保持（既存のものがあれば）
+          position: existingMember?.position
+        } as MemberWithUser;
       })
       .filter((member): member is MemberWithUser => member !== null)
     
@@ -332,6 +336,210 @@ export default function TeamManagement() {
     role: user.role,
   } : null;
 
+  const [teamViewMode, setTeamViewMode] = useState<'list' | 'structure'>('list')
+  const [expandedMembers, setExpandedMembers] = useState<Set<string>>(new Set())
+  const [cardContainerSize, setCardContainerSize] = useState({ width: 3000, height: 2000 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [draggedMemberId, setDraggedMemberId] = useState<string | null>(null)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  const [scale, setScale] = useState(1)
+  const containerRef = useRef<HTMLDivElement>(null)
+  
+  // チーム構成ビューに切り替えた時の処理
+  useEffect(() => {
+    if (teamViewMode === 'structure') {
+      console.log('チーム構成タブに切り替えました');
+      // メンバーに初期位置を強制的に設定（遅延実行で確実に処理する）
+      setTimeout(initializeMemberPositions, 100);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamViewMode]);
+
+  // メンバーリスト更新後、チーム構成表示中なら位置を初期化
+  useEffect(() => {
+    if (teamViewMode === 'structure' && members.length > 0) {
+      console.log('メンバーリストが更新されました（件数:', members.length, '）');
+      console.log('位置情報あり:', members.filter(m => !!m.position).length, '件');
+      
+      if (members.every(m => !m.position)) {
+        console.log('すべてのメンバーに位置情報がありません。初期位置を設定します...');
+        setTimeout(initializeMemberPositions, 100);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [members.length]);
+
+  // メンバーの初期位置を設定する関数
+  const initializeMemberPositions = () => {
+    if (members.length === 0) return;
+    
+    console.log('初期位置を設定します...');
+    
+    const updatedMembers = [...members];
+    const centerX = cardContainerSize.width / 2;
+    const centerY = cardContainerSize.height / 2;
+    const radius = Math.min(200, 400 / (1 + members.length * 0.1));
+    
+    // すべてのメンバーに位置を設定（強制的に再配置）
+    updatedMembers.forEach((member, index) => {
+      const angle = (index / members.length) * 2 * Math.PI;
+      const x = centerX + radius * Math.cos(angle);
+      const y = centerY + radius * Math.sin(angle);
+      
+      updatedMembers[index] = {
+        ...updatedMembers[index],
+        position: { x, y }
+      };
+    });
+    
+    console.log('更新後のメンバー:', updatedMembers);
+    setMembers([...updatedMembers] as MemberWithUser[]);
+  };
+
+  // カードのドラッグ開始
+  const handleCardDragStart = (e: React.MouseEvent, memberId: string) => {
+    e.preventDefault()
+    
+    const memberCard = members.find(m => m.id === memberId)
+    if (!memberCard || !memberCard.position) return
+    
+    const rect = (e.target as HTMLElement).getBoundingClientRect()
+    setDragOffset({
+      x: (e.clientX - rect.left) / scale,
+      y: (e.clientY - rect.top) / scale
+    })
+    
+    setIsDragging(true)
+    setDraggedMemberId(memberId)
+  }
+  
+  // カードのドラッグ中
+  const handleCardDrag = (e: React.MouseEvent) => {
+    if (!isDragging || !draggedMemberId || !containerRef.current) return
+    
+    const containerRect = containerRef.current.getBoundingClientRect()
+    const newX = (e.clientX - containerRect.left) / scale - dragOffset.x
+    const newY = (e.clientY - containerRect.top) / scale - dragOffset.y
+    
+    // 画面外にドラッグできないように制限
+    const x = Math.max(0, Math.min(cardContainerSize.width - 250, newX))
+    const y = Math.max(0, Math.min(cardContainerSize.height - 150, newY))
+    
+    const updatedMembers = members.map(member => {
+      if (member.id === draggedMemberId) {
+        // 既存のpositionプロパティがない場合に備えて新しいオブジェクトを作成
+        return {
+          ...member,
+          position: { x, y }
+        }
+      }
+      return member
+    })
+    
+    setMembers([...updatedMembers] as MemberWithUser[])
+  }
+  
+  // カードのドラッグ終了
+  const handleCardDragEnd = () => {
+    setIsDragging(false)
+    setDraggedMemberId(null)
+  }
+  
+  // ズームイン
+  const handleZoomIn = () => {
+    setScale(prev => Math.min(prev + 0.1, 2))
+  }
+  
+  // ズームアウト
+  const handleZoomOut = () => {
+    setScale(prev => Math.max(prev - 0.1, 0.5))
+  }
+  
+  // ズームリセット
+  const handleZoomReset = () => {
+    setScale(1)
+  }
+  
+  // カード作成
+  const renderMemberCard = (member: MemberWithUser) => {
+    console.log('Rendering card for member:', member.user.name, 'position:', member.position);
+    
+    // position がないメンバーに初期位置を設定
+    if (!member.position) {
+      console.log('No position for member:', member.user.name, '- initializing default position');
+      return null;
+    }
+    
+    const bgColorClass = member.role === 'manager' 
+      ? 'bg-blue-50 border-blue-200' 
+      : (member.tags?.includes('リーダー') 
+        ? 'bg-green-50 border-green-200' 
+        : 'bg-white border-gray-200')
+    
+    const textColorClass = member.role === 'manager' 
+      ? 'text-blue-800' 
+      : (member.tags?.includes('リーダー') 
+        ? 'text-green-800' 
+        : 'text-gray-800')
+    
+    return (
+      <div 
+        key={member.id}
+        style={{
+          position: 'absolute',
+          left: `${member.position.x}px`,
+          top: `${member.position.y}px`,
+          zIndex: isDragging && draggedMemberId === member.id ? 10 : 1,
+          width: '220px',
+        }}
+        className={`shadow-md rounded-md p-3 ${bgColorClass} border cursor-move transition-shadow hover:shadow-lg`}
+        onMouseDown={(e) => handleCardDragStart(e, member.id)}
+      >
+        <div className="flex items-center mb-2">
+          <div className="flex-shrink-0 h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+            <FiUserCheck className="h-4 w-4 text-gray-600" />
+          </div>
+          <div className={`text-sm font-medium ${textColorClass} truncate flex-1`}>
+            {member.user.name}
+          </div>
+          <div className="flex-shrink-0">
+            <FiMove className="h-4 w-4 text-gray-400" />
+          </div>
+        </div>
+        
+        <div className="flex flex-wrap gap-1 mb-2">
+          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs ${
+            member.role === 'manager' 
+              ? 'bg-blue-100 text-blue-800' 
+              : 'bg-green-100 text-green-800'
+          }`}>
+            {getRoleLabel(member.role)}
+          </span>
+          
+          {member.tags && member.tags.length > 0 && member.tags.map((tag, idx) => (
+            <span 
+              key={idx} 
+              className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-purple-100 text-purple-800"
+            >
+              <FiTag className="mr-1 h-3 w-3" />
+              {tag}
+            </span>
+          ))}
+        </div>
+        
+        {member.skills && member.skills.length > 0 && (
+          <div className="text-xs text-gray-500 mt-1 truncate">
+            <span className="font-medium">スキル: </span>
+            {member.skills.slice(0, 2).map((skill, idx) => (
+              <span key={idx} className="mr-1">{skill.name}{idx < Math.min(member.skills?.length || 0, 2) - 1 ? ', ' : ''}</span>
+            ))}
+            {(member.skills.length > 2) && <span>...</span>}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   if (!isAuthenticated) {
     return <Auth onLogin={login} />;
   }
@@ -363,160 +571,221 @@ export default function TeamManagement() {
               メンバー追加
             </button>
           </div>
-          <div className="border-t border-gray-200">
-            {members.length > 0 ? (
-              <ul className="divide-y divide-gray-200">
-                {members.map((member) => (
-                  <li key={member.id} className="px-4 py-3 sm:px-6 flex flex-col">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center">
-                          <FiUserCheck className="h-5 w-5 text-gray-600" />
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{member.user.name}</div>
-                          <div className="text-xs text-gray-500 flex items-center">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                              member.role === 'manager' ? 'bg-blue-100 text-blue-800' :
-                              'bg-green-100 text-green-800'
-                            }`}>
-                              {getRoleLabel(member.role)}
-                            </span>
-                            <span className="ml-2 text-gray-500">
-                              {formatDate(member.assignedAt)}から参加
-                            </span>
-                            {/* タグ表示（アサイン日と同列） */}
-                            <div className="ml-2 flex flex-wrap items-center gap-1">
-                              {member.tags && member.tags.length > 0 ? (
-                                <>
-                                  {member.tags.map((tag, idx) => (
-                                    <span 
-                                      key={idx} 
-                                      className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-purple-100 text-purple-800 cursor-pointer hover:bg-purple-200"
-                                      onClick={() => {
-                                        // タグ編集用のモーダルではなく、直接編集
-                                        const newTags = [...(member.tags || [])];
-                                        newTags.splice(idx, 1);
-                                        
+          
+          {/* タブ切り替え */}
+          <div className="border-t border-b border-gray-200">
+            <div className="flex">
+              <button
+                type="button"
+                className={`px-4 py-3 text-sm font-medium ${
+                  teamViewMode === 'list'
+                    ? 'text-blue-600 border-b-2 border-blue-500'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+                onClick={() => setTeamViewMode('list')}
+              >
+                <div className="flex items-center">
+                  <FiUsers className="mr-2" />
+                  メンバー一覧
+                </div>
+              </button>
+              <button
+                type="button"
+                className={`px-4 py-3 text-sm font-medium ${
+                  teamViewMode === 'structure'
+                    ? 'text-blue-600 border-b-2 border-blue-500'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+                onClick={() => setTeamViewMode('structure')}
+              >
+                <div className="flex items-center">
+                  <FiGitBranch className="mr-2" />
+                  チーム構成
+                </div>
+              </button>
+            </div>
+          </div>
+          
+          {/* メンバー一覧表示 */}
+          {teamViewMode === 'list' ? (
+            <div>
+              {members.length > 0 ? (
+                <ul className="divide-y divide-gray-200">
+                  {members.map((member) => (
+                    <li key={member.id} className="px-4 py-3 sm:px-6 flex flex-col">
+                      {/* メンバー情報表示（既存コード） */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center">
+                            <FiUserCheck className="h-5 w-5 text-gray-600" />
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">{member.user.name}</div>
+                            <div className="text-xs text-gray-500 flex items-center">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                member.role === 'manager' ? 'bg-blue-100 text-blue-800' :
+                                'bg-green-100 text-green-800'
+                              }`}>
+                                {getRoleLabel(member.role)}
+                              </span>
+                              <span className="ml-2 text-gray-500">
+                                {formatDate(member.assignedAt)}から参加
+                              </span>
+                              {/* タグ表示（アサイン日と同列） */}
+                              <div className="ml-2 flex flex-wrap items-center gap-1">
+                                {member.tags && member.tags.length > 0 ? (
+                                  <>
+                                    {member.tags.map((tag, idx) => (
+                                      <span 
+                                        key={idx} 
+                                        className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-purple-100 text-purple-800 cursor-pointer hover:bg-purple-200"
+                                        onClick={() => {
+                                          // タグ編集用のモーダルではなく、直接編集
+                                          const newTags = [...(member.tags || [])];
+                                          newTags.splice(idx, 1);
+                                          
+                                          const updatedMembers = members.map(m => {
+                                            if (m.id === member.id) {
+                                              return { ...m, tags: newTags };
+                                            }
+                                            return m;
+                                          });
+                                          
+                                          setMembers(updatedMembers as MemberWithUser[]);
+                                        }}
+                                      >
+                                        <FiTag className="mr-1 h-3 w-3" />
+                                        {tag}
+                                        <FiX className="ml-1 h-3 w-3" />
+                                      </span>
+                                    ))}
+                                  </>
+                                ) : null}
+                                {/* タグ追加ボタン */}
+                                <button
+                                  onClick={() => {
+                                    // インラインでタグを追加するための簡易的なプロンプト
+                                    const newTag = prompt('新しいタグを入力してください');
+                                    if (newTag && newTag.trim()) {
+                                      const currentTags = [...(member.tags || [])];
+                                      // 重複チェック
+                                      if (!currentTags.includes(newTag.trim())) {
                                         const updatedMembers = members.map(m => {
                                           if (m.id === member.id) {
-                                            return { ...m, tags: newTags };
+                                            return { 
+                                              ...m, 
+                                              tags: [...currentTags, newTag.trim()] 
+                                            };
                                           }
                                           return m;
                                         });
                                         
                                         setMembers(updatedMembers as MemberWithUser[]);
-                                      }}
-                                    >
-                                      <FiTag className="mr-1 h-3 w-3" />
-                                      {tag}
-                                      <FiX className="ml-1 h-3 w-3" />
-                                    </span>
-                                  ))}
-                                </>
-                              ) : null}
-                              {/* タグ追加ボタン */}
-                              <button
-                                onClick={() => {
-                                  // インラインでタグを追加するための簡易的なプロンプト
-                                  const newTag = prompt('新しいタグを入力してください');
-                                  if (newTag && newTag.trim()) {
-                                    const currentTags = [...(member.tags || [])];
-                                    // 重複チェック
-                                    if (!currentTags.includes(newTag.trim())) {
-                                      const updatedMembers = members.map(m => {
-                                        if (m.id === member.id) {
-                                          return { 
-                                            ...m, 
-                                            tags: [...currentTags, newTag.trim()] 
-                                          };
-                                        }
-                                        return m;
-                                      });
-                                      
-                                      setMembers(updatedMembers as MemberWithUser[]);
+                                      }
                                     }
-                                  }
-                                }}
-                                className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
-                              >
-                                <FiPlus className="h-3 w-3" />
-                                <span className="ml-1">タグ追加</span>
-                              </button>
+                                  }}
+                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
+                                >
+                                  <FiPlus className="h-3 w-3" />
+                                  <span className="ml-1">タグ追加</span>
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex space-x-2">
-                        <button
-                          type="button"
-                          onClick={() => openSkillModal(member)}
-                          className="text-gray-500 hover:text-gray-700"
-                          title="スキル情報を編集"
-                        >
-                          <FiFile className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(member)}
-                          className="text-gray-500 hover:text-gray-700"
-                          title="メンバー情報を編集"
-                        >
-                          <FiEdit2 className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveMember(member.userId)}
-                          className="text-red-500 hover:text-red-700"
-                          title="メンバーを削除"
-                        >
-                          <FiTrash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                    
-                    {/* スキル情報の表示 */}
-                    {member.skills && member.skills.length > 0 && (
-                      <div className="mt-2 ml-14">
-                        <div className="flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
-                          <span className="font-medium">スキル: </span>
-                          {member.skills.map((skill, index) => (
-                            <span 
-                              key={index} 
-                              className="px-2 py-0.5 bg-gray-100 rounded-full flex items-center"
-                              title={`${skill.years ? `${skill.years}年の経験` : ''}`}
-                            >
-                              {skill.name}
-                              <span className="ml-1 text-xs px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-full">
-                                {getSkillLevelLabel(skill.level)}
-                              </span>
-                            </span>
-                          ))}
+                        <div className="flex space-x-2">
                           <button
                             type="button"
-                            onClick={() => openSkillDetailModal(member)}
-                            className="ml-1 text-blue-500 hover:text-blue-700 underline text-xs"
+                            onClick={() => openSkillModal(member)}
+                            className="text-gray-500 hover:text-gray-700"
+                            title="スキル情報を編集"
                           >
-                            詳細を見る
+                            <FiFile className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(member)}
+                            className="text-gray-500 hover:text-gray-700"
+                            title="メンバー情報を編集"
+                          >
+                            <FiEdit2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMember(member.userId)}
+                            className="text-red-500 hover:text-red-700"
+                            title="メンバーを削除"
+                          >
+                            <FiTrash2 className="h-4 w-4" />
                           </button>
                         </div>
-                        {member.skillSheetFile && (
-                          <div className="mt-1 text-xs text-gray-500 flex items-center">
-                            <FiFile className="mr-1 h-3 w-3" />
-                            スキルシート: {member.skillSheetFile}
-                          </div>
-                        )}
                       </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="px-4 py-5 sm:px-6 text-center text-sm text-gray-500">
-                まだメンバーがいません
+                      
+                      {/* スキル情報の表示 */}
+                      {member.skills && member.skills.length > 0 && (
+                        <div className="mt-2 ml-14">
+                          <div className="flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
+                            <span className="font-medium">スキル: </span>
+                            {member.skills.map((skill, index) => (
+                              <span 
+                                key={index} 
+                                className="px-2 py-0.5 bg-gray-100 rounded-full flex items-center"
+                                title={`${skill.years ? `${skill.years}年の経験` : ''}`}
+                              >
+                                {skill.name}
+                                <span className="ml-1 text-xs px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-full">
+                                  {getSkillLevelLabel(skill.level)}
+                                </span>
+                              </span>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => openSkillDetailModal(member)}
+                              className="ml-1 text-blue-500 hover:text-blue-700 underline text-xs"
+                            >
+                              詳細を見る
+                            </button>
+                          </div>
+                          {member.skillSheetFile && (
+                            <div className="mt-1 text-xs text-gray-500 flex items-center">
+                              <FiFile className="mr-1 h-3 w-3" />
+                              スキルシート: {member.skillSheetFile}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="px-4 py-5 sm:px-6 text-center text-sm text-gray-500">
+                  まだメンバーがいません
+                </div>
+              )}
+            </div>
+          ) : (
+            /* チーム構成表示 */
+            <div className="px-4 py-5 sm:px-6">
+              <div className="mb-6 bg-yellow-50 text-yellow-800 p-4 rounded-md">
+                <div className="flex items-start">
+                  <FiInfo className="h-5 w-5 mr-2 mt-0.5" />
+                  <div>
+                    <p className="font-medium mb-1">この機能は現在開発中です</p>
+                    <p className="text-sm">チーム構成の視覚的な管理機能は現在開発中です。もうしばらくお待ちください。</p>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
+              
+              <div className="flex flex-col items-center justify-center py-12 bg-gray-50 border border-gray-200 rounded-lg">
+                <FiGitBranch className="h-16 w-16 text-gray-300 mb-4" />
+                <h3 className="text-lg font-medium text-gray-700 mb-1">チーム構成表示</h3>
+                <p className="text-sm text-gray-500 text-center max-w-md">
+                  ここではプロジェクトメンバーの組織構造や役割を視覚的に確認・編集できるようになります。<br/>
+                  現在鋭意開発中です。
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* 招待済みユーザー一覧 */}
           {invitedUsers.length > 0 && (
