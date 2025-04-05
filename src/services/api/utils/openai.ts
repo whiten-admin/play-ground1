@@ -53,18 +53,10 @@ export async function suggestTodos(taskTitle: string, taskDescription: string, c
   }
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      temperature: 0.7,
-      max_tokens: 500,
-      messages: [
-        {
-          role: "system",
-          content: "タスクの内容から抜け漏れているTODOを提案し、JSONフォーマットで返してください。"
-        },
-        {
-          role: "user",
-          content: `タスク「${taskTitle}」の説明：${taskDescription}\n現在のTODO：${currentTodos.join(', ')}\n\n追加で必要なTODOを2つまで提案してください。以下のJSONフォーマットで回答してください：\n\n{
+    // TODOが0件の場合と、既存のTODOがある場合でプロンプトを変える
+    const isNewTask = currentTodos.length === 0;
+    const promptContent = isNewTask
+      ? `タスク「${taskTitle}」の説明：${taskDescription}\n\nこのタスクを完了するために必要なTODOを洗い出して提案してください。タスクの内容に基づいて、論理的な順序で実施すべきことを８個以内でリストアップしてください。以下のJSONフォーマットで回答してください：\n\n{
   "suggestions": [
     {
       "text": "TODOの内容",
@@ -72,6 +64,29 @@ export async function suggestTodos(taskTitle: string, taskDescription: string, c
     }
   ]
 }`
+      : `タスク「${taskTitle}」の説明：${taskDescription}\n現在のTODO：${currentTodos.join(', ')}\n\n追加で必要なTODOを2つまで提案してください。以下のJSONフォーマットで回答してください：\n\n{
+  "suggestions": [
+    {
+      "text": "TODOの内容",
+      "estimatedHours": 1.5
+    }
+  ]
+}`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      temperature: 0.7,
+      max_tokens: 500,
+      messages: [
+        {
+          role: "system",
+          content: isNewTask 
+            ? "タスクの内容から必要なTODOを漏れなく洗い出し、JSONフォーマットで返してください。"
+            : "タスクの内容から抜け漏れているTODOを提案し、JSONフォーマットで返してください。"
+        },
+        {
+          role: "user",
+          content: promptContent
         }
       ],
       response_format: { type: "json_object" }
