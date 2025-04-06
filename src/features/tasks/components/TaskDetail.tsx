@@ -91,6 +91,13 @@ const getDueDateStyle = (date: Date | number) => {
 // チェックボックス用のIDを生成するヘルパー関数
 const generateInputId = (prefix: string, id: string) => `${prefix}-${id}`;
 
+// 全角数字を半角数字に変換する関数を追加
+const toHalfWidth = (str: string): string => {
+  return str.replace(/[０-９]/g, (s) => {
+    return String.fromCharCode(s.charCodeAt(0) - 0xfee0);
+  });
+};
+
 export default function TaskDetail({
   selectedTask,
   selectedTodoId,
@@ -281,7 +288,15 @@ export default function TaskDetail({
       const updatedTodos = editedTask.todos.map((todo) =>
         todo.id === todoId ? { ...todo, text: newText } : todo
       );
-      setEditedTask({ ...editedTask, todos: updatedTodos });
+      const updatedTask = {
+        ...editedTask,
+        todos: updatedTodos,
+      };
+      setEditedTask(updatedTask);
+      // リアルタイムでUI更新するために、親コンポーネントに変更を通知
+      if (onTaskUpdate) {
+        onTaskUpdate(updatedTask);
+      }
     }
   };
 
@@ -712,39 +727,127 @@ export default function TaskDetail({
     setCurrentEstimatingTodoId(null);
   };
 
-  // 見積もり工数の入力欄を修正
+  // 型安全なrenderEstimatedHoursInput関数
   const renderEstimatedHoursInput = (todo: Todo, isEditing: boolean) => {
+    // selectedTaskがnullの場合は処理しない
+    if (!selectedTask) return null;
+
     return (
       <div className="flex items-center">
         <span className="mr-2">見積もり工数:</span>
-        <input
-          type="number"
-          min="0"
-          step="0.5"
-          value={todo.estimatedHours}
-          onChange={(e) => {
-            const newHours = parseFloat(e.target.value) || 0;
-            const updatedTodo = {
-              ...todo,
-              estimatedHours: newHours,
-            };
-            const updatedTodos = selectedTask!.todos.map((t) =>
-              t.id === todo.id ? updatedTodo : t
-            );
-            const updatedTask = {
-              ...selectedTask!,
-              todos: updatedTodos,
-            };
-            if (editedTask) {
-              setEditedTask(updatedTask);
-            }
-            onTaskUpdate?.(updatedTask);
-          }}
-          className={`w-16 p-1 border border-gray-200 rounded focus:border-blue-500 focus:outline-none text-gray-700 ${
-            todo.completed ? 'bg-gray-100' : 'bg-white'
-          }`}
-          title="TODO完了に必要な見積もり時間"
-        />
+        <div className="relative">
+          <input
+            type="text"
+            inputMode="decimal"
+            className={`w-16 p-1 border border-gray-200 rounded focus:border-blue-500 focus:outline-none text-gray-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+              todo.completed ? 'bg-gray-100' : 'bg-white'
+            }`}
+            value={todo.estimatedHours}
+            min="0"
+            step="0.5"
+            pattern="[0-9]*\.?[0-9]*"
+            onChange={(e) => {
+              // 入力値が空の場合は処理しない
+              if (e.target.value === '') return;
+
+              // 全角数字を半角に変換
+              const halfWidthValue = toHalfWidth(e.target.value);
+
+              // 数値以外の文字を許可しない
+              if (!/^[0-9]*\.?[0-9]*$/.test(halfWidthValue)) return;
+
+              // 数値に変換（適切にエラーハンドリング）
+              const newHours = parseFloat(halfWidthValue);
+
+              // 有効な数値の場合のみ更新
+              if (!isNaN(newHours)) {
+                const updatedTodo = {
+                  ...todo,
+                  estimatedHours: newHours,
+                };
+                const updatedTodos = selectedTask.todos.map((t) =>
+                  t.id === todo.id ? updatedTodo : t
+                );
+                const updatedTask: Task = {
+                  ...selectedTask,
+                  todos: updatedTodos,
+                };
+                if (editedTask) {
+                  setEditedTask(updatedTask);
+                }
+                onTaskUpdate?.(updatedTask);
+              }
+            }}
+            title="TODO完了に必要な見積もり時間"
+            style={{ height: '28px' }}
+          />
+          <div className="absolute inset-y-0 right-0 flex flex-col h-full">
+            <button
+              type="button"
+              className="h-1/2 px-1 bg-gray-100 border-l border-b border-gray-200 hover:bg-gray-200 text-gray-700 rounded-tr flex items-center justify-center"
+              onClick={() => {
+                const currentValue = todo.estimatedHours || 0;
+                const newValue = currentValue + 0.5;
+
+                const updatedTodo = {
+                  ...todo,
+                  estimatedHours: newValue,
+                };
+                const updatedTodos = selectedTask.todos.map((t) =>
+                  t.id === todo.id ? updatedTodo : t
+                );
+                const updatedTask: Task = {
+                  ...selectedTask,
+                  todos: updatedTodos,
+                };
+                if (editedTask) {
+                  setEditedTask(updatedTask);
+                }
+                onTaskUpdate?.(updatedTask);
+              }}
+            >
+              <span className="sr-only">増やす</span>
+              <span
+                className="block"
+                style={{ fontSize: '8px', lineHeight: '1' }}
+              >
+                ▲
+              </span>
+            </button>
+            <button
+              type="button"
+              className="h-1/2 px-1 bg-gray-100 border-l border-gray-200 hover:bg-gray-200 text-gray-700 rounded-br flex items-center justify-center"
+              onClick={() => {
+                const currentValue = todo.estimatedHours || 0;
+                const newValue = Math.max(0, currentValue - 0.5);
+
+                const updatedTodo = {
+                  ...todo,
+                  estimatedHours: newValue,
+                };
+                const updatedTodos = selectedTask.todos.map((t) =>
+                  t.id === todo.id ? updatedTodo : t
+                );
+                const updatedTask: Task = {
+                  ...selectedTask,
+                  todos: updatedTodos,
+                };
+                if (editedTask) {
+                  setEditedTask(updatedTask);
+                }
+                onTaskUpdate?.(updatedTask);
+              }}
+            >
+              <span className="sr-only">減らす</span>
+              <span
+                className="block"
+                style={{ fontSize: '8px', lineHeight: '1' }}
+              >
+                ▼
+              </span>
+            </button>
+          </div>
+        </div>
         <span className="ml-1 mr-2">時間</span>
         <button
           onClick={() => handleEstimateHours(todo.id, todo.text)}
@@ -1191,52 +1294,9 @@ export default function TaskDetail({
                           </div>
                           <div className="flex items-center">
                             <span className="mr-2">見積もり工数:</span>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.5"
-                              value={todo.estimatedHours}
-                              onChange={(e) => {
-                                const newHours =
-                                  parseFloat(e.target.value) || 0;
-                                const updatedTodo = {
-                                  ...todo,
-                                  estimatedHours: newHours,
-                                };
-                                const updatedTodos = selectedTask.todos.map(
-                                  (t) => (t.id === todo.id ? updatedTodo : t)
-                                );
-                                const updatedTask = {
-                                  ...selectedTask,
-                                  todos: updatedTodos,
-                                };
-                                if (editedTask) {
-                                  setEditedTask(updatedTask);
-                                }
-                                onTaskUpdate?.(updatedTask);
-                              }}
-                              className={`w-16 p-1 border border-gray-200 rounded focus:border-blue-500 focus:outline-none text-gray-700 ${
-                                todo.completed ? 'bg-gray-100' : 'bg-white'
-                              }`}
-                              title="TODO完了に必要な見積もり時間"
-                            />
-                            <span className="ml-1 mr-2">時間</span>
-                            <button
-                              onClick={() =>
-                                handleEstimateHours(todo.id, todo.text)
-                              }
-                              disabled={isEstimatingHours}
-                              className={`p-1 rounded-md text-blue-500 hover:bg-blue-50 transition-colors ${
-                                isEstimatingHours &&
-                                currentEstimatingTodoId === todo.id
-                                  ? 'opacity-50 cursor-not-allowed'
-                                  : ''
-                              }`}
-                              title="AIに工数を見積もってもらう"
-                            >
-                              <IoCalculator className="w-4 h-4" />
-                              <span className="sr-only">AI工数見積</span>
-                            </button>
+                            <div className="flex items-center">
+                              {renderEstimatedHoursInput(todo, true)}
+                            </div>
                           </div>
                           <div className="flex items-center">
                             <span className="mr-1">担当:</span>
@@ -1349,52 +1409,9 @@ export default function TaskDetail({
                           </div>
                           <div className="flex items-center">
                             <span className="mr-2">見積もり工数:</span>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.5"
-                              value={todo.estimatedHours}
-                              onChange={(e) => {
-                                const newHours =
-                                  parseFloat(e.target.value) || 0;
-                                const updatedTodo = {
-                                  ...todo,
-                                  estimatedHours: newHours,
-                                };
-                                const updatedTodos = selectedTask.todos.map(
-                                  (t) => (t.id === todo.id ? updatedTodo : t)
-                                );
-                                const updatedTask = {
-                                  ...selectedTask,
-                                  todos: updatedTodos,
-                                };
-                                if (editedTask) {
-                                  setEditedTask(updatedTask);
-                                }
-                                onTaskUpdate?.(updatedTask);
-                              }}
-                              className={`w-16 p-1 border border-gray-200 rounded focus:border-blue-500 focus:outline-none text-gray-700 ${
-                                todo.completed ? 'bg-gray-100' : 'bg-white'
-                              }`}
-                              title="TODO完了に必要な見積もり時間"
-                            />
-                            <span className="ml-1 mr-2">時間</span>
-                            <button
-                              onClick={() =>
-                                handleEstimateHours(todo.id, todo.text)
-                              }
-                              disabled={isEstimatingHours}
-                              className={`p-1 flex items-center gap-1 rounded-md text-blue-500 hover:bg-blue-50 transition-colors ${
-                                isEstimatingHours &&
-                                currentEstimatingTodoId === todo.id
-                                  ? 'opacity-50 cursor-not-allowed'
-                                  : ''
-                              }`}
-                              title="AIに工数を見積もってもらう"
-                            >
-                              <IoCalculator className="w-4 h-4" />
-                              <span>AIに工数を見積もってもらう</span>
-                            </button>
+                            <div className="flex items-center">
+                              {renderEstimatedHoursInput(todo, false)}
+                            </div>
                           </div>
                           <div className="flex items-center">
                             <span className="mr-1">担当:</span>
