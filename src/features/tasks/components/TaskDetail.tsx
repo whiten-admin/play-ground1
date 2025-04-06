@@ -330,6 +330,7 @@ export default function TaskDetail({
       estimatedHours: 1,
       actualHours: 0,
       assigneeId: '',
+      memo: '', // メモフィールドを空で初期化
     };
 
     const updatedTodos = [...editedTask.todos, newTodo];
@@ -523,6 +524,7 @@ export default function TaskDetail({
       estimatedHours: 1,
       actualHours: 0,
       assigneeId: '',
+      memo: '', // メモフィールドを空で初期化
     };
 
     setNewTaskTodos([...newTaskTodos, newTodo]);
@@ -589,6 +591,7 @@ export default function TaskDetail({
       estimatedHours: suggestion.estimatedHours,
       actualHours: 0,
       assigneeId: '',
+      memo: '', // メモフィールドを空で初期化
     };
 
     const updatedTodos = [...newTaskTodos, newTodo];
@@ -642,6 +645,7 @@ export default function TaskDetail({
         estimatedHours: 1,
         actualHours: 0,
         assigneeId: '',
+        memo: '',
       },
       {
         id: `todo-${Date.now()}-2`,
@@ -667,6 +671,7 @@ export default function TaskDetail({
         estimatedHours: 1,
         actualHours: 0,
         assigneeId: '',
+        memo: '',
       },
     ];
   };
@@ -1260,6 +1265,34 @@ export default function TaskDetail({
                           placeholder="TODOの内容を入力"
                           aria-label={`TODO: ${todo.text}`}
                         />
+                        <textarea
+                          value={todo.memo || ''}
+                          onChange={(e) => {
+                            const updatedTodo = {
+                              ...todo,
+                              memo: e.target.value,
+                            };
+                            const updatedTodos = selectedTask.todos.map((t) =>
+                              t.id === todo.id ? updatedTodo : t
+                            );
+                            const updatedTask = {
+                              ...selectedTask,
+                              todos: updatedTodos,
+                            };
+                            if (editedTask) {
+                              setEditedTask(updatedTask);
+                            }
+                            onTaskUpdate?.(updatedTask);
+                          }}
+                          className={`w-full border border-gray-200 rounded p-2 text-sm focus:border-blue-500 focus:outline-none mb-2 ${
+                            todo.completed
+                              ? 'text-gray-500 bg-gray-100'
+                              : 'text-gray-600 bg-white'
+                          }`}
+                          placeholder="メモを入力（進捗状況や補足情報など）"
+                          rows={2}
+                          aria-label={`${todo.text}のメモ`}
+                        />
                         <div className="text-xs text-gray-500 mt-1 space-y-1 p-1 rounded flex flex-wrap items-center gap-x-4 gap-y-2">
                           <div className="flex items-center">
                             <span className="mr-2">着手予定日:</span>
@@ -1375,6 +1408,11 @@ export default function TaskDetail({
                             <span className="sr-only">TODOを編集</span>
                           </button>
                         </div>
+                        {todo.memo && (
+                          <div className="mt-1 mb-2 text-sm text-gray-600 bg-gray-50 p-2 rounded border-l-2 border-blue-300">
+                            {todo.memo}
+                          </div>
+                        )}
                         <div className="text-xs text-gray-500 mt-1 space-y-1 p-1 rounded flex flex-wrap items-center gap-x-4 gap-y-2">
                           <div className="flex items-center">
                             <span className="mr-2">着手予定日:</span>
@@ -1512,6 +1550,7 @@ export default function TaskDetail({
                               estimatedHours: suggestion.estimatedHours,
                               actualHours: 0,
                               assigneeId: '',
+                              memo: '', // メモフィールドを空で初期化
                             };
 
                             const updatedTodos = [...editedTask.todos, newTodo];
