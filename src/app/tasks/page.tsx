@@ -200,6 +200,20 @@ export default function TasksPage() {
     ? filteredTasks.find(task => task.id === selectedTaskId) || null 
     : null;
 
+  // AIタスク提案からタスクを追加する処理
+  const handleAddAiTask = (newTask: Task) => {
+    // プロジェクトIDを設定
+    if (currentProject) {
+      newTask.projectId = currentProject.id;
+    }
+    
+    // TaskContextのaddTask関数を呼び出し
+    addTask(newTask);
+    
+    // 必要に応じて他の更新処理を行う
+    // ここは実装によって異なる可能性があります
+  };
+
   if (!isAuthenticated) {
     return <Auth onLogin={login} />;
   }
@@ -236,7 +250,7 @@ export default function TasksPage() {
             <div className="bg-white rounded-lg shadow">
               {showAiSuggestions && (
                 <div className="border-b">
-                  <AiTaskSuggestions onAddTask={addTask} />
+                  <AiTaskSuggestions onAddTask={handleAddAiTask} />
                 </div>
               )}
               

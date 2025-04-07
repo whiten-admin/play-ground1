@@ -18,12 +18,16 @@ export const AiTaskSuggestions = ({ onAddTask }: AiTaskSuggestionsProps) => {
   const [suggestions, setSuggestions] = useState<AITaskSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [addedTasks, setAddedTasks] = useState<Record<string, boolean>>({});
+  const [showSuccess, setShowSuccess] = useState<string | null>(null);
 
   const handleGenerateSuggestions = async () => {
     if (!currentProject) return;
     
     setIsLoading(true);
     setError(null);
+    setAddedTasks({});
+    setShowSuccess(null);
     
     try {
       // 現在のタスクのタイトルを抽出
@@ -63,7 +67,27 @@ export const AiTaskSuggestions = ({ onAddTask }: AiTaskSuggestionsProps) => {
       projectId: currentProject.id
     };
     
-    onAddTask(newTask);
+    try {
+      // タスクを追加
+      onAddTask(newTask);
+      
+      // 追加済みとして記録
+      setAddedTasks(prev => ({
+        ...prev,
+        [suggestion.id]: true
+      }));
+      
+      // 成功メッセージを表示
+      setShowSuccess(suggestion.title);
+      
+      // 3秒後に成功メッセージを消す
+      setTimeout(() => {
+        setShowSuccess(null);
+      }, 3000);
+    } catch (err) {
+      console.error('タスクの追加に失敗しました:', err);
+      setError('タスクの追加に失敗しました。もう一度お試しください。');
+    }
   };
 
   if (suggestions.length === 0 && !isLoading && !error) {
@@ -113,6 +137,12 @@ export const AiTaskSuggestions = ({ onAddTask }: AiTaskSuggestionsProps) => {
             </button>
           </div>
           
+          {showSuccess && (
+            <div className="bg-green-50 border-l-4 border-green-500 p-3 mb-4 animate-fade-in">
+              <p className="text-green-700 text-sm">「{showSuccess}」タスクを追加しました！</p>
+            </div>
+          )}
+          
           <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
             {suggestions.map((suggestion) => (
               <div key={suggestion.id} className="border rounded-lg p-3 bg-blue-50">
@@ -120,9 +150,14 @@ export const AiTaskSuggestions = ({ onAddTask }: AiTaskSuggestionsProps) => {
                   <h4 className="font-medium text-blue-800">{suggestion.title}</h4>
                   <button
                     onClick={() => handleAddToProject(suggestion)}
-                    className="text-xs bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded"
+                    disabled={addedTasks[suggestion.id]}
+                    className={`text-xs py-1 px-2 rounded ${
+                      addedTasks[suggestion.id]
+                        ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                        : 'bg-blue-500 hover:bg-blue-600 text-white'
+                    }`}
                   >
-                    追加
+                    {addedTasks[suggestion.id] ? '追加済み' : '追加'}
                   </button>
                 </div>
                 <p className="text-sm text-gray-700 mt-1">{suggestion.description}</p>
