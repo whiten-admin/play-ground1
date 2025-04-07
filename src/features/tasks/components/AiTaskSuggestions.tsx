@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { AITaskSuggestion } from '../types/aiTask';
+import { AITaskSuggestion, AITodoSuggestion } from '../types/aiTask';
 import { v4 as uuidv4 } from 'uuid';
 import { Task } from '../types/task';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 import { useTaskContext } from '@/features/tasks/contexts/TaskContext';
-import { suggestProjectTasks } from '@/services/api/utils/openai';
+import { suggestProjectTasks, suggestTaskTodos } from '@/services/api/utils/openai';
 
 interface AiTaskSuggestionsProps {
   onAddTask: (task: Task) => void;
@@ -20,6 +20,7 @@ export const AiTaskSuggestions = ({ onAddTask }: AiTaskSuggestionsProps) => {
   const [error, setError] = useState<string | null>(null);
   const [addedTasks, setAddedTasks] = useState<Record<string, boolean>>({});
   const [showSuccess, setShowSuccess] = useState<string | null>(null);
+  const [loadingTodos, setLoadingTodos] = useState<Record<string, boolean>>({});
 
   const handleGenerateSuggestions = async () => {
     if (!currentProject) return;
@@ -43,7 +44,8 @@ export const AiTaskSuggestions = ({ onAddTask }: AiTaskSuggestionsProps) => {
       // 取得した提案にIDを追加
       const suggestionsWithIds = aiSuggestions.map((suggestion: any) => ({
         ...suggestion,
-        id: uuidv4()
+        id: uuidv4(),
+        showTodos: false
       }));
       
       setSuggestions(suggestionsWithIds);
@@ -55,21 +57,103 @@ export const AiTaskSuggestions = ({ onAddTask }: AiTaskSuggestionsProps) => {
     }
   };
 
+  const handleShowTodos = async (suggestion: AITaskSuggestion) => {
+    // すでにTODOがある場合は表示トグル
+    if (suggestion.todos && suggestion.todos.length > 0) {
+      setSuggestions(prev => 
+        prev.map(s => 
+          s.id === suggestion.id 
+            ? { ...s, showTodos: !s.showTodos } 
+            : s
+        )
+      );
+      return;
+    }
+
+    // TODOをロード中に設定
+    setLoadingTodos(prev => ({ ...prev, [suggestion.id]: true }));
+    setError(null);
+
+    try {
+      // TODOの提案を取得
+      const todoResponse = await suggestTaskTodos({
+        title: suggestion.title,
+        description: suggestion.description
+      });
+
+      // TODOにIDを付与
+      const todosWithIds = todoResponse.todos.map((todo: {
+        title: string;
+        description: string;
+        estimatedHours: number;
+      }) => ({
+        ...todo,
+        id: uuidv4()
+      }));
+
+      // 提案に追加
+      setSuggestions(prev => 
+        prev.map(s => 
+          s.id === suggestion.id 
+            ? { 
+                ...s, 
+                todos: todosWithIds, 
+                totalEstimatedHours: todoResponse.totalEstimatedHours,
+                showTodos: true 
+              } 
+            : s
+        )
+      );
+    } catch (err: any) {
+      setError(`TODOの生成に失敗しました: ${err.message || '不明なエラー'}`);
+      console.error('Error generating todos:', err);
+    } finally {
+      setLoadingTodos(prev => ({ ...prev, [suggestion.id]: false }));
+    }
+  };
+
   const handleAddToProject = (suggestion: AITaskSuggestion) => {
     if (!currentProject) return;
-    
-    const newTask: Task = {
-      id: uuidv4(),
-      title: suggestion.title,
-      description: `${suggestion.description}\n\n理由：${suggestion.reason}`,
-      dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 2週間後
-      todos: [],
-      projectId: currentProject.id
-    };
-    
+
     try {
-      // タスクを追加
-      onAddTask(newTask);
+      // TODOがある場合はTODO付きでタスクを作成
+      if (suggestion.todos && suggestion.todos.length > 0) {
+        const todos = suggestion.todos.map(todo => ({
+          id: uuidv4(),
+          text: todo.title,
+          description: todo.description,
+          completed: false,
+          startDate: new Date(),
+          calendarStartDateTime: new Date(),
+          calendarEndDateTime: new Date(Date.now() + todo.estimatedHours * 60 * 60 * 1000),
+          estimatedHours: todo.estimatedHours,
+          actualHours: 0,
+          assigneeId: ''
+        }));
+
+        const newTask: Task = {
+          id: uuidv4(),
+          title: suggestion.title,
+          description: `${suggestion.description}\n\n理由：${suggestion.reason}`,
+          dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 2週間後
+          todos: todos,
+          projectId: currentProject.id
+        };
+        
+        onAddTask(newTask);
+      } else {
+        // TODOなしでタスクを作成
+        const newTask: Task = {
+          id: uuidv4(),
+          title: suggestion.title,
+          description: `${suggestion.description}\n\n理由：${suggestion.reason}`,
+          dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 2週間後
+          todos: [],
+          projectId: currentProject.id
+        };
+        
+        onAddTask(newTask);
+      }
       
       // 追加済みとして記録
       setAddedTasks(prev => ({
@@ -143,28 +227,69 @@ export const AiTaskSuggestions = ({ onAddTask }: AiTaskSuggestionsProps) => {
             </div>
           )}
           
-          <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+          <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
             {suggestions.map((suggestion) => (
               <div key={suggestion.id} className="border rounded-lg p-3 bg-blue-50">
                 <div className="flex justify-between items-start">
                   <h4 className="font-medium text-blue-800">{suggestion.title}</h4>
-                  <button
-                    onClick={() => handleAddToProject(suggestion)}
-                    disabled={addedTasks[suggestion.id]}
-                    className={`text-xs py-1 px-2 rounded ${
-                      addedTasks[suggestion.id]
-                        ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                        : 'bg-blue-500 hover:bg-blue-600 text-white'
-                    }`}
-                  >
-                    {addedTasks[suggestion.id] ? '追加済み' : '追加'}
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleShowTodos(suggestion)}
+                      disabled={loadingTodos[suggestion.id]}
+                      className="text-xs py-1 px-2 rounded bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-1"
+                    >
+                      {loadingTodos[suggestion.id] ? (
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                      {suggestion.showTodos ? "TODO閉じる" : "TODO確認"}
+                    </button>
+                    <button
+                      onClick={() => handleAddToProject(suggestion)}
+                      disabled={addedTasks[suggestion.id]}
+                      className={`text-xs py-1 px-2 rounded ${
+                        addedTasks[suggestion.id]
+                          ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                          : 'bg-blue-500 hover:bg-blue-600 text-white'
+                      }`}
+                    >
+                      {addedTasks[suggestion.id] ? '追加済み' : '追加'}
+                    </button>
+                  </div>
                 </div>
                 <p className="text-sm text-gray-700 mt-1">{suggestion.description}</p>
+                
+                {suggestion.totalEstimatedHours && (
+                  <div className="mt-2 text-xs text-blue-700 font-medium">
+                    合計工数: {suggestion.totalEstimatedHours}時間
+                  </div>
+                )}
+                
                 <div className="mt-2 text-xs text-gray-600 border-t pt-2">
                   <span className="font-medium">提案理由: </span>
                   {suggestion.reason}
                 </div>
+                
+                {/* TODO表示エリア */}
+                {suggestion.showTodos && suggestion.todos && (
+                  <div className="mt-3 border-t pt-3">
+                    <h5 className="text-sm font-medium text-gray-700 mb-2">必要なTODO:</h5>
+                    <div className="space-y-2">
+                      {suggestion.todos.map((todo) => (
+                        <div key={todo.id} className="p-2 bg-white rounded border border-blue-100">
+                          <div className="flex justify-between">
+                            <h6 className="text-sm font-medium">{todo.title}</h6>
+                            <span className="text-xs text-blue-600">{todo.estimatedHours}時間</span>
+                          </div>
+                          <p className="text-xs text-gray-600 mt-1">{todo.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
