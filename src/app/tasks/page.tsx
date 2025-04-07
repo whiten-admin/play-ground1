@@ -14,12 +14,13 @@ import EmptyProjectState from '@/features/projects/components/EmptyProjectState'
 import { getUserNameById, getUserNamesByIds } from '@/features/tasks/utils/userUtils'
 import { format, isBefore, isToday, startOfDay } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { IoAdd, IoList, IoGrid, IoBarChart, IoCaretDown, IoCaretUp, IoClose } from 'react-icons/io5'
+import { IoAdd, IoList, IoGrid, IoBarChart, IoCaretDown, IoCaretUp, IoClose, IoBulb } from 'react-icons/io5'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import KanbanView from '@/features/kanban/components/KanbanView'
 import GanttChartView from '@/features/gantt/components/GanttChartView'
 import TaskCreationForm from '@/features/tasks/components/TaskCreationForm'
 import TaskDetail from '@/features/tasks/components/TaskDetail'
+import { AiTaskSuggestions } from '@/features/tasks/components/AiTaskSuggestions'
 
 type ViewMode = 'list' | 'kanban' | 'gantt'
 
@@ -58,6 +59,8 @@ export default function TasksPage() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  // AIタスク提案の表示状態
+  const [showAiSuggestions, setShowAiSuggestions] = useState(false)
   
   // サイドバーの状態を監視
   useEffect(() => {
@@ -231,6 +234,12 @@ export default function TasksPage() {
             </div>
             
             <div className="bg-white rounded-lg shadow">
+              {showAiSuggestions && (
+                <div className="border-b">
+                  <AiTaskSuggestions onAddTask={addTask} />
+                </div>
+              )}
+              
               <div className="p-4 border-b">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
@@ -241,6 +250,13 @@ export default function TasksPage() {
                     >
                       <IoAdd className="w-3 h-3" />
                       タスク追加
+                    </button>
+                    <button
+                      onClick={() => setShowAiSuggestions(!showAiSuggestions)}
+                      className="px-2 py-0.5 text-xs rounded flex items-center gap-1 bg-purple-500 text-white hover:bg-purple-600"
+                    >
+                      <IoBulb className="w-3 h-3" />
+                      AI追加タスク提案
                     </button>
                   </div>
                   
