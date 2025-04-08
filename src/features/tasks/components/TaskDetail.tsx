@@ -157,6 +157,11 @@ export default function TaskDetail({
     estimatedHours: number;
     reasoning: string;
   } | null>(null);
+  const [expandedMemos, setExpandedMemos] = useState<{
+    [key: string]: boolean;
+  }>({});
+  const [memoHeights, setMemoHeights] = useState<{ [key: string]: number }>({});
+  const memoRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   // フィルタリングコンテキストを使用
   const { selectedUserIds, showUnassigned } = useFilterContext();
@@ -790,7 +795,7 @@ export default function TaskDetail({
             <button
               type="button"
               className="h-1/2 px-1 bg-gray-100 border-l border-b border-gray-200 hover:bg-gray-200 text-gray-700 rounded-tr flex items-center justify-center"
-              onClick={() => {
+              onClick={(e) => {
                 const currentValue = todo.estimatedHours || 0;
                 const newValue = currentValue + 0.5;
 
@@ -822,7 +827,7 @@ export default function TaskDetail({
             <button
               type="button"
               className="h-1/2 px-1 bg-gray-100 border-l border-gray-200 hover:bg-gray-200 text-gray-700 rounded-br flex items-center justify-center"
-              onClick={() => {
+              onClick={(e) => {
                 const currentValue = todo.estimatedHours || 0;
                 const newValue = Math.max(0, currentValue - 0.5);
 
@@ -870,6 +875,21 @@ export default function TaskDetail({
       </div>
     );
   };
+
+  // メモの高さを更新するuseEffect
+  useEffect(() => {
+    const updateHeights = () => {
+      const newHeights: { [key: string]: number } = {};
+      Object.entries(memoRefs.current).forEach(([id, el]) => {
+        if (el) {
+          newHeights[id] = el.scrollHeight;
+        }
+      });
+      setMemoHeights(newHeights);
+    };
+
+    updateHeights();
+  }, [selectedTask?.todos.map((todo) => todo.memo).join(''), editState.todos]); // 編集状態の変更も監視
 
   // メイン部分のレンダリング関数
   const renderContent = () => {
@@ -1111,10 +1131,6 @@ export default function TaskDetail({
                   >
                     マークダウン記法ヘルプ
                   </button>
-                  <span>
-                    **太字**、*斜体*、`コード`、# 見出し、- リスト
-                    などが使えます
-                  </span>
                 </div>
               </div>
               <div className="flex flex-col gap-2">
@@ -1265,34 +1281,6 @@ export default function TaskDetail({
                           placeholder="TODOの内容を入力"
                           aria-label={`TODO: ${todo.text}`}
                         />
-                        <textarea
-                          value={todo.memo || ''}
-                          onChange={(e) => {
-                            const updatedTodo = {
-                              ...todo,
-                              memo: e.target.value,
-                            };
-                            const updatedTodos = selectedTask.todos.map((t) =>
-                              t.id === todo.id ? updatedTodo : t
-                            );
-                            const updatedTask = {
-                              ...selectedTask,
-                              todos: updatedTodos,
-                            };
-                            if (editedTask) {
-                              setEditedTask(updatedTask);
-                            }
-                            onTaskUpdate?.(updatedTask);
-                          }}
-                          className={`w-full border border-gray-200 rounded p-2 text-sm focus:border-blue-500 focus:outline-none mb-2 ${
-                            todo.completed
-                              ? 'text-gray-500 bg-gray-100'
-                              : 'text-gray-600 bg-white'
-                          }`}
-                          placeholder="メモを入力（進捗状況や補足情報など）"
-                          rows={2}
-                          aria-label={`${todo.text}のメモ`}
-                        />
                         <div className="text-xs text-gray-500 mt-1 space-y-1 p-1 rounded flex flex-wrap items-center gap-x-4 gap-y-2">
                           <div className="flex items-center">
                             <span className="mr-2">着手予定日:</span>
@@ -1362,6 +1350,100 @@ export default function TaskDetail({
                             />
                           </div>
                         </div>
+                        {/* メモ欄を常に表示 */}
+                        <div className="mt-1 mb-2 text-sm text-gray-600 bg-gray-50 p-2 rounded border-l-2 border-blue-300">
+                          <div className="relative">
+                            <div
+                              className={`prose prose-sm max-w-none ${
+                                expandedMemos[todo.id]
+                                  ? 'max-h-none'
+                                  : 'max-h-32'
+                              } overflow-hidden transition-all duration-300 ease-in-out`}
+                              ref={(el) => (memoRefs.current[todo.id] = el)}
+                            >
+                              {editState.todos[todo.id] ? (
+                                <textarea
+                                  value={todo.memo || ''}
+                                  onChange={(e) => {
+                                    const updatedTodo = {
+                                      ...todo,
+                                      memo: e.target.value,
+                                    };
+                                    const updatedTodos = selectedTask.todos.map(
+                                      (t) =>
+                                        t.id === todo.id ? updatedTodo : t
+                                    );
+                                    const updatedTask = {
+                                      ...selectedTask,
+                                      todos: updatedTodos,
+                                    };
+                                    if (editedTask) {
+                                      setEditedTask(updatedTask);
+                                    }
+                                    onTaskUpdate?.(updatedTask);
+                                  }}
+                                  className={`w-full border border-gray-200 rounded p-2 text-sm focus:border-blue-500 focus:outline-none mb-2 ${
+                                    todo.completed
+                                      ? 'text-gray-500 bg-gray-100'
+                                      : 'text-gray-600 bg-white'
+                                  }`}
+                                  placeholder="メモを入力（マークダウン記法が使えます→ **太字**、*斜体*、`コード`、# 見出し、- リスト など）"
+                                  rows={4}
+                                  aria-label={`${todo.text}のメモ`}
+                                />
+                              ) : (
+                                <>
+                                  {todo.memo ? (
+                                    <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+                                      {todo.memo}
+                                    </ReactMarkdown>
+                                  ) : (
+                                    <p className="text-gray-400 italic">
+                                      メモはまだ入力されていません。
+                                    </p>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                            {!editState.todos[todo.id] &&
+                              todo.memo &&
+                              (expandedMemos[todo.id] ||
+                                (memoHeights[todo.id] ?? 0) > 128) && (
+                                <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-gray-50 to-transparent flex items-end justify-center">
+                                  <button
+                                    onClick={() => {
+                                      setExpandedMemos((prev) => ({
+                                        ...prev,
+                                        [todo.id]: !prev[todo.id],
+                                      }));
+                                    }}
+                                    className="text-blue-500 hover:text-blue-700 flex items-center gap-1 text-xs"
+                                  >
+                                    {expandedMemos[todo.id]
+                                      ? '折りたたむ'
+                                      : 'もっと見る'}
+                                    <svg
+                                      className={`w-4 h-4 transition-transform duration-300 ${
+                                        expandedMemos[todo.id]
+                                          ? 'rotate-180'
+                                          : ''
+                                      }`}
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M19 9l-7 7-7-7"
+                                      />
+                                    </svg>
+                                  </button>
+                                </div>
+                              )}
+                          </div>
+                        </div>
                       </div>
                       <div className="flex flex-col gap-2">
                         <button
@@ -1408,11 +1490,6 @@ export default function TaskDetail({
                             <span className="sr-only">TODOを編集</span>
                           </button>
                         </div>
-                        {todo.memo && (
-                          <div className="mt-1 mb-2 text-sm text-gray-600 bg-gray-50 p-2 rounded border-l-2 border-blue-300">
-                            {todo.memo}
-                          </div>
-                        )}
                         <div className="text-xs text-gray-500 mt-1 space-y-1 p-1 rounded flex flex-wrap items-center gap-x-4 gap-y-2">
                           <div className="flex items-center">
                             <span className="mr-2">着手予定日:</span>
@@ -1480,6 +1557,100 @@ export default function TaskDetail({
                               }}
                               size="sm"
                             />
+                          </div>
+                        </div>
+                        {/* 非編集モードでもメモ欄を常に表示 */}
+                        <div className="mt-1 mb-2 text-sm text-gray-600 bg-gray-50 p-2 rounded border-l-2 border-blue-300">
+                          <div className="relative">
+                            <div
+                              className={`prose prose-sm max-w-none ${
+                                expandedMemos[todo.id]
+                                  ? 'max-h-none'
+                                  : 'max-h-32'
+                              } overflow-hidden transition-all duration-300 ease-in-out`}
+                              ref={(el) => (memoRefs.current[todo.id] = el)}
+                            >
+                              {editState.todos[todo.id] ? (
+                                <textarea
+                                  value={todo.memo || ''}
+                                  onChange={(e) => {
+                                    const updatedTodo = {
+                                      ...todo,
+                                      memo: e.target.value,
+                                    };
+                                    const updatedTodos = selectedTask.todos.map(
+                                      (t) =>
+                                        t.id === todo.id ? updatedTodo : t
+                                    );
+                                    const updatedTask = {
+                                      ...selectedTask,
+                                      todos: updatedTodos,
+                                    };
+                                    if (editedTask) {
+                                      setEditedTask(updatedTask);
+                                    }
+                                    onTaskUpdate?.(updatedTask);
+                                  }}
+                                  className={`w-full border border-gray-200 rounded p-2 text-sm focus:border-blue-500 focus:outline-none mb-2 ${
+                                    todo.completed
+                                      ? 'text-gray-500 bg-gray-100'
+                                      : 'text-gray-600 bg-white'
+                                  }`}
+                                  placeholder="メモを入力（マークダウン記法が使えます→ **太字**、*斜体*、`コード`、# 見出し、- リスト など）"
+                                  rows={4}
+                                  aria-label={`${todo.text}のメモ`}
+                                />
+                              ) : (
+                                <>
+                                  {todo.memo ? (
+                                    <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+                                      {todo.memo}
+                                    </ReactMarkdown>
+                                  ) : (
+                                    <p className="text-gray-400 italic">
+                                      メモはまだ入力されていません。
+                                    </p>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                            {!editState.todos[todo.id] &&
+                              todo.memo &&
+                              (expandedMemos[todo.id] ||
+                                (memoHeights[todo.id] ?? 0) > 128) && (
+                                <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-gray-50 to-transparent flex items-end justify-center">
+                                  <button
+                                    onClick={() => {
+                                      setExpandedMemos((prev) => ({
+                                        ...prev,
+                                        [todo.id]: !prev[todo.id],
+                                      }));
+                                    }}
+                                    className="text-blue-500 hover:text-blue-700 flex items-center gap-1 text-xs"
+                                  >
+                                    {expandedMemos[todo.id]
+                                      ? '折りたたむ'
+                                      : 'もっと見る'}
+                                    <svg
+                                      className={`w-4 h-4 transition-transform duration-300 ${
+                                        expandedMemos[todo.id]
+                                          ? 'rotate-180'
+                                          : ''
+                                      }`}
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M19 9l-7 7-7-7"
+                                      />
+                                    </svg>
+                                  </button>
+                                </div>
+                              )}
                           </div>
                         </div>
                       </div>
