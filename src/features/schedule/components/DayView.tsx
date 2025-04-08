@@ -86,6 +86,12 @@ export default function DayView({
                 key={hour} 
                 className={`h-16 border-b border-gray-200 relative ${
                   hour === BUSINESS_HOURS.BREAK_START ? 'bg-gray-200' : ''
+                } ${
+                  hour >= BUSINESS_HOURS.START_HOUR && hour < BUSINESS_HOURS.END_HOUR ? 'bg-white' : 'bg-gray-50'
+                } ${
+                  hour === BUSINESS_HOURS.START_HOUR ? 'border-t-2 border-t-blue-200' : ''
+                } ${
+                  hour === BUSINESS_HOURS.END_HOUR ? 'border-b-2 border-b-blue-200' : ''
                 }`}
                 onClick={(e) => {
                   if ((e.target as HTMLElement).closest('.todo-item')) {
@@ -108,6 +114,14 @@ export default function DayView({
                   <div className="flex items-center justify-center h-full text-sm text-gray-500 font-medium z-10">
                     休憩
                   </div>
+                )}
+                
+                {hour === BUSINESS_HOURS.START_HOUR && (
+                  <div className="absolute -left-16 top-0 transform -translate-y-1/2 text-xs text-blue-600 font-medium"></div>
+                )}
+
+                {hour === BUSINESS_HOURS.END_HOUR && (
+                  <div className="absolute -left-16 top-16 transform -translate-y-1/2 text-xs text-blue-600 font-medium"></div>
                 )}
                 
                 {/* 共通コンポーネントを使用してTODOグループを表示 */}

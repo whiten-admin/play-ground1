@@ -111,6 +111,12 @@ export default function WeeklyScheduleDnd({
                 key={`${format(day, 'yyyy-MM-dd')}-${hour}`}
                 className={`h-12 border-t border-l relative ${
                   hour === BUSINESS_HOURS.BREAK_START ? 'bg-gray-100 opacity-80' : ''
+                } ${
+                  hour >= BUSINESS_HOURS.START_HOUR && hour < BUSINESS_HOURS.END_HOUR ? 'bg-white' : 'bg-gray-50'
+                } ${
+                  hour === BUSINESS_HOURS.START_HOUR ? 'border-t-2 border-t-blue-200' : ''
+                } ${
+                  hour === BUSINESS_HOURS.END_HOUR ? 'border-b-2 border-b-blue-200' : ''
                 }`}
                 onClick={(e) => {
                   if ((e.target as HTMLElement).closest('.todo-item')) {
@@ -133,6 +139,14 @@ export default function WeeklyScheduleDnd({
                   <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-500 font-medium z-20">
                     休憩
                   </div>
+                )}
+
+                {hour === BUSINESS_HOURS.START_HOUR && dayIndex === 0 && (
+                  <div className="absolute -left-12 top-0 transform -translate-y-1/2 text-xs text-blue-600 font-medium"></div>
+                )}
+
+                {hour === BUSINESS_HOURS.END_HOUR && dayIndex === 0 && (
+                  <div className="absolute -left-12 top-12 transform -translate-y-1/2 text-xs text-blue-600 font-medium"></div>
                 )}
 
                 {/* 共通コンポーネントを使用してTODOグループを表示 */}
