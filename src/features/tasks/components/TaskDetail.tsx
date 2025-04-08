@@ -1116,7 +1116,7 @@ export default function TaskDetail({
                         title="AIにTODOを自動生成してもらう"
                       >
                         <IoBulb className="w-5 h-5" />
-                        <span>AIタスク自動生成</span>
+                        <span>AI TODO自動生成</span>
                       </button>
                     </div>
                   )}
@@ -1617,7 +1617,7 @@ export default function TaskDetail({
                   >
                     <IoBulb className="w-5 h-5" />
                     <span className="hidden sm:inline">
-                      AIタスク漏れチェック
+                      AI TODO漏れチェック
                     </span>
                   </button>
                 )}

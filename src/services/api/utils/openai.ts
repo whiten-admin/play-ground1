@@ -424,3 +424,165 @@ TODO: ${todoText}
     }
   }
 }
+
+export async function suggestProjectTasks(projectData: {
+  title: string;
+  description: string;
+  currentTasks: string[];
+}) {
+  if (!checkApiLimit()) {
+    throw new Error(
+      `1日のAPI使用回数制限（${DAILY_LIMIT}回）を超えました。明日までお待ちください。`
+    );
+  }
+
+  if (!process.env.NEXT_PUBLIC_OPENAI_API_KEY) {
+    throw new Error('OpenAI APIキーが設定されていません。');
+  }
+
+  try {
+    const promptContent = `
+プロジェクト名: ${projectData.title}
+プロジェクト説明: ${projectData.description}
+現在のタスク: ${projectData.currentTasks.join(', ')}
+
+上記のプロジェクト情報を分析し、このプロジェクトで追加すべき重要なタスクを5つ提案してください。
+各タスクには、タスク名、簡潔な説明、およびこのタスクが必要である理由を含めてください。
+現在のタスクと重複せず、プロジェクトの成功に貢献する新しいタスクを提案してください。
+
+以下のJSONフォーマットで回答してください：
+
+{
+  "suggestions": [
+    {
+      "title": "タスク名",
+      "description": "タスクの説明",
+      "reason": "このタスクが必要な理由"
+    }
+  ]
+}`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      temperature: 0.7,
+      max_tokens: 1000,
+      messages: [
+        {
+          role: 'system',
+          content: 'あなたはプロジェクト管理のエキスパートです。プロジェクト情報に基づいた最適なタスク提案をJSONフォーマットで提供してください。',
+        },
+        {
+          role: 'user',
+          content: promptContent,
+        },
+      ],
+      response_format: { type: 'json_object' },
+    });
+
+    if (!completion.choices[0].message.content) {
+      throw new Error('応答が空です。');
+    }
+
+    incrementApiUsage();
+    const result = JSON.parse(completion.choices[0].message.content);
+    return result.suggestions || [];
+  } catch (error: any) {
+    console.error('Error suggesting project tasks:', error);
+
+    // エラーメッセージの判定
+    if (error?.status === 429) {
+      throw new Error(
+        'OpenAI APIのリクエスト制限に達しました。しばらく待ってから再試行してください。'
+      );
+    } else if (error?.status === 401) {
+      throw new Error('OpenAI APIキーが無効です。APIキーを確認してください。');
+    } else {
+      throw new Error(
+        'タスク提案中にエラーが発生しました: ' +
+          (error.message || '不明なエラー')
+      );
+    }
+  }
+}
+
+export async function suggestTaskTodos(taskData: {
+  title: string;
+  description: string;
+}) {
+  if (!checkApiLimit()) {
+    throw new Error(
+      `1日のAPI使用回数制限（${DAILY_LIMIT}回）を超えました。明日までお待ちください。`
+    );
+  }
+
+  if (!process.env.NEXT_PUBLIC_OPENAI_API_KEY) {
+    throw new Error('OpenAI APIキーが設定されていません。');
+  }
+
+  try {
+    const promptContent = `
+タスク名: ${taskData.title}
+タスク説明: ${taskData.description}
+
+上記のタスクを完了するために必要なTODOアイテムを5つまで提案してください。
+各TODOには、タイトル、簡潔な説明、および予想される工数（時間単位）を含めてください。
+TODOは論理的な順序で提案し、タスク完了に必要な具体的なステップを示してください。
+
+以下のJSONフォーマットで回答してください：
+
+{
+  "todos": [
+    {
+      "title": "TODO名",
+      "description": "TODOの説明",
+      "estimatedHours": 2.5
+    }
+  ],
+  "totalEstimatedHours": 12.5
+}`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      temperature: 0.7,
+      max_tokens: 1000,
+      messages: [
+        {
+          role: 'system',
+          content: 'あなたはプロジェクト管理のエキスパートです。タスクに必要なTODOを具体的かつ効率的に提案してください。',
+        },
+        {
+          role: 'user',
+          content: promptContent,
+        },
+      ],
+      response_format: { type: 'json_object' },
+    });
+
+    if (!completion.choices[0].message.content) {
+      throw new Error('応答が空です。');
+    }
+
+    incrementApiUsage();
+    const result = JSON.parse(completion.choices[0].message.content);
+    return {
+      todos: result.todos || [],
+      totalEstimatedHours: result.totalEstimatedHours || 0
+    };
+  } catch (error: any) {
+    console.error('Error suggesting task todos:', error);
+
+    // エラーメッセージの判定
+    if (error?.status === 429) {
+      throw new Error(
+        'OpenAI APIのリクエスト制限に達しました。しばらく待ってから再試行してください。'
+      );
+    } else if (error?.status === 401) {
+      throw new Error('OpenAI APIキーが無効です。APIキーを確認してください。');
+    } else {
+      throw new Error(
+        'TODO提案中にエラーが発生しました: ' +
+          (error.message || '不明なエラー')
+      );
+    }
+  }
+}
