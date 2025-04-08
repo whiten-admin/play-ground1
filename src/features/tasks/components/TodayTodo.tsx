@@ -157,13 +157,12 @@ export default function TodayTodo({
         <h2 className="text-base font-bold">今日のTODO</h2>
         <div className="flex items-center">
           <span className="text-xs mr-3 text-gray-600">
-            工数: {Math.round(includedTodaysHours * 10) / 10}h / {MAX_DAILY_HOURS}h
+            {Math.round(includedTodaysHours * 10) / 10}h / {MAX_DAILY_HOURS}h
           </span>
           <button 
             onClick={() => setIsTodayExpanded(!isTodayExpanded)}
             className="text-xs text-gray-500 hover:text-gray-700 flex items-center"
           >
-            {isTodayExpanded ? '折りたたむ' : '展開する'}
             <span className="ml-1">{isTodayExpanded ? '▲' : '▼'}</span>
           </button>
         </div>
@@ -197,37 +196,36 @@ export default function TodayTodo({
                     <span className="text-xs font-semibold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">NEXT TODO</span>
                   </div>
                 )}
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500 text-xs truncate max-w-[80%]">{todo.taskTitle}</span>
+                </div>
+
                 <div className="flex items-center justify-between mb-0.5">
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="checkbox"
-                      checked={todo.completed}
-                      onChange={(e) => {
+                  <span
+                    className={`text-sm truncate max-w-[75%] ${
+                      todo.completed ? 'line-through text-gray-500' : ''
+                    }`}
+                  >
+                    {todo.text}
+                  </span>
+                  <div className="flex items-center">
+                    <span className="text-xs text-gray-600">
+                      {Math.round(todo.estimatedHours * 10) / 10}h
+                    </span>
+                    <button
+                      onClick={(e) => {
                         e.stopPropagation();
                         onTodoStatusChange(todo.taskId, todo.id);
                       }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                      }}
-                      className="w-3.5 h-3.5"
-                    />
-                    <span
-                      className={`text-sm ${
-                        todo.completed ? 'line-through text-gray-500' : ''
+                      className={`text-xs px-1 py-0.5 rounded ml-2 ${
+                        todo.completed 
+                          ? 'bg-gray-200 text-gray-600' 
+                          : 'bg-white border border-green-500 text-green-700 hover:bg-green-200'
                       }`}
                     >
-                      {todo.text}
-                    </span>
+                      {todo.completed ? '完了済' : '完了'}
+                    </button>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs text-gray-600">
-                      見積工数：{Math.round(todo.estimatedHours * 10) / 10}h
-                    </span>
-                  </div>
-                </div>
-                <div className="ml-4 text-xs flex justify-between">
-                  <span className="text-gray-500">タスク名：{todo.taskTitle}</span>
-                  <span className="text-gray-500">担当：{todo.assigneeId ? getProjectMemberName(todo.assigneeId) : '未割当'}</span>
                 </div>
               </div>
             );
@@ -268,7 +266,6 @@ export default function TodayTodo({
                 onClick={() => setIsOverdueExpanded(!isOverdueExpanded)}
                 className="text-xs text-gray-500 hover:text-gray-700 flex items-center"
               >
-                {isOverdueExpanded ? '折りたたむ' : '展開する'}
                 <span className="ml-1">{isOverdueExpanded ? '▲' : '▼'}</span>
               </button>
             )}
@@ -289,31 +286,29 @@ export default function TodayTodo({
                       : 'hover:bg-red-100'
                   }`}
                 >
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500 text-xs truncate max-w-[80%]">{todo.taskTitle}</span>
+                  </div>
                   <div className="flex items-center justify-between mb-0.5">
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="checkbox"
-                        checked={todo.completed}
-                        onChange={(e) => {
+                    <span className="text-sm truncate max-w-[75%]">{todo.text}</span>
+                    <div className="flex items-center">
+                      <span className="text-xs text-gray-600">
+                        {Math.round(todo.estimatedHours * 10) / 10}h
+                      </span>
+                      <button
+                        onClick={(e) => {
                           e.stopPropagation();
                           onTodoStatusChange(todo.taskId, todo.id);
                         }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                        className="w-3.5 h-3.5"
-                      />
-                      <span className="text-sm">{todo.text}</span>
+                        className={`text-xs px-1 py-0.5 rounded ml-2 ${
+                          todo.completed 
+                            ? 'bg-gray-200 text-gray-600' 
+                            : 'bg-white border border-green-500 text-green-700 hover:bg-green-200'
+                        }`}
+                      >
+                        {todo.completed ? '完了済' : '完了'}
+                      </button>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-gray-600">
-                        見積工数：{Math.round(todo.estimatedHours * 10) / 10}h
-                      </span>
-                    </div>
-                  </div>
-                  <div className="ml-4 text-xs flex justify-between">
-                    <span className="text-gray-500">タスク名：{todo.taskTitle}</span>
-                    <span className="text-gray-500">担当：{todo.assigneeId ? getProjectMemberName(todo.assigneeId) : '未割当'}</span>
                   </div>
                 </div>
               );
