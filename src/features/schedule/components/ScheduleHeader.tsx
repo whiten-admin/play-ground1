@@ -1,10 +1,9 @@
 'use client'
 
 import React from 'react'
-import { ScheduleHeaderProps, ViewMode } from '../types/schedule'
+import { ScheduleHeaderProps } from '../types/schedule'
 
 export default function ScheduleHeader({
-  currentDate,
   viewMode,
   viewModeButtons,
   showWeekend,
@@ -17,30 +16,7 @@ export default function ScheduleHeader({
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-bold">
-          スケジュール
-        </h2>
-        
         <div className="flex items-center gap-4">
-          <div className="flex gap-1">
-            {viewModeButtons.map((button) => (
-              <button
-                key={button.id}
-                onClick={() => onViewModeChange(button.id)}
-                className={`p-2 rounded ${
-                  viewMode === button.id
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-                title={button.label}
-              >
-                {button.icon}
-              </button>
-            ))}
-          </div>
-          
-          <div className="h-6 border-l border-gray-300"></div>
-          
           <div className="flex items-center gap-2">
             <button
               onClick={onMovePrevious}
@@ -65,20 +41,38 @@ export default function ScheduleHeader({
               </svg>
             </button>
           </div>
+
+          {(viewMode === 'week' || viewMode === 'month') && (
+            <div className="flex items-center">
+                <button
+                  onClick={() => onShowWeekendChange(!showWeekend)}
+                  className="text-xs text-gray-600 hover:text-gray-800 flex items-center gap-1"
+                >
+                  {showWeekend ? '土日を非表示' : '土日を表示'}
+                  <span className="text-xs">
+                    {showWeekend ? '▼' : '▶'}
+                  </span>
+                </button>
+            </div>
+          )}
         </div>
-      </div>
-      <div className="flex items-center justify-end mb-2">
-        {(viewMode === 'week' || viewMode === 'month') && (
-          <button
-            onClick={() => onShowWeekendChange(!showWeekend)}
-            className="text-xs text-gray-600 hover:text-gray-800 flex items-center gap-1"
-          >
-            {showWeekend ? '土日を非表示' : '土日を表示'}
-            <span className="text-xs">
-              {showWeekend ? '▼' : '▶'}
-            </span>
-          </button>
-        )}
+  
+        <div className="flex gap-1">
+          {viewModeButtons.map((button) => (
+            <button
+              key={button.id}
+              onClick={() => onViewModeChange(button.id)}
+              className={`p-2 rounded ${
+                viewMode === button.id
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              title={button.label}
+            >
+              {button.icon}
+            </button>
+          ))}
+        </div>
       </div>
     </>
   )
