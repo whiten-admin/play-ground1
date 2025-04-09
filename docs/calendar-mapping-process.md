@@ -2,7 +2,7 @@
 
 ## 概要
 
-このドキュメントでは、TODOアイテムをカレンダーに表示するためのデータ構造とマッピング処理について説明します。
+このドキュメントでは、TODO アイテムをカレンダーに表示するためのデータ構造とマッピング処理について説明します。
 
 ## データ構造の概要
 
@@ -44,6 +44,7 @@ erDiagram
         number estimatedHours
         number actualHours
         string assigneeId
+        string memo
     }
     TODOWITHMETA {
         Todo todo
@@ -52,7 +53,7 @@ erDiagram
         number priority
         boolean isNextTodo
     }
-    
+
     PROJECT ||--o{ TASK : "contains"
     TASK ||--o{ TODO : "contains"
     TODO ||--|| TODOWITHMETA : "extended as"
@@ -67,13 +68,13 @@ interface Todo {
   id: string;
   text: string;
   completed: boolean;
-  startDate: Date;               // 着手予定日
-  calendarStartDateTime: Date;   // カレンダー表示用開始日時
-  calendarEndDateTime: Date;     // カレンダー表示用終了日時
-  completedDateTime?: Date;      // 完了日時
-  estimatedHours: number;        // 見積もり工数（時間単位）
-  actualHours: number;           // 実績工数（時間単位）
-  assigneeId: string;            // 担当者ID
+  startDate: Date; // 着手予定日
+  calendarStartDateTime: Date; // カレンダー表示用開始日時
+  calendarEndDateTime: Date; // カレンダー表示用終了日時
+  completedDateTime?: Date; // 完了日時
+  estimatedHours: number; // 見積もり工数（時間単位）
+  actualHours: number; // 実績工数（時間単位）
+  assigneeId: string; // 担当者ID
 }
 ```
 
@@ -84,10 +85,10 @@ interface Task {
   id: string;
   title: string;
   description: string;
-  dueDate: Date;                 // 期日
-  completedDateTime?: Date;      // 完了日時
-  todos: Todo[];                 // TODOリスト
-  projectId: string;             // タスクが属するプロジェクトのID
+  dueDate: Date; // 期日
+  completedDateTime?: Date; // 完了日時
+  todos: Todo[]; // TODOリスト
+  projectId: string; // タスクが属するプロジェクトのID
 }
 ```
 
@@ -99,7 +100,7 @@ interface Project {
   title: string;
   description: string;
   projectColor: string;
-  tasks: Task[];                 // タスクリスト
+  tasks: Task[]; // タスクリスト
 }
 ```
 
@@ -107,15 +108,15 @@ interface Project {
 
 ### TodoWithMeta
 
-カレンダー表示のために、Todoに追加のメタデータを付与した型です。
+カレンダー表示のために、Todo に追加のメタデータを付与した型です。
 
 ```typescript
 interface TodoWithMeta {
-  todo: Todo;                    // 元のTodoデータ
-  taskId: string;                // 所属タスクID
-  taskTitle: string;             // タスク名
-  priority?: number;             // 優先度
-  isNextTodo: boolean;           // 次に取り組むべきTODOかどうか
+  todo: Todo; // 元のTodoデータ
+  taskId: string; // 所属タスクID
+  taskTitle: string; // タスク名
+  priority?: number; // 優先度
+  isNextTodo: boolean; // 次に取り組むべきTODOかどうか
 }
 ```
 
@@ -127,7 +128,7 @@ graph TD
     B --> C[Todo]
     C --> D[TodoWithMeta]
     D --> E[カレンダー表示]
-    
+
     F[filterTodosForDisplay関数] --> D
     G[ユーザーフィルター] --> F
     H[完了状態フィルター] --> F
@@ -190,15 +191,19 @@ graph TD
 
 ## カレンダー表示時のデータ変換
 
-### 1. TODOフィルタリング処理
+### 1. TODO フィルタリング処理
 
 ```typescript
 // filterTodosForDisplay関数（簡略化）
-function filterTodosForDisplay(tasks: Task[], selectedUserIds: string[], showUnassigned: boolean): Map<string, TodoWithMeta[]> {
+function filterTodosForDisplay(
+  tasks: Task[],
+  selectedUserIds: string[],
+  showUnassigned: boolean
+): Map<string, TodoWithMeta[]> {
   const todos = new Map<string, TodoWithMeta[]>();
-  
-  tasks.forEach(task => {
-    task.todos.forEach(todo => {
+
+  tasks.forEach((task) => {
+    task.todos.forEach((todo) => {
       // ユーザーフィルター適用
       if (
         selectedUserIds.length > 0 &&
@@ -207,52 +212,54 @@ function filterTodosForDisplay(tasks: Task[], selectedUserIds: string[], showUna
       ) {
         return;
       }
-      
+
       if (!todo.calendarStartDateTime || !todo.calendarEndDateTime) return;
-      
+
       // 日付ごとにTODOを分類
       const dateKey = format(todo.calendarStartDateTime, 'yyyy-MM-dd');
-      
+
       const todoWithMeta: TodoWithMeta = {
         todo,
         taskId: task.id,
         taskTitle: task.title,
-        isNextTodo: false,  // 後で計算
+        isNextTodo: false, // 後で計算
       };
-      
+
       if (!todos.has(dateKey)) {
         todos.set(dateKey, []);
       }
-      
+
       todos.get(dateKey)?.push(todoWithMeta);
     });
   });
-  
+
   return todos;
 }
 ```
 
-### 2. 重複TODOの表示処理
+### 2. 重複 TODO の表示処理
 
-同じ時間帯に複数のTODOがある場合、それらを並べて表示するためのグループ化処理：
+同じ時間帯に複数の TODO がある場合、それらを並べて表示するためのグループ化処理：
 
 ```typescript
 // 重なりがあるTODOをグループ化
 const todoGroups: TodoWithMeta[][] = [];
-todosForHour.forEach(todo => {
+todosForHour.forEach((todo) => {
   let added = false;
   for (const group of todoGroups) {
     // 重複チェック - 時間が重なっているかどうか
-    const hasOverlap = group.some(existingTodo => {
+    const hasOverlap = group.some((existingTodo) => {
       const start1 = new Date(todo.todo.calendarStartDateTime!).getTime();
       const end1 = new Date(todo.todo.calendarEndDateTime!).getTime();
-      const start2 = new Date(existingTodo.todo.calendarStartDateTime!).getTime();
+      const start2 = new Date(
+        existingTodo.todo.calendarStartDateTime!
+      ).getTime();
       const end2 = new Date(existingTodo.todo.calendarEndDateTime!).getTime();
-      
+
       // 時間が重なっている場合はtrue
       return (start1 < end2 || end1 > start2);
     });
-    
+
     // 重複がない場合のみ、このグループに追加
     if (!hasOverlap) {
       group.push(todo);
@@ -276,7 +283,7 @@ sequenceDiagram
     participant ProjectContext
     participant ScheduleCalendar
     participant WeeklyScheduleDnd
-    
+
     App->>TaskContext: タスクデータの取得
     TaskContext->>App: フィルタリングされたタスク
     App->>ScheduleCalendar: tasks={filteredTasks}
@@ -286,11 +293,11 @@ sequenceDiagram
     WeeklyScheduleDnd->>App: カレンダー表示
 ```
 
-## カレンダー内でのTODO操作
+## カレンダー内での TODO 操作
 
-### 1. TODOの時間編集
+### 1. TODO の時間編集
 
-1. TODOをクリックすると編集フォームが表示される
+1. TODO をクリックすると編集フォームが表示される
 2. 開始時間と終了時間を選択
 3. 更新ボタンをクリックすると以下の処理が実行される:
 
@@ -312,11 +319,11 @@ const handleTimeUpdate = () => {
 };
 ```
 
-### 2. 新規TODO作成
+### 2. 新規 TODO 作成
 
-1. カレンダーの空白部分をクリックすると新規TODO作成モーダルが表示される
+1. カレンダーの空白部分をクリックすると新規 TODO 作成モーダルが表示される
 2. 日付と時間は自動的にクリックした場所に設定される
-3. タスク、TODO名、見積工数を入力して作成
+3. タスク、TODO 名、見積工数を入力して作成
 
 ## データ更新フロー
 
@@ -330,4 +337,4 @@ flowchart TD
     F --> G[カレンダー表示更新]
 ```
 
-このドキュメントが、カレンダーマッピング処理の理解に役立つことを願っています。 
+このドキュメントが、カレンダーマッピング処理の理解に役立つことを願っています。
