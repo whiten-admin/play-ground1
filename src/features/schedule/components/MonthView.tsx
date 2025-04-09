@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { format, isToday, getDay } from 'date-fns'
+import { format, isToday, getDay, isBefore } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { MonthViewProps } from '../types/schedule'
 
@@ -64,39 +64,46 @@ export default function MonthView({
                   let textColor = 'text-gray-800';
                   let borderClass = 'border border-gray-200';
                   
+                  // 現在の日時を取得
+                  const now = new Date();
+                  
+                  // 期限切れかどうかを判定
+                  const todoEndDateTime = new Date(todo.calendarEndDateTime);
+                  const isOverdue = !todo.completed && todoEndDateTime < now;
+
                   if (todo.completed) {
-                    // 完了済みTODO：グレーアウト
-                    bgColor = 'bg-gray-100';
+                    // 完了済みTODO：グレー
+                    bgColor = 'bg-gray-200';
                     textColor = 'text-gray-500';
                     borderClass = 'border border-gray-300';
+                  } else if (isOverdue) {
+                    // 期限切れTODO：薄い赤色
+                    bgColor = 'bg-red-50';
+                    textColor = 'text-red-700';
+                    borderClass = 'border border-red-200';
+                  } else if (isNextTodo) {
+                    // NEXTTODO：薄い黄色
+                    bgColor = 'bg-amber-50';
+                    textColor = 'text-amber-800';
+                    borderClass = 'border border-amber-200';
                   } else {
-                    // NEXTTODOかどうか判定（今日かつisNextTodoがtrueのTODOのみ黄色にする）
-                    const today = format(new Date(), 'yyyy-MM-dd');
-                    const isDisplayingToday = isToday(day) && format(day, 'yyyy-MM-dd') === today;
-                    
-                    if (isDisplayingToday && isNextTodo) {
-                      // 今日のTODO（NEXTTODO表示対象）：黄色系
-                      bgColor = 'bg-amber-100';
-                      borderClass = 'border border-amber-400';
-                    } else {
-                      // 予定TODO：デフォルト白色
-                      bgColor = 'bg-white';
-                    }
+                    // 通常のTODO：白
+                    bgColor = 'bg-white';
+                    textColor = 'text-gray-800';
+                    borderClass = 'border border-gray-200';
                   }
                   
                   // 選択されたTODOの場合、スタイルを強調
                   if (selectedTodoId === todo.id) {
-                    bgColor = todo.completed ? 'bg-gray-200' : 'bg-blue-100';
                     borderClass = 'border-2 border-blue-600';
-                    textColor = 'text-blue-800 font-bold';
                   }
 
                   return (
                     <div
                       key={todo.id}
-                      className={`text-xs p-1 ${bgColor} rounded truncate cursor-pointer flex items-center ${textColor} ${borderClass} ${selectedTodoId === todo.id ? 'ring-4 ring-blue-500 shadow-md' : ''}`}
+                      className={`text-xs p-1 ${bgColor} rounded truncate cursor-pointer flex items-center ${textColor} ${borderClass} ${selectedTodoId === todo.id ? 'ring-2 ring-blue-500' : ''}`}
                       style={{
-                        boxShadow: selectedTodoId === todo.id ? '0 4px 8px rgba(59, 130, 246, 0.5)' : undefined,
+                        boxShadow: selectedTodoId === todo.id ? '0 2px 4px rgba(59, 130, 246, 0.3)' : undefined,
                         zIndex: selectedTodoId === todo.id ? 10 : 1,
                         position: 'relative'
                       }}

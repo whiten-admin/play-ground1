@@ -75,6 +75,10 @@ const TodoItemComponent: React.FC<TodoItemComponentProps> = ({
   
   const startDateTime = new Date(todo.calendarStartDateTime);
   const endDateTime = new Date(todo.calendarEndDateTime);
+  
+  // 期限切れかどうかを判定
+  const now = new Date();
+  const isOverdue = !todo.completed && endDateTime < now;
 
   // 異なる日への移動を検出
   const detectDayChange = (clientX: number): number | null => {
@@ -286,7 +290,12 @@ const TodoItemComponent: React.FC<TodoItemComponentProps> = ({
         >
           <div
             className={`drag-handle cursor-${isExternal ? 'default' : 'move'} shadow border 
-              ${isExternal ? 'bg-indigo-50 border-indigo-400' : 'bg-white border-gray-200'} 
+              ${isExternal ? 'bg-indigo-50 border-indigo-400' : 
+                 todo.completed ? 'bg-gray-200 border-gray-300' : 
+                 isOverdue ? 'bg-red-50 border-red-200' : 
+                 isNextTodo ? 'bg-amber-50 border-amber-200' : 
+                 'bg-white border-gray-200'
+              } 
               ${todo.completed ? 'opacity-70' : 'opacity-100'} 
               ${isEditing ? 'ring-2 ring-blue-500' : ''} 
               ${selectedTodoId === todo.id ? 'ring-2 ring-blue-500' : ''}`}
@@ -315,7 +324,10 @@ const TodoItemComponent: React.FC<TodoItemComponentProps> = ({
                 <div 
                   className={`text-xs font-medium truncate ${
                     todo.completed ? 'line-through text-gray-500' : (
-                      isExternal ? 'text-indigo-700' : 'text-gray-800'
+                      isExternal ? 'text-indigo-700' : 
+                      isOverdue ? 'text-red-700' :
+                      isNextTodo ? 'text-amber-800' :
+                      'text-gray-800'
                     )
                   }`} 
                   title={todo.text}
