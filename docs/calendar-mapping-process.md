@@ -308,7 +308,7 @@ const handleTimeUpdate = () => {
   const updatedEndDateTime = new Date(todo.calendarEndDateTime);
   updatedEndDateTime.setHours(endHour, endMinute, 0, 0);
 
-  onTodoUpdate(todo.id, taskId, updatedStartDateTime, false, updatedEndDateTime);
+  onTodoUpdate(todo.id, taskId, updatedStartDateTime, updatedEndDateTime);
 };
 ```
 

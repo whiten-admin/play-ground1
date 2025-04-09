@@ -15,6 +15,7 @@ import { Task, Todo } from '@/features/tasks/types/task'
 import { filterTodosForDisplay } from '../utils/scheduleTodoUtils'
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
 import { getProjectMemberName } from '@/utils/memberUtils'
+import { useAuth } from '@/services/auth/hooks/useAuth'
 
 const WeeklyScheduleDnd = dynamic(
   () => import('./WeeklyScheduleDnd').then(mod => mod.default),
@@ -36,7 +37,6 @@ export default function ScheduleCalendar({
   const [newTodoDate, setNewTodoDate] = useState<Date | null>(null)
   const [newTodoTaskId, setNewTodoTaskId] = useState<string | null>(null)
   const [newTodoText, setNewTodoText] = useState('')
-  const [newTodoAssigneeId, setNewTodoAssigneeId] = useState<string>('')
   const [newTodoEstimatedHours, setNewTodoEstimatedHours] = useState(0.5)
   const [newTodoStartTime, setNewTodoStartTime] = useState<string>('09:00')
   const [newTodoEndTime, setNewTodoEndTime] = useState<string>('10:00')
@@ -52,6 +52,9 @@ export default function ScheduleCalendar({
   
   // プロジェクトコンテキストを使用
   const { currentProject, getProjectMembers } = useProjectContext()
+  
+  // Authコンテキストからユーザー情報を取得
+  const { user } = useAuth();
   
   // 選択状態の変更を検知するuseEffect
   useEffect(() => {
@@ -221,6 +224,17 @@ export default function ScheduleCalendar({
     const estimatedHours = 
       (endHour + endMinute / 60) - (startHour + startMinute / 60);
 
+    // 現在のユーザーIDを自動的に割り当て
+    const currentUserId = user?.id || '';
+
+    // プロジェクトメンバーからユーザーIDに対応するメンバーIDを取得
+    let assigneeId = '';
+    if (currentUserId && currentProject) {
+      const currentProjectMembers = getProjectMembers(currentProject.id);
+      const projectMember = currentProjectMembers.find(member => member.userId === currentUserId);
+      assigneeId = projectMember ? projectMember.id : '';
+    }
+
     const newTodo: Todo = {
       id: `todo-${Date.now()}`,
       text: newTodoText.trim(),
@@ -230,7 +244,7 @@ export default function ScheduleCalendar({
       calendarEndDateTime,
       estimatedHours,
       actualHours: 0,
-      assigneeId: newTodoAssigneeId
+      assigneeId: assigneeId // 自動的に現在のユーザーを割り当て
     };
 
     console.log('ScheduleCalendar - handleCreateTodo: 新しいTODOを作成', {
@@ -259,7 +273,6 @@ export default function ScheduleCalendar({
       setNewTodoEstimatedHours(0.5);
       setNewTodoStartTime('09:00');
       setNewTodoEndTime('10:00');
-      setNewTodoAssigneeId('');
     }
   };
 
@@ -267,8 +280,6 @@ export default function ScheduleCalendar({
   const handleCancel = () => {
     setIsCreatingTodo(false);
     setNewTodoText('');
-    setNewTodoAssigneeId('');
-    setNewTodoEstimatedHours(0.5);
     setNewTodoTaskId(null);
   };
 
@@ -492,23 +503,6 @@ export default function ScheduleCalendar({
                   className="w-full p-2 border rounded-md"
                   placeholder="TODOの名前を入力"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  担当者
-                </label>
-                <select
-                  value={newTodoAssigneeId}
-                  onChange={(e) => setNewTodoAssigneeId(e.target.value)}
-                  className="w-full p-2 border rounded-md"
-                >
-                  <option value="">担当者を選択</option>
-                  {currentProject && getProjectMembers(currentProject.id).map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {getProjectMemberName(member.id)}
-                    </option>
-                  ))}
-                </select>
               </div>
             </div>
             <div className="mt-6 flex justify-end gap-2">

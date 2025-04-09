@@ -110,12 +110,6 @@ export default function DayView({
                   />
                 ))}
                 
-                {hour === BUSINESS_HOURS.BREAK_START && (
-                  <div className="flex items-center justify-center h-full text-sm text-gray-500 font-medium z-10">
-                    休憩
-                  </div>
-                )}
-                
                 {hour === BUSINESS_HOURS.START_HOUR && (
                   <div className="absolute -left-16 top-0 transform -translate-y-1/2 text-xs text-blue-600 font-medium"></div>
                 )}
@@ -131,6 +125,7 @@ export default function DayView({
                     selectedTodoId={selectedTodoId}
                     quarterHeight={quarterHeight}
                     editingTodo={editingTodo}
+                    setEditingTodo={setEditingTodo}
                     onTodoClick={(todoWithMeta) => handleTodoClick(todoWithMeta.todo, todoWithMeta.taskId)}
                     onStartTimeChange={handleStartTimeChange}
                     onEndTimeChange={handleEndTimeChange}

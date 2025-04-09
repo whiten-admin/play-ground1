@@ -61,23 +61,15 @@ export default function TodayTodo({
     return false;
   });
 
-  // TODOの開始予定日を取得する関数
-  const getPlannedStartDate = (todo: Todo & { taskId: string; taskTitle: string }) => {
-    // 新しい型定義ではstartDateがDate型なので、そのまま返す
-    return todo.startDate;
-  };
-
   // 今日が開始日のTODO
   const todaysTodos = filteredByAssigneeTodos.filter((todo) => {
-    const plannedDate = getPlannedStartDate(todo);
-    return isToday(plannedDate);
+    return isToday(todo.startDate);
   });
 
   // 過去の開始日で未完了のTODO（期限切れTODO）
   const overdueTodos = filteredByAssigneeTodos.filter((todo) => {
-    const plannedDate = getPlannedStartDate(todo);
     const today = startOfDay(new Date());
-    return isBefore(plannedDate, today) && !todo.completed;
+    return isBefore(todo.startDate, today) && !todo.completed;
   });
 
   // 今日のTODOを完了状態でソート（未完了が先）
@@ -94,9 +86,7 @@ export default function TodayTodo({
       return a.completed ? 1 : -1;
     }
     // 日付が古い順
-    const aDate = getPlannedStartDate(a);
-    const bDate = getPlannedStartDate(b);
-    return aDate.getTime() - bDate.getTime();
+    return a.startDate.getTime() - b.startDate.getTime();
   });
 
   // 今日のTODOのうち、工数制限内のTODOリスト
@@ -137,19 +127,6 @@ export default function TodayTodo({
   const includedTodaysHours = todaysWithinTimeLimit
     .filter(todo => !todo.completed)
     .reduce((sum, todo) => sum + todo.estimatedHours, 0);
-
-  // 期日の状態に応じたスタイルを返す関数
-  const getDueDateStyle = (dueDate: Date | string) => {
-    const today = startOfDay(new Date());
-    const dueDateObj = dueDate instanceof Date ? dueDate : new Date(dueDate);
-    if (isBefore(dueDateObj, today)) {
-      return 'text-red-500'; // 期日超過
-    }
-    if (isToday(dueDateObj)) {
-      return 'text-orange-500'; // 今日が期日
-    }
-    return 'text-blue-500'; // 期日が近い
-  };
 
   return (
     <div className="bg-white rounded-lg shadow p-2">

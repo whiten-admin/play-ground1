@@ -8,7 +8,7 @@ import { BUSINESS_HOURS } from '@/utils/constants/constants'
 import { useFilterContext } from '@/features/tasks/filters/FilterContext'
 import { filterTodosForDisplay } from '../utils/scheduleTodoUtils'
 import { TodoWithMeta } from '../types/schedule'
-import useScheduleView from '../hooks/useScheduleView'
+import useScheduleView, { EditingTodo } from '../hooks/useScheduleView'
 import TodoGroup from './TodoGroup'
 
 interface WeeklyScheduleDndProps {
@@ -17,7 +17,7 @@ interface WeeklyScheduleDndProps {
   tasks: Task[]
   selectedTodoId?: string | null
   onTaskSelect: (taskId: string, todoId?: string) => void
-  onTodoUpdate?: (todoId: string, taskId: string, newDate: Date, isPlannedDate?: boolean, endDate?: Date) => void
+  onTodoUpdate?: (todoId: string, taskId: string, newDate: Date, endDate?: Date) => void
   onCalendarClick: (e: React.MouseEvent<HTMLDivElement>, day: Date, hour: number) => void
   isCreatingTodo: boolean
   newTodoDate: Date | null
@@ -43,23 +43,22 @@ export default function WeeklyScheduleDnd({
   newTodoDate,
   newTodoTaskId,
   newTodoText,
-  newTodoEstimatedHours,
   onNewTodoTaskIdChange,
   onNewTodoTextChange,
-  onNewTodoEstimatedHoursChange,
   onCancelCreateTodo,
   onCreateTodo
 }: WeeklyScheduleDndProps) {
   const [mounted, setMounted] = useState(false)
   const { selectedUserIds, showUnassigned } = useFilterContext();
   const [todos, setTodos] = useState<Map<string, TodoWithMeta[]>>(new Map())
-
+  const [editingTodo, setEditingTodo] = useState<EditingTodo | null>(null);
+  
   const quarterHeight = 15; // 15分の高さ（px）
   
   // 共通フックを使用
   const {
-    editingTodo,
-    setEditingTodo,
+    editingTodo: scheduleEditingTodo,
+    setEditingTodo: setScheduleEditingTodo,
     handleTimeUpdate,
     renderTodosForHour,
     handleTodoClick,
@@ -81,10 +80,10 @@ export default function WeeklyScheduleDnd({
     if (!mounted) {
       setMounted(true)
       return
-    }
-    
+    }    
     // TODOをカレンダー表示用にフィルタリング
     const filteredTodos = filterTodosForDisplay(tasks, selectedUserIds, showUnassigned)
+    
     setTodos(filteredTodos)
   }, [tasks, selectedUserIds, showUnassigned, mounted])
 
@@ -125,6 +124,9 @@ export default function WeeklyScheduleDnd({
                   }
                   onCalendarClick(e, day, hour);
                 }}
+                data-day-index={dayIndex}
+                data-date={format(day, 'yyyy-MM-dd')}
+                data-column-id={`day-column-${dayIndex}`}
               >
                 {/* 15分単位の区切り線 */}
                 {[1, 2, 3].map((quarter) => (
@@ -134,12 +136,6 @@ export default function WeeklyScheduleDnd({
                     style={{ top: `${quarterHeight * quarter}px` }}
                   />
                 ))}
-
-                {hour === BUSINESS_HOURS.BREAK_START && (
-                  <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-500 font-medium z-20">
-                    休憩
-                  </div>
-                )}
 
                 {hour === BUSINESS_HOURS.START_HOUR && dayIndex === 0 && (
                   <div className="absolute -left-12 top-0 transform -translate-y-1/2 text-xs text-blue-600 font-medium"></div>
@@ -156,6 +152,7 @@ export default function WeeklyScheduleDnd({
                     selectedTodoId={selectedTodoId}
                     quarterHeight={quarterHeight}
                     editingTodo={editingTodo}
+                    setEditingTodo={setEditingTodo}
                     onTodoClick={(todoWithMeta) => handleTodoClick(todoWithMeta.todo, todoWithMeta.taskId)}
                     onStartTimeChange={handleStartTimeChange}
                     onEndTimeChange={handleEndTimeChange}
@@ -163,6 +160,8 @@ export default function WeeklyScheduleDnd({
                     onUpdateTime={handleTimeUpdate}
                     onDragEnd={handleTodoDragEnd}
                     onResizeEnd={handleTodoResizeEnd}
+                    day={day}
+                    weekDays={weekDays}
                   />
                 )}
               </div>

@@ -1,21 +1,23 @@
 import React from 'react';
-import { TodoWithMeta } from '../types/schedule';
-import { TodoContainer } from '../styles/scheduleStyles';
+import { TodoGroup as TodoGroupType, TodoWithMeta } from '../types/schedule';
 import TodoItemComponent from './TodoItemComponent';
 import { EditingTodo } from '../hooks/useScheduleView';
 
 interface TodoGroupProps {
-  todoGroups: TodoWithMeta[][];
+  todoGroups: TodoGroupType[];
   selectedTodoId?: string | null;
   quarterHeight: number;
   editingTodo: EditingTodo | null;
+  setEditingTodo: (editingTodo: EditingTodo | null) => void;
   onTodoClick: (todo: TodoWithMeta) => void;
   onStartTimeChange: (newStartTime: string) => void;
   onEndTimeChange: (newEndTime: string) => void;
   onCancelEdit: () => void;
   onUpdateTime: () => void;
-  onDragEnd?: (todoId: string, taskId: string, diffMinutes: number) => void;
+  onDragEnd?: (todoId: string, taskId: string, diffMinutes: number, newDate?: Date) => void;
   onResizeEnd?: (todoId: string, taskId: string, diffMinutes: number) => void;
+  day?: Date; // 日付情報
+  weekDays?: Date[]; // 週の全日付配列
 }
 
 const TodoGroup: React.FC<TodoGroupProps> = ({
@@ -23,46 +25,62 @@ const TodoGroup: React.FC<TodoGroupProps> = ({
   selectedTodoId,
   quarterHeight,
   editingTodo,
+  setEditingTodo,
   onTodoClick,
   onStartTimeChange,
   onEndTimeChange,
   onCancelEdit,
   onUpdateTime,
   onDragEnd,
-  onResizeEnd
-}) => {
+  onResizeEnd,
+  day,
+  weekDays
+}) => {  
   return (
-    <TodoContainer>
+    <>
       {todoGroups.map((group, groupIndex) => (
         <div
-          key={groupIndex}
-          style={{
-            flex: 1,
-            position: 'relative',
-            height: '100%',
-            minWidth: `${100 / todoGroups.length}%`,
-            maxWidth: `${100 / todoGroups.length}%`,
-          }}
+          key={`group-${groupIndex}`}
+          className="absolute inset-0 pointer-events-none"
+          style={{ zIndex: 1 }}
         >
-          {group.map(todoWithMeta => (
-            <TodoItemComponent
-              key={todoWithMeta.todo.id}
-              todoWithMeta={todoWithMeta}
-              selectedTodoId={selectedTodoId}
-              quarterHeight={quarterHeight}
-              editingTodo={editingTodo}
-              onTodoClick={onTodoClick}
-              onStartTimeChange={onStartTimeChange}
-              onEndTimeChange={onEndTimeChange}
-              onCancelEdit={onCancelEdit}
-              onUpdateTime={onUpdateTime}
-              onDragEnd={onDragEnd}
-              onResizeEnd={onResizeEnd}
-            />
-          ))}
+          {group.todos.map((todoWithMeta: TodoWithMeta, todoIndex: number) => {
+            // 各TODOの幅と位置を計算
+            const todoWidth = 100 / group.todos.length;
+            const todoLeft = (todoIndex / group.todos.length) * 100;
+            
+            return (
+              <div 
+                key={`${todoWithMeta.todo.id}-${todoWithMeta.taskId}`}
+                style={{
+                  position: 'absolute',
+                  left: `${todoLeft}%`,
+                  width: `${todoWidth}%`,
+                  height: '100%'
+                }}
+              >
+                <TodoItemComponent
+                  todoWithMeta={todoWithMeta}
+                  selectedTodoId={selectedTodoId}
+                  quarterHeight={quarterHeight}
+                  editingTodo={editingTodo}
+                  setEditingTodo={setEditingTodo}
+                  onTodoClick={onTodoClick}
+                  onStartTimeChange={onStartTimeChange}
+                  onEndTimeChange={onEndTimeChange}
+                  onCancelEdit={onCancelEdit}
+                  onUpdateTime={onUpdateTime}
+                  onDragEnd={onDragEnd}
+                  onResizeEnd={onResizeEnd}
+                  day={day}
+                  weekDays={weekDays}
+                />
+              </div>
+            );
+          })}
         </div>
       ))}
-    </TodoContainer>
+    </>
   );
 };
 

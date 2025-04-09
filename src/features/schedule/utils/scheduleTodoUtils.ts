@@ -25,7 +25,7 @@ export const filterTodosForDisplay = (
       }
       
       // 日付キーを取得
-      const dateKey = format(todo.startDate, 'yyyy-MM-dd');
+      const dateKey = format(new Date(todo.calendarStartDateTime), 'yyyy-MM-dd');
       
       if (!todosByDate.has(dateKey)) {
         todosByDate.set(dateKey, []);
@@ -36,7 +36,6 @@ export const filterTodosForDisplay = (
         todo: {
           ...todo,
           estimatedHours: Math.min(todo.estimatedHours, BUSINESS_HOURS.MAX_HOURS),
-          dueDate: task.dueDate,
         },
         taskId: task.id,
         taskTitle: task.title,
@@ -45,6 +44,9 @@ export const filterTodosForDisplay = (
       });
     });
   });
+  
+  // 処理結果のログ出力
+  const dateKeys = Array.from(todosByDate.keys());
   
   // 今日の日付の未完了TODOで最優先のものをNEXTTODOとしてマーク
   const todayStr = format(new Date(), 'yyyy-MM-dd');

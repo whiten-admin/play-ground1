@@ -22,11 +22,34 @@ const TodoEditForm: React.FC<TodoEditFormProps> = ({
   onCancel,
   onUpdate
 }) => {
+  const { todo, startTime, endTime } = editingTodo;
+  const [start, setStart] = useState(startTime);
+  const [end, setEnd] = useState(endTime);
   const formRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({
     top: top + height,
     isTopPositioned: false
   });
+
+  // 外部クリックハンドラー - キャプチャフェーズで実行
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (formRef.current && !formRef.current.contains(event.target as Node)) {
+        // フォームの外側をクリックした場合のみキャンセル処理を実行
+        onCancel();
+        
+        // イベントの伝播をここで止めない（バブリングフェーズまで到達させる）
+      }
+    };
+
+    // キャプチャフェーズでイベントをリッスン（より早く捕捉するため）
+    document.addEventListener('mousedown', handleClickOutside, true);
+    
+    return () => {
+      // クリーンアップ時にリスナーを削除
+      document.removeEventListener('mousedown', handleClickOutside, true);
+    };
+  }, [onCancel]);
 
   // フォームの位置を計算する関数
   const calculatePosition = () => {
@@ -56,7 +79,7 @@ const TodoEditForm: React.FC<TodoEditFormProps> = ({
     
     // 位置を更新
     if (isTopPositioned) {
-      newTop = Math.max(0, top - formRect.height); // 上に表示する場合、より上方向に表示（20pxに増加）
+      newTop = Math.max(0, top - formRect.height); // 上に表示する場合、より上方向に表示
     } else {
       newTop = top + height + 8;
     }
@@ -90,6 +113,25 @@ const TodoEditForm: React.FC<TodoEditFormProps> = ({
     return position.isTopPositioned ? 'todo-edit-form above-todo' : 'todo-edit-form below-todo';
   };
 
+  // キャンセルボタンのハンドラー
+  const handleCancel = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onCancel();
+  };
+
+  // 更新ボタンのハンドラー
+  const handleUpdate = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onUpdate();
+  };
+
+  // フォーム内でのすべてのクリックイベントに対して伝播を停止
+  const preventPropagation = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   return (
     <TimeEditForm
       ref={formRef}
@@ -98,17 +140,15 @@ const TodoEditForm: React.FC<TodoEditFormProps> = ({
         top: `${position.top}px`,
         left: '4px', // 常に左側に表示
         right: '4px',
-        zIndex: 1000
+        zIndex: 1000,
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)' // シャドウを追加してモーダル感を強調
       }}
       className={getFormClassName()}
-      onClick={(e) => {
-        e.stopPropagation();
-        e.preventDefault();
-      }}
+      onClick={preventPropagation}
+      onMouseDown={preventPropagation} // マウスダウンイベントも捕捉
     >
       <div 
         className="text-sm font-medium mb-2 pb-2 border-b border-gray-200" 
-        onClick={(e) => e.stopPropagation()}
         style={{ 
           wordBreak: 'break-word', 
           maxHeight: '60px', 
@@ -117,7 +157,7 @@ const TodoEditForm: React.FC<TodoEditFormProps> = ({
       >
         {editingTodo.todo.text}
       </div>
-      <div className="flex gap-2 items-center mb-2" onClick={(e) => e.stopPropagation()}>
+      <div className="flex gap-2 items-center mb-2">
         <select
           value={editingTodo.startTime}
           onChange={(e) => {
@@ -125,6 +165,8 @@ const TodoEditForm: React.FC<TodoEditFormProps> = ({
             onStartTimeChange(e.target.value);
           }}
           className="text-sm p-1 border rounded"
+          onClick={preventPropagation}
+          onMouseDown={preventPropagation}
         >
           {generateTimeOptions().map((time) => (
             <option key={time} value={time}>
@@ -140,6 +182,8 @@ const TodoEditForm: React.FC<TodoEditFormProps> = ({
             onEndTimeChange(e.target.value);
           }}
           className="text-sm p-1 border rounded"
+          onClick={preventPropagation}
+          onMouseDown={preventPropagation}
         >
           {generateTimeOptions().map((time) => (
             <option key={time} value={time}>
@@ -148,22 +192,18 @@ const TodoEditForm: React.FC<TodoEditFormProps> = ({
           ))}
         </select>
       </div>
-      <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+      <div className="flex justify-end gap-2">
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onCancel();
-          }}
+          onClick={handleCancel}
           className="text-sm px-2 py-1 text-gray-600 hover:bg-gray-100 rounded"
+          onMouseDown={preventPropagation}
         >
           キャンセル
         </button>
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onUpdate();
-          }}
+          onClick={handleUpdate}
           className="text-sm px-2 py-1 bg-blue-500 text-white hover:bg-blue-600 rounded"
+          onMouseDown={preventPropagation}
         >
           更新
         </button>

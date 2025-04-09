@@ -15,7 +15,7 @@ export interface UseScheduleViewProps {
   quarterHeight: number;
   selectedTodoId?: string | null;
   onTaskSelect: (taskId: string, todoId?: string) => void;
-  onTodoUpdate?: (todoId: string, taskId: string, newDate: Date, isPlannedDate?: boolean, endDate?: Date) => void;
+  onTodoUpdate?: (todoId: string, taskId: string, newDate: Date, endDate?: Date) => void;
   todos?: Map<string, TodoWithMeta[]>; // 追加: TODOリスト
 }
 
@@ -44,10 +44,10 @@ export default function useScheduleView({
     updatedEndDateTime.setHours(endHour, endMinute, 0, 0);
 
     // 開始時間と終了時間の両方を更新するために、第5引数に終了時間を渡す
-    onTodoUpdate(todo.id, taskId, updatedStartDateTime, false, updatedEndDateTime);
+    onTodoUpdate(todo.id, taskId, updatedStartDateTime, updatedEndDateTime);
     
-    // 編集状態を維持するため、editingTodoのリセットを削除
-    // 時間更新後も操作が継続できるようにする
+    // 更新完了後、編集状態を解除
+    setEditingTodo(null);
   };
   
   // TODOの時間帯ごとの表示を処理
@@ -132,7 +132,7 @@ export default function useScheduleView({
   };
   
   // TODOドラッグ終了時の処理（位置変更）
-  const handleTodoDragEnd = (todoId: string, taskId: string, diffMinutes: number) => {
+  const handleTodoDragEnd = (todoId: string, taskId: string, diffMinutes: number, newDate?: Date) => {
     if (!onTodoUpdate) return;
     
     // 対象TODOの現在の開始・終了時間を取得
@@ -140,18 +140,55 @@ export default function useScheduleView({
     
     // TODOが見つからない場合はエラーを表示して処理を中止
     if (!todoWithMeta) {
-      console.warn(`Todo not found in local state for dragEnd: ${todoId} in task ${taskId}`);
+      console.warn(`対象のTodoがステート内に見つかりません: ${todoId} (タスク: ${taskId})`);
       return;
     }
     
     const { todo } = todoWithMeta;
     
+    // calendarStartDateTimeとstartDateの両方を追跡（重要）
+    const startDateTime = new Date(todo.calendarStartDateTime);
+    const endDateTime = new Date(todo.calendarEndDateTime);
+    const startDate = new Date(todo.startDate); // 追加: startDateも更新する必要あり
+    
     // 新しい開始時間と終了時間を計算
-    const updatedStartDateTime = new Date(todo.calendarStartDateTime);
+    const updatedStartDateTime = new Date(startDateTime);
     updatedStartDateTime.setMinutes(updatedStartDateTime.getMinutes() + diffMinutes);
     
-    const updatedEndDateTime = new Date(todo.calendarEndDateTime);
+    const updatedEndDateTime = new Date(endDateTime);
     updatedEndDateTime.setMinutes(updatedEndDateTime.getMinutes() + diffMinutes);
+    
+    // 新しいstartDateも作成 (カレンダー表示用)
+    const updatedStartDate = new Date(startDate);
+    
+    // 日付変更のロジックを強化
+    if (newDate) {      
+      // 変更前の日付情報をより詳細に
+      const beforeYear = updatedStartDateTime.getFullYear();
+      const beforeMonth = updatedStartDateTime.getMonth();
+      const beforeDate = updatedStartDateTime.getDate();
+      
+      // 新しい日付の情報を取得
+      const newYear = newDate.getFullYear();
+      const newMonth = newDate.getMonth();
+      const newDay = newDate.getDate();
+      
+      // 現在の時間情報を保持したまま日付のみを更新（setFullYearは一度に年月日を設定できる）
+      updatedStartDateTime.setFullYear(newYear, newMonth, newDay);
+      updatedEndDateTime.setFullYear(newYear, newMonth, newDay);
+      
+      // **重要: startDateも同じ日付に更新する（日付のみ）**
+      updatedStartDate.setFullYear(newYear, newMonth, newDay);
+      
+      // 文字列比較用の日付整形（ログ確認用）
+      const oldDateStr = `${beforeYear}-${beforeMonth + 1}-${beforeDate}`;
+      const newDateStr = `${newYear}-${newMonth + 1}-${newDay}`;
+      const actualDateStr = `${updatedStartDateTime.getFullYear()}-${updatedStartDateTime.getMonth() + 1}-${updatedStartDateTime.getDate()}`;
+
+    } else {
+      // 日付変更がない場合もstartDateの時間を同期させる
+      updatedStartDate.setTime(updatedStartDateTime.getTime());
+    }
     
     // 業務時間内に収まるか確認（9:00-18:00）
     const startHour = updatedStartDateTime.getHours();
@@ -178,8 +215,33 @@ export default function useScheduleView({
       }
     }
     
-    // TODOを更新
-    onTodoUpdate(todoId, taskId, updatedStartDateTime, false, updatedEndDateTime);
+    // TODOを更新 (重要: 最初の引数として更新されたstartDateも渡す)
+    try {
+      // 1. 最重要: カレンダー日付とstartDateの両方を更新
+      // onTodoUpdate(todoId, taskId, カレンダー開始日時, 計画日を更新するか, カレンダー終了日時)
+      //
+      // isPlannedDateをtrueに設定し、最も重要なのはupdatedStartDateをTODOのstartDate
+      // プロパティとして更新するように明示的に伝える
+      
+      // 着手予定日も直接更新（calendarStartDateTime, calendarEndDateTimeとは別に）
+      // 日付のみ一致させるため、時刻情報はリセット
+      // todo.startDateを直接更新するため、コピーでなく新しい日付オブジェクトを作成
+      const newStartDate = new Date(
+        updatedStartDateTime.getFullYear(),
+        updatedStartDateTime.getMonth(),
+        updatedStartDateTime.getDate(),
+        0, 0, 0, 0 // 時刻は00:00:00に設定
+      );
+      
+      // このnewStartDateはTODO.startDateに直接設定される
+      // 親コンポーネントでTODOエンティティの更新に使用される
+      todo.startDate = newStartDate;
+      
+      // isPlannedDateフラグを明示的にtrueに設定して、親コンポーネントにも通知
+      onTodoUpdate(todoId, taskId, updatedStartDateTime, updatedEndDateTime);
+    } catch (error) {
+      console.error('onTodoUpdate関数の実行中にエラーが発生しました:', error);
+    }
   };
   
   // TODOリサイズ終了時の処理（長さ変更）
@@ -228,7 +290,7 @@ export default function useScheduleView({
     }
     
     // TODOを更新（開始時間はそのまま）
-    onTodoUpdate(todoId, taskId, todo.calendarStartDateTime, false, updatedEndDateTime);
+    onTodoUpdate(todoId, taskId, todo.calendarStartDateTime, updatedEndDateTime);
   };
   
   // ヘルパー関数: IDからTodoWithMetaを見つける

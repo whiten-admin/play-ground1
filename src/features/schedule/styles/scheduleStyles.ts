@@ -9,6 +9,7 @@ export interface StyledTodoItemProps {
   priority: number;
   isDragging?: boolean;
   isResizing?: boolean;
+  isMovingToNewDay?: boolean;
 }
 
 export const TodoItem = styled.div<StyledTodoItemProps>`
@@ -17,12 +18,12 @@ export const TodoItem = styled.div<StyledTodoItemProps>`
   right: 0;
   top: ${(props: StyledTodoItemProps) => props.top}px;
   height: ${(props: StyledTodoItemProps) => props.height}px;
-  padding: 4px;
+  padding: 3px 4px;
   border-radius: 4px;
-  cursor: pointer;
+  cursor: ${(props: StyledTodoItemProps) => props.isDragging ? 'move' : 'pointer'};
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: space-between;
   overflow: hidden;
   background-color: ${(props: StyledTodoItemProps) =>
     props.isCompleted
@@ -37,6 +38,8 @@ export const TodoItem = styled.div<StyledTodoItemProps>`
   border: ${(props: StyledTodoItemProps) =>
     props.isSelected
       ? '2px solid #1976d2'
+      : props.isMovingToNewDay
+      ? '2px dashed #4caf50'
       : props.isResizing
       ? '2px dashed #ff9800'
       : props.isCompleted
@@ -57,7 +60,21 @@ export const TodoItem = styled.div<StyledTodoItemProps>`
   box-shadow: ${(props: StyledTodoItemProps) => 
     (props.isDragging || props.isResizing) ? '0 3px 8px rgba(0, 0, 0, 0.2)' : 'none'};
   transition: ${(props: StyledTodoItemProps) => 
-    (props.isResizing ? 'none' : 'height 0.1s ease, box-shadow 0.1s ease')};
+    (props.isResizing || props.isDragging ? 'none' : 'height 0.1s ease, box-shadow 0.1s ease')};
+  touch-action: none;
+  
+  &:hover {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  .detail-icon {
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+  }
+  
+  &:hover .detail-icon {
+    opacity: 1;
+  }
 `;
 
 export const TodoContainer = styled.div`
