@@ -1,11 +1,11 @@
 import React, { useRef, useState, useEffect } from 'react';
 import Draggable, { DraggableEventHandler, DraggableData } from 'react-draggable';
 import { TodoWithMeta, TodoDragEvent } from '../types/schedule';
-import { TodoItem, ResizeHandle } from '../styles/scheduleStyles';
 import { calculateTodoPosition } from '../utils/todoDisplayUtils';
 import TodoEditForm from './TodoEditForm';
 import { EditingTodo } from '../hooks/useScheduleView';
 import { IoSearchOutline } from 'react-icons/io5';
+import { FaGoogle } from 'react-icons/fa';
 
 interface TodoItemComponentProps {
   todoWithMeta: TodoWithMeta;
@@ -43,7 +43,7 @@ const TodoItemComponent: React.FC<TodoItemComponentProps> = ({
   day,
   weekDays = []
 }) => {
-  const { todo, taskId, isNextTodo, priority } = todoWithMeta;
+  const { todo, taskId, isNextTodo, priority, taskTitle, isExternal } = todoWithMeta;
   const nodeRef = useRef<HTMLDivElement>(null);
   const resizeRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -102,24 +102,6 @@ const TodoItemComponent: React.FC<TodoItemComponentProps> = ({
     }
     
     return null;
-  };
-  
-  // 列の位置情報を取得（スナップ用）
-  const getColumnPositions = () => {
-    const positions: { index: number, left: number, width: number }[] = [];
-    const columns = document.querySelectorAll(`[data-day-index]`);
-    
-    columns.forEach(column => {
-      const dayIndex = parseInt(column.getAttribute('data-day-index') || '0');
-      const rect = column.getBoundingClientRect();
-      positions.push({
-        index: dayIndex,
-        left: rect.left,
-        width: rect.width
-      });
-    });
-    
-    return positions;
   };
   
   // ドラッグ開始時
@@ -198,170 +180,222 @@ const TodoItemComponent: React.FC<TodoItemComponentProps> = ({
         // 実行
         try {
           onDragEnd(todo.id, taskId, diffMinutes, newDate);
-          console.log('onDragEnd実行完了');
         } catch (error) {
-          console.error('onDragEnd実行エラー:', error);
+          console.error('ドラッグ終了処理でエラー:', error);
         }
       }
-    } else if (Math.abs(data.y) >= 4) {
-      // 日付変更がなく、垂直方向に一定以上動いた場合
+    } else if (data.y !== 0 && onDragEnd) {
+      // 同じ日内での移動（縦方向のみ）
+      // 移動量を15分単位に丸める
       const quarterCount = Math.round(data.y / quarterHeight);
+      // 分単位の変化量を計算（15分単位）
       const diffMinutes = quarterCount * 15;
       
-      if (onDragEnd) {
+      if (diffMinutes !== 0) {
         try {
           onDragEnd(todo.id, taskId, diffMinutes);
-          console.log('onDragEnd実行完了 (日付変更なし)');
         } catch (error) {
-          console.error('onDragEnd実行エラー (日付変更なし):', error);
+          console.error('時間変更処理でエラー:', error);
         }
       }
     }
     
-    // 状態をリセット
-    setDayOffset(null);
+    // ドラッグ位置をリセット
     setDragPosition({ x: 0, y: 0 });
   };
   
-  // リサイズ開始時
-  const handleResizeStart: DraggableEventHandler = (e, data) => {
-    e.stopPropagation();
+  // リサイズ開始
+  const handleResizeStart = () => {
     setIsResizing(true);
-    setResizeOffset(0); // リサイズ開始時にオフセットをリセット
+    setResizeOffset(0);
   };
   
   // リサイズ中
-  const handleResize: DraggableEventHandler = (e, data) => {
-    // リサイズによる高さの変更をリアルタイムで反映
+  const handleResize = (e: any, data: any) => {
     setResizeOffset(data.y);
   };
   
-  // リサイズ終了時
+  // リサイズ終了
   const handleResizeStop = (e: any, data: any) => {
     setIsResizing(false);
-    setResizeOffset(0); // リサイズ終了時にオフセットをリセット
     
-    if (Math.abs(data.y) < 4) return; // 微小な移動は無視
-    
-    // 移動量を15分単位に丸める
+    // 変更量を15分単位に丸める
     const quarterCount = Math.round(data.y / quarterHeight);
-    if (quarterCount === 0) return; // 移動なしの場合は何もしない
-    
-    // 分単位の変化量を計算
     const diffMinutes = quarterCount * 15;
     
-    // リサイズ終了時のコールバック
-    if (onResizeEnd) {
+    // 変更がある場合のみ通知
+    if (diffMinutes !== 0 && onResizeEnd) {
       onResizeEnd(todo.id, taskId, diffMinutes);
     }
+    
+    // リサイズオフセットをリセット
+    setResizeOffset(0);
   };
   
-  // 最小高さ（15分）
-  const minHeight = quarterHeight;
-  
-  // 上方向への縮小のための最大値（現在の高さから最小高さを引いた値の負数）
-  const topBound = -(height - minHeight);
-
-  // 詳細アイコンクリック時のハンドラー
+  // 詳細表示ボタンのクリックハンドラ
   const handleDetailClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // タスク詳細を開くために、タスクとTODOを選択
     onTodoClick(todoWithMeta);
   };
   
+  // 時間をフォーマットする関数
+  const formatTime = (date: Date) => {
+    return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+  };
+
+  // リサイズハンドルのスタイル
+  const resizeHandleStyle: React.CSSProperties = {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '6px',
+    cursor: 'ns-resize',
+    backgroundColor: 'transparent',
+    zIndex: 10
+  };
+
   return (
-    <React.Fragment>
+    <div className="todo-item pointer-events-auto relative" ref={nodeRef}>
       <Draggable
         nodeRef={nodeRef}
-        axis="both" // 両方向の移動を許可
-        grid={[1, quarterHeight]} // Y方向は15分単位にスナップ
-        defaultPosition={{ x: 0, y: 0 }}
+        // 外部予定の場合はドラッグ無効
+        disabled={isExternal}
+        axis="y"
+        handle=".drag-handle"
+        position={isDragging ? dragPosition : { x: 0, y: 0 }}
+        grid={[5, quarterHeight / 2]}
+        bounds={isDragging ? undefined : { top: -top, bottom: Infinity }}
         onStart={handleDragStart}
         onDrag={handleDrag}
         onStop={handleDragStop}
-        disabled={isResizing} // 編集中でもドラッグ可能にする
       >
-        <div ref={nodeRef} style={{ 
-          position: 'absolute', 
-          top, 
-          width: '100%', 
-          zIndex: isDragging ? 100 : 1,
-          opacity: isDragging && dayOffset !== null ? 0.5 : 1, // 別の日付列にいる時だけ半透明に
-          transform: isDragging && dayOffset !== null ? 'scale(1.02)' : 'scale(1)', // 別の日付列にいる時は少し拡大
-          transition: isDragging ? 'none' : 'opacity 0.2s, transform 0.2s' // ドラッグ中以外はアニメーション
-        }}>
-          <TodoItem
-            className="todo-item"
-            top={0}
-            height={currentHeight} // リサイズ中の高さを反映
-            isSelected={selectedTodoId === todo.id}
-            isCompleted={todo.completed || false}
-            isNextTodo={isNextTodo || false}
-            priority={priority || 0}
-            isDragging={isDragging}
-            isResizing={isResizing} // リサイズ中のスタイル用
-            isMovingToNewDay={isDragging && dayOffset !== null} // 新しい日付に移動中かのフラグ
+        <div
+          style={{ 
+            position: 'absolute',
+            top: `${top}px`,
+            left: 0,
+            width: '100%',
+            height: `${currentHeight}px`,
+            minHeight: `${quarterHeight}px`,
+            zIndex: isDragging ? 50 : (isEditing ? 40 : (isResizing ? 30 : 20)),
+            transform: isDragging ? 'scale(1.02)' : 'scale(1)',
+            transition: isDragging ? 'none' : 'transform 0.2s',
+          }}
+          className={`${isDragging ? 'opacity-60' : 'opacity-100'}`}
+        >
+          <div
+            className={`drag-handle cursor-${isExternal ? 'default' : 'move'} shadow border 
+              ${isExternal ? 'bg-indigo-50 border-indigo-400' : 'bg-white border-gray-200'} 
+              ${todo.completed ? 'opacity-70' : 'opacity-100'} 
+              ${isEditing ? 'ring-2 ring-blue-500' : ''} 
+              ${selectedTodoId === todo.id ? 'ring-2 ring-blue-500' : ''}`}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              padding: '2px 4px',
+              overflow: 'hidden',
+              borderRadius: '4px',
+              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+              fontSize: '12px',
+              transition: 'all 0.2s ease-in-out',
+            }}
           >
-            <div>
-              <div className="flex justify-between items-start">
-                <div style={{ fontSize: '10px', color: 'gray', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
-                  {todoWithMeta.taskTitle}
-                </div>
+            {/* タスク名とTODO */}
+            <div className="flex flex-col justify-between h-full">
+              <div>
+                {!isExternal && (
+                  <div className="text-[10px] text-gray-500 truncate mb-0.5">
+                    {taskTitle}
+                  </div>
+                )}
                 <div 
-                  className="detail-icon ml-1 cursor-pointer hover:bg-gray-100 rounded-full p-1" 
-                  onClick={handleDetailClick}
-                  style={{ color: '#3b82f6', flexShrink: 0 }}
-                  title="詳細を表示"
+                  className={`text-xs font-medium truncate ${
+                    todo.completed ? 'line-through text-gray-500' : (
+                      isExternal ? 'text-indigo-700' : 'text-gray-800'
+                    )
+                  }`} 
+                  title={todo.text}
                 >
-                  <IoSearchOutline size={16} />
+                  {todo.text}
                 </div>
               </div>
-              <div style={{ fontSize: '12px', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {todo.text}
+              
+              {/* 時間表示 */}
+              <div className="text-[10px] text-gray-600 mt-0.5">
+                {formatTime(startDateTime)} - {formatTime(endDateTime)}
               </div>
-            </div>
-            <div style={{ fontSize: '10px', color: '#666', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '2px' }}>
-              {`${startDateTime.getHours().toString().padStart(2, '0')}:${startDateTime
-                .getMinutes()
-                .toString()
-                .padStart(2, '0')} - ${endDateTime
-                .getHours()
-                .toString()
-                .padStart(2, '0')}:${endDateTime.getMinutes().toString().padStart(2, '0')}`}
             </div>
             
-            {/* リサイズハンドル */}
+            {/* 外部予定の場合はGoogleアイコンを表示 */}
+            {isExternal && (
+              <div className="absolute bottom-0.5 right-0.5 text-xs text-[#4285F4]">
+                <FaGoogle size={10} />
+              </div>
+            )}
+            
+            {/* 編集中でない場合にのみ詳細ボタンを表示 */}
+            {!isEditing && !isExternal && (
+              <button
+                className="absolute top-0.5 right-0.5 text-xs text-gray-400 hover:text-gray-600 bg-white bg-opacity-70 rounded-full p-0.5"
+                onClick={handleDetailClick}
+              >
+                <IoSearchOutline size={10} />
+              </button>
+            )}
+          </div>
+          
+          {/* リサイズハンドル (外部予定には表示しない) */}
+          {!isEditing && !isExternal && (
             <Draggable
               nodeRef={resizeRef}
               axis="y"
-              grid={[1, quarterHeight]}
-              bounds={{ 
-                top: topBound, // 上方向には高さ-最小高さまで
-                bottom: 900 // 下方向に最大900px
-              }}
+              grid={[1, quarterHeight / 4]}
+              position={{ x: 0, y: resizeOffset }}
               onStart={handleResizeStart}
-              onDrag={handleResize} // ドラッグ中の処理を追加
+              onDrag={handleResize}
               onStop={handleResizeStop}
-              disabled={isDragging} // ドラッグ中はリサイズ不可
+              disabled={isDragging}
             >
-              <ResizeHandle ref={resizeRef} />
+              <div
+                ref={resizeRef}
+                style={resizeHandleStyle}
+                className="resize-handle hover:bg-gray-200 hover:bg-opacity-50"
+              >
+                <div 
+                  style={{
+                    position: 'absolute',
+                    left: '50%',
+                    bottom: '2px',
+                    width: '20px',
+                    height: '2px',
+                    backgroundColor: '#cbd5e0',
+                    transform: 'translateX(-50%)',
+                    borderRadius: '1px',
+                  }}
+                />
+              </div>
             </Draggable>
-          </TodoItem>
+          )}
         </div>
       </Draggable>
       
-      {isEditing && editingTodo && (
+      {/* 編集フォーム (外部予定には表示しない) */}
+      {isEditing && !isExternal && (
         <TodoEditForm
-          editingTodo={editingTodo}
-          top={top}
-          height={currentHeight} // リサイズ中の高さを反映
+          todo={todo}
+          startTime={editingTodo.startTime}
+          endTime={editingTodo.endTime}
           onStartTimeChange={onStartTimeChange}
           onEndTimeChange={onEndTimeChange}
           onCancel={onCancelEdit}
-          onUpdate={onUpdateTime}
+          onSubmit={onUpdateTime}
         />
       )}
-    </React.Fragment>
+    </div>
   );
 };
 

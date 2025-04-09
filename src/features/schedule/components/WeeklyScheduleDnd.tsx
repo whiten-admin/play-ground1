@@ -29,6 +29,7 @@ interface WeeklyScheduleDndProps {
   onNewTodoEstimatedHoursChange: (hours: number) => void
   onCancelCreateTodo: () => void
   onCreateTodo: (taskId: string) => void
+  todoSchedule?: Map<string, TodoWithMeta[]> // 外部から渡されるスケジュール
 }
 
 export default function WeeklyScheduleDnd({
@@ -46,7 +47,8 @@ export default function WeeklyScheduleDnd({
   onNewTodoTaskIdChange,
   onNewTodoTextChange,
   onCancelCreateTodo,
-  onCreateTodo
+  onCreateTodo,
+  todoSchedule
 }: WeeklyScheduleDndProps) {
   const [mounted, setMounted] = useState(false)
   const { selectedUserIds, showUnassigned } = useFilterContext();
@@ -72,7 +74,7 @@ export default function WeeklyScheduleDnd({
     selectedTodoId,
     onTaskSelect,
     onTodoUpdate,
-    todos
+    todos: todoSchedule || todos // 外部から渡されたスケジュールを優先して使用
   });
 
   // マウント時とタスクまたはフィルターの変更時にTODOを更新
@@ -80,12 +82,17 @@ export default function WeeklyScheduleDnd({
     if (!mounted) {
       setMounted(true)
       return
-    }    
-    // TODOをカレンダー表示用にフィルタリング
-    const filteredTodos = filterTodosForDisplay(tasks, selectedUserIds, showUnassigned)
+    }
     
+    // 外部からスケジュールが渡されている場合は、それを使用
+    if (todoSchedule) {
+      return;
+    }
+    
+    // 外部からスケジュールが渡されていない場合は、従来通りフィルタリング
+    const filteredTodos = filterTodosForDisplay(tasks, selectedUserIds, showUnassigned)
     setTodos(filteredTodos)
-  }, [tasks, selectedUserIds, showUnassigned, mounted])
+  }, [tasks, selectedUserIds, showUnassigned, mounted, todoSchedule])
 
   return (
     <div className="relative">
@@ -100,7 +107,9 @@ export default function WeeklyScheduleDnd({
           </div>
           {weekDays.map((day, dayIndex) => {
             const dateKey = format(day, 'yyyy-MM-dd')
-            const todosForDay = todos.get(dateKey) || []
+            // 外部からスケジュールが渡されている場合はそれを使用、そうでなければ内部のtodosを使用
+            const scheduledTodos = todoSchedule || todos;
+            const todosForDay = scheduledTodos.get(dateKey) || []
             
             // 共通フックを使用して、TODOグループを取得
             const { todoGroups } = renderTodosForHour(hour, todosForDay);

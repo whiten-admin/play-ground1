@@ -17,6 +17,7 @@ export interface TodoWithMeta {
   taskTitle: string;
   priority?: number;
   isNextTodo?: boolean;
+  isExternal?: boolean;
 }
 
 // スケジュールカレンダーのプロパティ型定義
@@ -74,14 +75,16 @@ export interface MonthViewProps {
 // ヘッダーコンポーネントのプロパティ型定義
 export interface ScheduleHeaderProps {
   currentDate: Date
-  viewMode: ViewMode
+  viewMode: string
   viewModeButtons: ViewModeButton[]
   showWeekend: boolean
-  onViewModeChange: (mode: ViewMode) => void
+  onViewModeChange: (mode: string) => void
   onShowWeekendChange: (show: boolean) => void
   onMovePrevious: () => void
   onMoveNext: () => void
   onGoToToday: () => void
+  isGoogleIntegrated: boolean
+  onGoogleIntegrationChange: () => void
 }
 
 // TodoDragEventインターフェースを追加
