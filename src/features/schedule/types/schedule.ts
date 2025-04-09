@@ -78,7 +78,7 @@ export interface ScheduleHeaderProps {
   viewMode: string
   viewModeButtons: ViewModeButton[]
   showWeekend: boolean
-  onViewModeChange: (mode: string) => void
+  onViewModeChange: (mode: ViewMode) => void
   onShowWeekendChange: (show: boolean) => void
   onMovePrevious: () => void
   onMoveNext: () => void
