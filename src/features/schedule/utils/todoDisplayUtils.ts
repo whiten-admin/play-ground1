@@ -107,5 +107,5 @@ function todoOverlaps(todo1: TodoWithMeta, todo2: TodoWithMeta): boolean {
   const end2 = new Date(todo2.todo.calendarEndDateTime!).getTime();
   
   // 時間が重なっている場合はtrue
-  return (start1 < end2 && end1 > start2);
+  return (start1 < end2 || end1 > start2);
 } 

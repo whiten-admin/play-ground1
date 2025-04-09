@@ -250,7 +250,7 @@ todosForHour.forEach(todo => {
       const end2 = new Date(existingTodo.todo.calendarEndDateTime!).getTime();
       
       // 時間が重なっている場合はtrue
-      return (start1 < end2 && end1 > start2);
+      return (start1 < end2 || end1 > start2);
     });
     
     // 重複がない場合のみ、このグループに追加
