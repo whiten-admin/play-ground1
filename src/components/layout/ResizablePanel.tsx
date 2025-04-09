@@ -82,22 +82,15 @@ const ResizablePanel: React.FC<ResizablePanelProps> = ({
             onResize={handleResize}
             onResizeStop={handleResizeStop}
             handle={
-              <div className="absolute right-0 top-0 h-full w-5 cursor-col-resize flex items-center justify-center hover:bg-blue-50 transition-colors">
+              <div className="absolute right-0 top-0 h-full w-3 cursor-col-resize flex items-center justify-center transition-colors hover:opacity-100 opacity-40">
                 <div className="h-full flex flex-col items-center justify-center relative">
-                  {/* 縦線 */}
-                  <div className="w-1.5 h-full bg-gray-300 rounded-full absolute"></div>
-                  {/* 中央のドットグループ */}
-                  <div className="z-10 flex flex-col gap-1.5 bg-gray-600 px-1.5 py-2 rounded-lg shadow-sm">
-                    {[...Array(3)].map((_, dotIndex) => (
-                      <div key={dotIndex} className="w-1.5 h-1.5 bg-white rounded-full"></div>
-                    ))}
-                  </div>
+                  <div className="w-1 h-full bg-gray-400 rounded-full absolute"></div>
                 </div>
               </div>
             }
             className="relative"
           >
-            <div className="h-full overflow-auto pr-4">
+            <div className="h-full overflow-auto pr-1">
               {leftPanel}
             </div>
           </ResizableBox>

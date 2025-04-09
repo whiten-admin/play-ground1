@@ -62,10 +62,7 @@ export const getTasksFromLocalStorage = (): Task[] | null => {
           dueDate: todo.dueDate ? new Date(todo.dueDate) : undefined,
           completedDateTime: todo.completedDateTime ? new Date(todo.completedDateTime) : undefined,
           actualHours: todo.actualHours || 0,
-          assigneeId: todo.assigneeId || (todo.assigneeIds && todo.assigneeIds.length > 0 ? todo.assigneeIds[0] : ''),
-          // 古い日付フィールドを削除
-          endDate: undefined,
-          plannedStartDate: todo.plannedStartDate ? new Date(todo.plannedStartDate) : undefined
+          assigneeId: todo.assigneeId || (todo.assigneeIds && todo.assigneeIds.length > 0 ? todo.assigneeIds[0] : '')
         };
       })
     }));
@@ -179,11 +176,7 @@ export const importTasksFromJson = (jsonString: string): Task[] | null => {
           calendarEndDateTime,
           completedDateTime: todo.completedDateTime ? new Date(todo.completedDateTime) : undefined,
           actualHours: todo.actualHours || 0,
-          assigneeId: todo.assigneeIds && todo.assigneeIds.length > 0 ? todo.assigneeIds[0] : '',
-          // 古い日付フィールドを削除
-          dueDate: undefined,
-          endDate: undefined,
-          plannedStartDate: undefined
+          assigneeId: todo.assigneeIds && todo.assigneeIds.length > 0 ? todo.assigneeIds[0] : ''
         };
       })
     }));

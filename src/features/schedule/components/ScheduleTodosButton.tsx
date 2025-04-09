@@ -20,7 +20,7 @@ export default function ScheduleTodosButton({ onScheduleComplete }: ScheduleTodo
       setIsScheduling(true);
       
       // 確認ダイアログを表示
-      if (window.confirm('TODOを期日に基づいて自動スケジュールしますか？\n\n・各TODOの予定開始日時(plannedStartDate)を設定します\n・1日の最大工数は8時間です\n・変更は保存されます')) {
+      if (window.confirm('TODOを期日に基づいて自動スケジュールしますか？\n\n・各TODOの予定開始日時(startDate)を設定します\n・1日の最大工数は8時間です\n・変更は保存されます')) {
         // スケジュールを実行
         const updatedTasks = scheduleAndSaveTasks(tasks);
         

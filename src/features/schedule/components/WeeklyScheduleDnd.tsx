@@ -8,7 +8,7 @@ import { BUSINESS_HOURS } from '@/utils/constants/constants'
 import { useFilterContext } from '@/features/tasks/filters/FilterContext'
 import { filterTodosForDisplay } from '../utils/scheduleTodoUtils'
 import { TodoWithMeta } from '../types/schedule'
-import useScheduleView from '../hooks/useScheduleView'
+import useScheduleView, { EditingTodo } from '../hooks/useScheduleView'
 import TodoGroup from './TodoGroup'
 
 interface WeeklyScheduleDndProps {
@@ -17,7 +17,7 @@ interface WeeklyScheduleDndProps {
   tasks: Task[]
   selectedTodoId?: string | null
   onTaskSelect: (taskId: string, todoId?: string) => void
-  onTodoUpdate?: (todoId: string, taskId: string, newDate: Date, isPlannedDate?: boolean, endDate?: Date) => void
+  onTodoUpdate?: (todoId: string, taskId: string, newDate: Date, endDate?: Date) => void
   onCalendarClick: (e: React.MouseEvent<HTMLDivElement>, day: Date, hour: number) => void
   isCreatingTodo: boolean
   newTodoDate: Date | null
@@ -29,6 +29,7 @@ interface WeeklyScheduleDndProps {
   onNewTodoEstimatedHoursChange: (hours: number) => void
   onCancelCreateTodo: () => void
   onCreateTodo: (taskId: string) => void
+  todoSchedule?: Map<string, TodoWithMeta[]> // 外部から渡されるスケジュール
 }
 
 export default function WeeklyScheduleDnd({
@@ -43,23 +44,23 @@ export default function WeeklyScheduleDnd({
   newTodoDate,
   newTodoTaskId,
   newTodoText,
-  newTodoEstimatedHours,
   onNewTodoTaskIdChange,
   onNewTodoTextChange,
-  onNewTodoEstimatedHoursChange,
   onCancelCreateTodo,
-  onCreateTodo
+  onCreateTodo,
+  todoSchedule
 }: WeeklyScheduleDndProps) {
   const [mounted, setMounted] = useState(false)
   const { selectedUserIds, showUnassigned } = useFilterContext();
   const [todos, setTodos] = useState<Map<string, TodoWithMeta[]>>(new Map())
-
+  const [editingTodo, setEditingTodo] = useState<EditingTodo | null>(null);
+  
   const quarterHeight = 15; // 15分の高さ（px）
   
   // 共通フックを使用
   const {
-    editingTodo,
-    setEditingTodo,
+    editingTodo: scheduleEditingTodo,
+    setEditingTodo: setScheduleEditingTodo,
     handleTimeUpdate,
     renderTodosForHour,
     handleTodoClick,
@@ -73,7 +74,7 @@ export default function WeeklyScheduleDnd({
     selectedTodoId,
     onTaskSelect,
     onTodoUpdate,
-    todos
+    todos: todoSchedule || todos // 外部から渡されたスケジュールを優先して使用
   });
 
   // マウント時とタスクまたはフィルターの変更時にTODOを更新
@@ -83,10 +84,15 @@ export default function WeeklyScheduleDnd({
       return
     }
     
-    // TODOをカレンダー表示用にフィルタリング
+    // 外部からスケジュールが渡されている場合は、それを使用
+    if (todoSchedule) {
+      return;
+    }
+    
+    // 外部からスケジュールが渡されていない場合は、従来通りフィルタリング
     const filteredTodos = filterTodosForDisplay(tasks, selectedUserIds, showUnassigned)
     setTodos(filteredTodos)
-  }, [tasks, selectedUserIds, showUnassigned, mounted])
+  }, [tasks, selectedUserIds, showUnassigned, mounted, todoSchedule])
 
   return (
     <div className="relative">
@@ -101,7 +107,9 @@ export default function WeeklyScheduleDnd({
           </div>
           {weekDays.map((day, dayIndex) => {
             const dateKey = format(day, 'yyyy-MM-dd')
-            const todosForDay = todos.get(dateKey) || []
+            // 外部からスケジュールが渡されている場合はそれを使用、そうでなければ内部のtodosを使用
+            const scheduledTodos = todoSchedule || todos;
+            const todosForDay = scheduledTodos.get(dateKey) || []
             
             // 共通フックを使用して、TODOグループを取得
             const { todoGroups } = renderTodosForHour(hour, todosForDay);
@@ -111,6 +119,12 @@ export default function WeeklyScheduleDnd({
                 key={`${format(day, 'yyyy-MM-dd')}-${hour}`}
                 className={`h-12 border-t border-l relative ${
                   hour === BUSINESS_HOURS.BREAK_START ? 'bg-gray-100 opacity-80' : ''
+                } ${
+                  hour >= BUSINESS_HOURS.START_HOUR && hour < BUSINESS_HOURS.END_HOUR ? 'bg-white' : 'bg-gray-50'
+                } ${
+                  hour === BUSINESS_HOURS.START_HOUR ? 'border-t-2 border-t-blue-200' : ''
+                } ${
+                  hour === BUSINESS_HOURS.END_HOUR ? 'border-b-2 border-b-blue-200' : ''
                 }`}
                 onClick={(e) => {
                   if ((e.target as HTMLElement).closest('.todo-item')) {
@@ -119,6 +133,9 @@ export default function WeeklyScheduleDnd({
                   }
                   onCalendarClick(e, day, hour);
                 }}
+                data-day-index={dayIndex}
+                data-date={format(day, 'yyyy-MM-dd')}
+                data-column-id={`day-column-${dayIndex}`}
               >
                 {/* 15分単位の区切り線 */}
                 {[1, 2, 3].map((quarter) => (
@@ -129,10 +146,12 @@ export default function WeeklyScheduleDnd({
                   />
                 ))}
 
-                {hour === BUSINESS_HOURS.BREAK_START && (
-                  <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-500 font-medium z-20">
-                    休憩
-                  </div>
+                {hour === BUSINESS_HOURS.START_HOUR && dayIndex === 0 && (
+                  <div className="absolute -left-12 top-0 transform -translate-y-1/2 text-xs text-blue-600 font-medium"></div>
+                )}
+
+                {hour === BUSINESS_HOURS.END_HOUR && dayIndex === 0 && (
+                  <div className="absolute -left-12 top-12 transform -translate-y-1/2 text-xs text-blue-600 font-medium"></div>
                 )}
 
                 {/* 共通コンポーネントを使用してTODOグループを表示 */}
@@ -142,6 +161,7 @@ export default function WeeklyScheduleDnd({
                     selectedTodoId={selectedTodoId}
                     quarterHeight={quarterHeight}
                     editingTodo={editingTodo}
+                    setEditingTodo={setEditingTodo}
                     onTodoClick={(todoWithMeta) => handleTodoClick(todoWithMeta.todo, todoWithMeta.taskId)}
                     onStartTimeChange={handleStartTimeChange}
                     onEndTimeChange={handleEndTimeChange}
@@ -149,6 +169,8 @@ export default function WeeklyScheduleDnd({
                     onUpdateTime={handleTimeUpdate}
                     onDragEnd={handleTodoDragEnd}
                     onResizeEnd={handleTodoResizeEnd}
+                    day={day}
+                    weekDays={weekDays}
                   />
                 )}
               </div>

@@ -15,11 +15,16 @@ import { Task, Todo } from '@/features/tasks/types/task'
 import { filterTodosForDisplay } from '../utils/scheduleTodoUtils'
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
 import { getProjectMemberName } from '@/utils/memberUtils'
+import { useAuth } from '@/services/auth/hooks/useAuth'
 
 const WeeklyScheduleDnd = dynamic(
   () => import('./WeeklyScheduleDnd').then(mod => mod.default),
   { ssr: false }
 )
+
+// ローカルストレージのキー
+const STORAGE_KEY_GOOGLE_EVENTS = 'google_calendar_events';
+const STORAGE_KEY_GOOGLE_INTEGRATED = 'google_calendar_integrated';
 
 export default function ScheduleCalendar({ 
   tasks, 
@@ -36,7 +41,6 @@ export default function ScheduleCalendar({
   const [newTodoDate, setNewTodoDate] = useState<Date | null>(null)
   const [newTodoTaskId, setNewTodoTaskId] = useState<string | null>(null)
   const [newTodoText, setNewTodoText] = useState('')
-  const [newTodoAssigneeId, setNewTodoAssigneeId] = useState<string>('')
   const [newTodoEstimatedHours, setNewTodoEstimatedHours] = useState(0.5)
   const [newTodoStartTime, setNewTodoStartTime] = useState<string>('09:00')
   const [newTodoEndTime, setNewTodoEndTime] = useState<string>('10:00')
@@ -53,6 +57,17 @@ export default function ScheduleCalendar({
   // プロジェクトコンテキストを使用
   const { currentProject, getProjectMembers } = useProjectContext()
   
+  // Authコンテキストからユーザー情報を取得
+  const { user } = useAuth();
+  
+  // Googleカレンダー連携関連の状態
+  const [isGoogleIntegrated, setIsGoogleIntegrated] = useState(false)
+  const [googleEvents, setGoogleEvents] = useState<TodoWithMeta[]>([])
+  // 外部予定表示用の専用スケジュールデータ
+  const [externalSchedule, setExternalSchedule] = useState<Map<string, TodoWithMeta[]>>(new Map())
+  // 内部TODOと外部予定を統合したスケジュール
+  const [mergedSchedule, setMergedSchedule] = useState<Map<string, TodoWithMeta[]>>(new Map())
+  
   // 選択状態の変更を検知するuseEffect
   useEffect(() => {
     if (selectedTodoId) {
@@ -62,6 +77,38 @@ export default function ScheduleCalendar({
 
   useEffect(() => {
     setIsClient(true)
+    
+    // ローカルストレージから外部予定データと連携状態を読み込む
+    if (typeof window !== 'undefined') {
+      // Googleカレンダー連携状態を読み込む
+      const storedIntegrationState = localStorage.getItem(STORAGE_KEY_GOOGLE_INTEGRATED);
+      if (storedIntegrationState === 'true') {
+        console.log('ローカルストレージからGoogleカレンダー連携状態を復元: 連携済み');
+        setIsGoogleIntegrated(true);
+      }
+      
+      // 外部予定データを読み込む
+      const storedEventsJson = localStorage.getItem(STORAGE_KEY_GOOGLE_EVENTS);
+      if (storedEventsJson) {
+        try {
+          // 日付文字列をDateオブジェクトに変換するリバイバー関数を使用してJSON解析
+          const parsedEvents = JSON.parse(storedEventsJson, (key, value) => {
+            // 日付文字列をDateオブジェクトに変換
+            if (key === 'startDate' || key === 'calendarStartDateTime' || key === 'calendarEndDateTime') {
+              return new Date(value);
+            }
+            return value;
+          });
+          
+          if (Array.isArray(parsedEvents) && parsedEvents.length > 0) {
+            console.log('ローカルストレージから外部予定を復元:', parsedEvents.length, '件');
+            setGoogleEvents(parsedEvents);
+          }
+        } catch (error) {
+          console.error('外部予定の読み込みに失敗しました', error);
+        }
+      }
+    }
   }, [])
 
   // tasksが変更されたときにtodoScheduleを再計算
@@ -77,6 +124,85 @@ export default function ScheduleCalendar({
       setTodoSchedule(schedule);
     }
   }, [tasks, selectedUserIds, showUnassigned, isClient]);
+  
+  // todoScheduleとexternalScheduleを統合したスケジュールを生成
+  useEffect(() => {
+    if (isClient) {
+      console.log('スケジュールマージ処理を実行', {
+        todoScheduleSize: todoSchedule.size,
+        externalScheduleSize: externalSchedule.size
+      });
+      
+      // 内部TODOと外部予定を統合
+      const merged = new Map<string, TodoWithMeta[]>();
+      
+      // 内部TODOをマージ
+      Array.from(todoSchedule.entries()).forEach(([date, todos]) => {
+        merged.set(date, [...todos]);
+      });
+      
+      // 外部予定をマージ
+      Array.from(externalSchedule.entries()).forEach(([date, events]) => {
+        const existingTodos = merged.get(date) || [];
+        merged.set(date, [...existingTodos, ...events]);
+      });
+      
+      console.log('スケジュールマージ完了', {
+        mergedScheduleSize: merged.size,
+        dates: Array.from(merged.keys())
+      });
+      
+      setMergedSchedule(merged);
+    }
+  }, [todoSchedule, externalSchedule, isClient]);
+
+  // googleEventsが更新されたときにローカルストレージに保存
+  useEffect(() => {
+    if (isClient && googleEvents.length > 0) {
+      try {
+        // 外部カレンダー予定をJSON文字列に変換してローカルストレージに保存
+        localStorage.setItem(STORAGE_KEY_GOOGLE_EVENTS, JSON.stringify(googleEvents));
+        console.log('外部予定をローカルストレージに保存しました:', googleEvents.length, '件');
+      } catch (error) {
+        console.error('外部予定の保存に失敗しました', error);
+      }
+    }
+  }, [googleEvents, isClient]);
+  
+  // isGoogleIntegratedの状態が変更されたときにローカルストレージに保存
+  useEffect(() => {
+    if (isClient) {
+      // Googleカレンダー連携状態をローカルストレージに保存
+      localStorage.setItem(STORAGE_KEY_GOOGLE_INTEGRATED, isGoogleIntegrated.toString());
+      console.log('Googleカレンダー連携状態を保存:', isGoogleIntegrated ? '連携済み' : '未連携');
+    }
+  }, [isGoogleIntegrated, isClient]);
+
+  // Googleカレンダーの予定をexternalScheduleに反映
+  useEffect(() => {
+    if (isClient && googleEvents.length > 0) {
+      console.log('Googleカレンダー予定をスケジュールに反映します', { 
+        googleEvents: googleEvents.length
+      });
+      
+      // 外部予定専用のスケジュールMapを作成
+      const newExternalSchedule = new Map<string, TodoWithMeta[]>();
+      
+      // Googleカレンダーのイベントを日付ごとに分類
+      googleEvents.forEach(event => {
+        const dateKey = format(event.todo.startDate, 'yyyy-MM-dd');
+        const existingEvents = newExternalSchedule.get(dateKey) || [];
+        newExternalSchedule.set(dateKey, [...existingEvents, event]);
+      });
+      
+      console.log('外部予定スケジュールを更新しました', {
+        externalEvents: googleEvents.length,
+        dates: Array.from(newExternalSchedule.keys())
+      });
+      
+      setExternalSchedule(newExternalSchedule);
+    }
+  }, [isClient, googleEvents]);
 
   // 週の開始日を取得（月曜始まり）
   const startDate = startOfWeek(currentDate, { locale: ja })
@@ -221,6 +347,17 @@ export default function ScheduleCalendar({
     const estimatedHours = 
       (endHour + endMinute / 60) - (startHour + startMinute / 60);
 
+    // 現在のユーザーIDを自動的に割り当て
+    const currentUserId = user?.id || '';
+
+    // プロジェクトメンバーからユーザーIDに対応するメンバーIDを取得
+    let assigneeId = '';
+    if (currentUserId && currentProject) {
+      const currentProjectMembers = getProjectMembers(currentProject.id);
+      const projectMember = currentProjectMembers.find(member => member.userId === currentUserId);
+      assigneeId = projectMember ? projectMember.id : '';
+    }
+
     const newTodo: Todo = {
       id: `todo-${Date.now()}`,
       text: newTodoText.trim(),
@@ -230,7 +367,7 @@ export default function ScheduleCalendar({
       calendarEndDateTime,
       estimatedHours,
       actualHours: 0,
-      assigneeId: newTodoAssigneeId
+      assigneeId: assigneeId // 自動的に現在のユーザーを割り当て
     };
 
     console.log('ScheduleCalendar - handleCreateTodo: 新しいTODOを作成', {
@@ -259,7 +396,6 @@ export default function ScheduleCalendar({
       setNewTodoEstimatedHours(0.5);
       setNewTodoStartTime('09:00');
       setNewTodoEndTime('10:00');
-      setNewTodoAssigneeId('');
     }
   };
 
@@ -267,8 +403,6 @@ export default function ScheduleCalendar({
   const handleCancel = () => {
     setIsCreatingTodo(false);
     setNewTodoText('');
-    setNewTodoAssigneeId('');
-    setNewTodoEstimatedHours(0.5);
     setNewTodoTaskId(null);
   };
 
@@ -318,6 +452,77 @@ export default function ScheduleCalendar({
         onMovePrevious={movePrevious}
         onMoveNext={moveNext}
         onGoToToday={goToToday}
+        isGoogleIntegrated={isGoogleIntegrated}
+        onGoogleIntegrationChange={() => {
+          setIsGoogleIntegrated(true);
+          // モック：Googleカレンダーからの予定を生成
+          if (googleEvents.length === 0) {
+            // 現在のユーザーIDを取得
+            const currentUserId = user?.id || '';
+
+            // プロジェクトメンバーからユーザーIDに対応するメンバーIDを取得
+            let assigneeId = '';
+            if (currentUserId && currentProject) {
+              const currentProjectMembers = getProjectMembers(currentProject.id);
+              const projectMember = currentProjectMembers.find(member => member.userId === currentUserId);
+              assigneeId = projectMember ? projectMember.id : '';
+            }
+            
+            const mockGoogleEvents: TodoWithMeta[] = [
+              {
+                todo: {
+                  id: `google-event-1`,
+                  text: 'チームMTG',
+                  completed: false,
+                  startDate: new Date(),
+                  calendarStartDateTime: new Date(new Date().setHours(10, 0, 0, 0)),
+                  calendarEndDateTime: new Date(new Date().setHours(11, 0, 0, 0)),
+                  estimatedHours: 1,
+                  actualHours: 0,
+                  assigneeId: assigneeId // 現在のユーザーを割り当て
+                },
+                taskId: 'google-calendar',
+                taskTitle: 'Googleカレンダー',
+                isExternal: true
+              },
+              {
+                todo: {
+                  id: `google-event-2`,
+                  text: 'プロジェクト打ち合わせ',
+                  completed: false,
+                  startDate: addDays(new Date(), 1),
+                  calendarStartDateTime: new Date(addDays(new Date(), 1).setHours(14, 0, 0, 0)),
+                  calendarEndDateTime: new Date(addDays(new Date(), 1).setHours(15, 30, 0, 0)),
+                  estimatedHours: 1.5,
+                  actualHours: 0,
+                  assigneeId: assigneeId // 現在のユーザーを割り当て
+                },
+                taskId: 'google-calendar',
+                taskTitle: 'Googleカレンダー',
+                isExternal: true
+              },
+              {
+                todo: {
+                  id: `google-event-3`,
+                  text: 'リリース会議',
+                  completed: false,
+                  startDate: addDays(new Date(), 2),
+                  calendarStartDateTime: new Date(addDays(new Date(), 2).setHours(13, 0, 0, 0)),
+                  calendarEndDateTime: new Date(addDays(new Date(), 2).setHours(14, 0, 0, 0)),
+                  estimatedHours: 1,
+                  actualHours: 0,
+                  assigneeId: assigneeId // 現在のユーザーを割り当て
+                },
+                taskId: 'google-calendar',
+                taskTitle: 'Googleカレンダー',
+                isExternal: true
+              }
+            ];
+            
+            setGoogleEvents(mockGoogleEvents);
+            console.log('Googleカレンダーの予定を生成しました', mockGoogleEvents);
+          }
+        }}
       />
       
       {/* 月表示の場合は年月表示を外部に配置 */}
@@ -332,7 +537,7 @@ export default function ScheduleCalendar({
           <DayView 
             currentDate={currentDate}
             timeSlots={timeSlots}
-            todoSchedule={todoSchedule}
+            todoSchedule={mergedSchedule}
             selectedTodoId={selectedTodoId}
             onTaskSelect={onTaskSelect}
             onTodoUpdate={onTodoUpdate}
@@ -379,6 +584,7 @@ export default function ScheduleCalendar({
               onNewTodoEstimatedHoursChange={setNewTodoEstimatedHours}
               onCancelCreateTodo={handleCancel}
               onCreateTodo={handleCreateTodo}
+              todoSchedule={mergedSchedule}
             />
           </div>
         )}
@@ -387,7 +593,7 @@ export default function ScheduleCalendar({
             currentDate={currentDate}
             showWeekend={showWeekend}
             monthCalendarDays={monthCalendarDays}
-            todoSchedule={todoSchedule}
+            todoSchedule={mergedSchedule}
             selectedTodoId={selectedTodoId}
             onTaskSelect={onTaskSelect}
           />
@@ -492,23 +698,6 @@ export default function ScheduleCalendar({
                   className="w-full p-2 border rounded-md"
                   placeholder="TODOの名前を入力"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  担当者
-                </label>
-                <select
-                  value={newTodoAssigneeId}
-                  onChange={(e) => setNewTodoAssigneeId(e.target.value)}
-                  className="w-full p-2 border rounded-md"
-                >
-                  <option value="">担当者を選択</option>
-                  {currentProject && getProjectMembers(currentProject.id).map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {getProjectMemberName(member.id)}
-                    </option>
-                  ))}
-                </select>
               </div>
             </div>
             <div className="mt-6 flex justify-end gap-2">

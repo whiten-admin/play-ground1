@@ -111,8 +111,8 @@ function HomeContent() {
     );
   };
 
-  const handleTodoUpdate = (todoId: string, taskId: string, newDate: Date, isPlannedDate?: boolean, endDate?: Date) => {
-    console.log('Home: handleTodoUpdate called with:', { todoId, taskId, newDate, isPlannedDate, endDate });
+  const handleTodoUpdate = (todoId: string, taskId: string, newDate: Date, endDate?: Date) => {
+    console.log('Home: handleTodoUpdate called with:', { todoId, taskId, newDate, endDate });
     
     setTasks((prevTasks) => {
       const updatedTasks = prevTasks.map((task) => {
@@ -141,19 +141,8 @@ function HomeContent() {
                     ...todo,
                     calendarStartDateTime: updatedDate,
                     calendarEndDateTime: updatedEndDate,
-                    estimatedHours: (updatedEndDate.getTime() - updatedDate.getTime()) / (1000 * 60 * 60)
-                  };
-                } else if (isPlannedDate) {
-                  // 着手予定日を更新
-                  return {
-                    ...todo,
-                    plannedStartDate: updatedDate
-                  };
-                } else {
-                  // 期日を更新
-                  return {
-                    ...todo,
-                    dueDate: updatedDate
+                    estimatedHours: (updatedEndDate.getTime() - updatedDate.getTime()) / (1000 * 60 * 60),
+                    startDate: updatedDate
                   };
                 }
               }

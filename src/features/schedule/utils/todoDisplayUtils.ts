@@ -1,43 +1,39 @@
-import { TodoWithMeta } from '../types/schedule';
+import { format } from 'date-fns';
+import { TodoWithMeta, TodoGroup } from '../types/schedule';
 import { BUSINESS_HOURS } from '@/utils/constants/constants';
 
 /**
- * 重複するTODOをグループ化する関数
- * @param todosForHour ある時間枠のTODOリスト
- * @returns グループ化されたTODOリスト
+ * 重複するTodoをグループ化して配列で返す
+ * @param todos Todoの配列
+ * @returns グループ化されたTodoの配列
  */
-export const groupOverlappingTodos = (todosForHour: TodoWithMeta[]): TodoWithMeta[][] => {
-  const todoGroups: TodoWithMeta[][] = [];
+export function groupOverlappingTodos(todos: TodoWithMeta[]): TodoGroup[] {
+  if (!todos || todos.length === 0) return [];
   
-  todosForHour.forEach(todo => {
-    let added = false;
-    for (const group of todoGroups) {
-      // 重複チェック - 時間が重なっているかどうか
-      const hasOverlap = group.some(existingTodo => {
-        const start1 = new Date(todo.todo.calendarStartDateTime!).getTime();
-        const end1 = new Date(todo.todo.calendarEndDateTime!).getTime();
-        const start2 = new Date(existingTodo.todo.calendarStartDateTime!).getTime();
-        const end2 = new Date(existingTodo.todo.calendarEndDateTime!).getTime();
-        
-        // 時間が重なっている場合はtrue
-        return (start1 < end2 || end1 > start2);
-      });
-      
-      // 重複がない場合のみ、このグループに追加
-      if (!hasOverlap) {
-        group.push(todo);
-        added = true;
-        break;
+  // 重複を検出してグループ化
+  const groups: TodoGroup[] = [];
+  const todosCopy = [...todos];
+  
+  while (todosCopy.length > 0) {
+    const currentTodo = todosCopy.shift();
+    if (!currentTodo) continue;
+    
+    const currentGroup: TodoWithMeta[] = [currentTodo];
+    
+    // このTodoと重複する他のTodoを探す
+    for (let i = todosCopy.length - 1; i >= 0; i--) {
+      const otherTodo = todosCopy[i];
+      if (todoOverlaps(currentTodo, otherTodo)) {
+        currentGroup.push(todosCopy.splice(i, 1)[0]);
       }
     }
-    if (!added) {
-      // 新しいグループを作成
-      todoGroups.push([todo]);
-    }
-  });
+    
+    // グループを追加
+    groups.push({ todos: currentGroup });
+  }
   
-  return todoGroups;
-};
+  return groups;
+}
 
 /**
  * TODOの表示位置・サイズを計算する関数
@@ -96,4 +92,20 @@ export const filterTodosForHour = (hour: number, todosForDay: TodoWithMeta[]): T
     // その時間帯が開始時間と一致する場合のみ表示
     return todoStartHour === hour;
   });
-}; 
+};
+
+/**
+ * TODOが重複するかどうかをチェックする関数
+ * @param todo1 最初のTodo
+ * @param todo2 2番目のTodo
+ * @returns 重複する場合はtrue、しない場合はfalse
+ */
+function todoOverlaps(todo1: TodoWithMeta, todo2: TodoWithMeta): boolean {
+  const start1 = new Date(todo1.todo.calendarStartDateTime!).getTime();
+  const end1 = new Date(todo1.todo.calendarEndDateTime!).getTime();
+  const start2 = new Date(todo2.todo.calendarStartDateTime!).getTime();
+  const end2 = new Date(todo2.todo.calendarEndDateTime!).getTime();
+  
+  // 時間が重なっている場合はtrue
+  return (start1 < end2 || end1 > start2);
+} 
