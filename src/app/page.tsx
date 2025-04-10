@@ -15,6 +15,7 @@ import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
 import ResizablePanel from '@/components/layout/ResizablePanel'
 import { FilterProvider } from '@/features/tasks/filters/FilterContext'
 import { useSearchParams } from 'next/navigation'
+import WorkloadSummaryView from '@/features/schedule/components/WorkloadSummaryView'
 
 // 検索パラメータを使用するコンポーネント
 function HomeContent() {
@@ -26,6 +27,14 @@ function HomeContent() {
   const { currentProject, updateProject, projects, filteredProjects } = useProjectContext()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const searchParams = useSearchParams()
+  
+  // 工数サマリーのための状態
+  const [workloadSummary, setWorkloadSummary] = useState({
+    daily: new Map(),
+    weekly: new Map(),
+    monthly: new Map()
+  });
+  const [workloadCurrentDate, setWorkloadCurrentDate] = useState(new Date());
 
   // ユーザーデータを取得
   const userData = user ? {
@@ -158,6 +167,12 @@ function HomeContent() {
     });
   };
 
+  // 工数データの更新を処理するハンドラー
+  const handleWorkloadUpdate = (workloadData: any, date: Date) => {
+    setWorkloadSummary(workloadData);
+    setWorkloadCurrentDate(date);
+  };
+
   if (!isAuthenticated) {
     return <Auth onLogin={login} />;
   }
@@ -215,6 +230,14 @@ function HomeContent() {
                         onTodoUpdate={handleTodoUpdate}
                         selectedTodoId={selectedTodoId}
                         onTaskUpdate={handleTaskUpdate}
+                        onWorkloadUpdate={handleWorkloadUpdate}
+                      />
+                    </div>
+                    <div className="text-sm mt-3">
+                      <WorkloadSummaryView
+                        workloadData={workloadSummary}
+                        currentDate={workloadCurrentDate}
+                        onCurrentDateChange={setWorkloadCurrentDate}
                       />
                     </div>
                   </div>
@@ -262,7 +285,15 @@ function HomeContent() {
                       onTodoUpdate={handleTodoUpdate}
                       selectedTodoId={selectedTodoId}
                       onTaskUpdate={handleTaskUpdate}
+                      onWorkloadUpdate={handleWorkloadUpdate}
                     />
+                    <div className="text-sm mt-3">
+                      <WorkloadSummaryView
+                        workloadData={workloadSummary}
+                        currentDate={workloadCurrentDate}
+                        onCurrentDateChange={setWorkloadCurrentDate}
+                      />
+                    </div>
                   </div>
                 }
                 defaultLeftWidth={450}

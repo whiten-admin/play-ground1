@@ -10,6 +10,7 @@ export interface StyledTodoItemProps {
   isDragging?: boolean;
   isResizing?: boolean;
   isMovingToNewDay?: boolean;
+  category?: 'external' | 'internal' | 'buffer' | 'free';
 }
 
 export const TodoItem = styled.div<StyledTodoItemProps>`
@@ -28,10 +29,14 @@ export const TodoItem = styled.div<StyledTodoItemProps>`
   background-color: ${(props: StyledTodoItemProps) =>
     props.isCompleted
       ? '#e0e0e0'
-      : props.isNextTodo
+      : props.category === 'external'
       ? '#e3f2fd'
-      : props.priority === 2
+      : props.category === 'buffer'
       ? '#fff3e0'
+      : props.isNextTodo
+      ? '#e8f5e9'
+      : props.priority === 2
+      ? '#fff8e1'
       : props.priority === 1
       ? '#f3e5f5'
       : '#f5f5f5'};
@@ -44,10 +49,14 @@ export const TodoItem = styled.div<StyledTodoItemProps>`
       ? '2px dashed #ff9800'
       : props.isCompleted
       ? '1px solid #9e9e9e'
-      : props.isNextTodo
+      : props.category === 'external'
       ? '1px solid #2196f3'
-      : props.priority === 2
+      : props.category === 'buffer'
       ? '1px solid #ff9800'
+      : props.isNextTodo
+      ? '1px solid #4caf50'
+      : props.priority === 2
+      ? '1px solid #ffc107'
       : props.priority === 1
       ? '1px solid #9c27b0'
       : '1px solid #bdbdbd'};
