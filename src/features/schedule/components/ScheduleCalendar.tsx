@@ -1,13 +1,13 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { format, addDays, startOfWeek, isBefore, isToday, startOfMonth, endOfMonth, getDaysInMonth, getDay, addMonths, startOfDay } from 'date-fns'
+import { format, addDays, startOfWeek, isBefore, isToday, startOfMonth, endOfMonth, getDaysInMonth, getDay, addMonths, startOfDay, endOfWeek } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { IoCalendarOutline, IoChevronBack, IoChevronForward, IoCalendarClearOutline, IoCalendarNumberOutline } from 'react-icons/io5'
 import dynamic from 'next/dynamic'
 import { BUSINESS_HOURS, generateTimeSlots } from '@/utils/constants/constants'
 import { useFilterContext } from '@/features/tasks/filters/FilterContext'
-import { ScheduleCalendarProps, TodoWithMeta, ViewMode, ViewModeButton } from '../types/schedule'
+import { ScheduleCalendarProps, TodoWithMeta, ViewMode, ViewModeButton, WorkloadSummaryByPeriod } from '../types/schedule'
 import DayView from './DayView'
 import MonthView from './MonthView'
 import ScheduleHeader from './ScheduleHeader'
@@ -16,6 +16,8 @@ import { filterTodosForDisplay } from '../utils/scheduleTodoUtils'
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
 import { getProjectMemberName } from '@/utils/memberUtils'
 import { useAuth } from '@/services/auth/hooks/useAuth'
+import { calculateWorkloadSummary, createEmptyWorkloadSummary } from '../utils/workloadUtils'
+import WorkloadSummaryView from './WorkloadSummaryView'
 
 const WeeklyScheduleDnd = dynamic(
   () => import('./WeeklyScheduleDnd').then(mod => mod.default),
@@ -31,7 +33,8 @@ export default function ScheduleCalendar({
   onTaskSelect, 
   onTodoUpdate, 
   selectedTodoId, 
-  onTaskUpdate 
+  onTaskUpdate,
+  onWorkloadUpdate
 }: ScheduleCalendarProps) {
   const [isClient, setIsClient] = useState(false)
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -67,6 +70,17 @@ export default function ScheduleCalendar({
   const [externalSchedule, setExternalSchedule] = useState<Map<string, TodoWithMeta[]>>(new Map())
   // 内部TODOと外部予定を統合したスケジュール
   const [mergedSchedule, setMergedSchedule] = useState<Map<string, TodoWithMeta[]>>(new Map())
+  
+  // 工数集計に関するステート
+  const [workloadSummary, setWorkloadSummary] = useState<WorkloadSummaryByPeriod>({
+    daily: new Map(),
+    weekly: new Map(),
+    monthly: new Map()
+  });
+  
+  // 工数集計の期間
+  const [workloadPeriodStart, setWorkloadPeriodStart] = useState<Date>(startOfWeek(currentDate, { locale: ja }));
+  const [workloadPeriodEnd, setWorkloadPeriodEnd] = useState<Date>(addDays(endOfWeek(currentDate, { locale: ja }), 14)); // 2週間分を表示
   
   // 選択状態の変更を検知するuseEffect
   useEffect(() => {
@@ -125,36 +139,60 @@ export default function ScheduleCalendar({
     }
   }, [tasks, selectedUserIds, showUnassigned, isClient]);
   
-  // todoScheduleとexternalScheduleを統合したスケジュールを生成
+  // todoScheduleとexternalScheduleを結合して新しいmergedScheduleを作成
   useEffect(() => {
     if (isClient) {
-      console.log('スケジュールマージ処理を実行', {
-        todoScheduleSize: todoSchedule.size,
-        externalScheduleSize: externalSchedule.size
+      const newMergedSchedule = new Map<string, TodoWithMeta[]>();
+      
+      // 1. まず内部のTODOスケジュールを取得
+      todoSchedule.forEach((todos, dateKey) => {
+        const todosWithCategory = todos.map(todo => ({
+          ...todo,
+          // 内部TODOのカテゴリを判定
+          category: determineTodoCategory(todo)
+        }));
+        newMergedSchedule.set(dateKey, todosWithCategory);
       });
       
-      // 内部TODOと外部予定を統合
-      const merged = new Map<string, TodoWithMeta[]>();
-      
-      // 内部TODOをマージ
-      Array.from(todoSchedule.entries()).forEach(([date, todos]) => {
-        merged.set(date, [...todos]);
+      // 2. 次に外部の予定を追加
+      externalSchedule.forEach((todos, dateKey) => {
+        const existingTodos = newMergedSchedule.get(dateKey) || [];
+        const todosWithCategory = todos.map(todo => ({
+          ...todo,
+          // 外部予定は常にexternal
+          category: 'external' as const
+        }));
+        newMergedSchedule.set(dateKey, [...existingTodos, ...todosWithCategory]);
       });
       
-      // 外部予定をマージ
-      Array.from(externalSchedule.entries()).forEach(([date, events]) => {
-        const existingTodos = merged.get(date) || [];
-        merged.set(date, [...existingTodos, ...events]);
-      });
-      
-      console.log('スケジュールマージ完了', {
-        mergedScheduleSize: merged.size,
-        dates: Array.from(merged.keys())
-      });
-      
-      setMergedSchedule(merged);
+      // 3. mergedScheduleを更新
+      setMergedSchedule(newMergedSchedule);
     }
-  }, [todoSchedule, externalSchedule, isClient]);
+  }, [isClient, todoSchedule, externalSchedule]);
+
+  // TODOの種別を判定する関数
+  const determineTodoCategory = (todo: TodoWithMeta): 'external' | 'internal' | 'buffer' => {
+    // 既に外部予定とマークされているものはexternal
+    if (todo.isExternal) {
+      return 'external';
+    }
+    
+    // バッファかどうかを判定（タスク名またはTODO名に「バッファ」「buffer」が含まれる場合）
+    const todoText = todo.todo.text.toLowerCase();
+    const taskTitle = todo.taskTitle?.toLowerCase() || '';
+    
+    if (
+      todoText.includes('バッファ') || 
+      todoText.includes('buffer') || 
+      taskTitle.includes('バッファ') || 
+      taskTitle.includes('buffer')
+    ) {
+      return 'buffer';
+    }
+    
+    // それ以外は内部TODO
+    return 'internal';
+  };
 
   // googleEventsが更新されたときにローカルストレージに保存
   useEffect(() => {
@@ -203,6 +241,34 @@ export default function ScheduleCalendar({
       setExternalSchedule(newExternalSchedule);
     }
   }, [isClient, googleEvents]);
+
+  // TODOスケジュールが更新されたら工数集計も更新
+  useEffect(() => {
+    if (isClient && mergedSchedule.size > 0) {
+      const workloadData = calculateWorkloadSummary(
+        mergedSchedule,
+        workloadPeriodStart,
+        workloadPeriodEnd,
+        BUSINESS_HOURS.MAX_HOURS
+      );
+      
+      setWorkloadSummary(workloadData);
+      
+      // 親コンポーネントに工数データを通知
+      if (onWorkloadUpdate) {
+        onWorkloadUpdate(workloadData, currentDate);
+      }
+    }
+  }, [isClient, mergedSchedule, workloadPeriodStart, workloadPeriodEnd, currentDate]);
+  
+  // 現在の日付が変わったら工数集計の期間も更新
+  useEffect(() => {
+    const newPeriodStart = startOfWeek(currentDate, { locale: ja });
+    const newPeriodEnd = addDays(endOfWeek(currentDate, { locale: ja }), 14); // 2週間分を表示
+    
+    setWorkloadPeriodStart(newPeriodStart);
+    setWorkloadPeriodEnd(newPeriodEnd);
+  }, [currentDate]);
 
   // 週の開始日を取得（月曜始まり）
   const startDate = startOfWeek(currentDate, { locale: ja })
