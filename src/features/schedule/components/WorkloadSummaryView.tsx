@@ -1,10 +1,10 @@
 'use client'
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfDay, endOfDay, subDays, addDays, subWeeks, addWeeks, subMonths, addMonths } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfDay, endOfDay, subDays, addDays, subWeeks, addWeeks, subMonths, addMonths, eachDayOfInterval, isSameDay } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { FaClock, FaExclamationTriangle } from 'react-icons/fa';
-import { IoChevronBack, IoChevronForward } from 'react-icons/io5';
+import { FaClock, FaExclamationTriangle, FaChartLine } from 'react-icons/fa';
+import { IoChevronBack, IoChevronForward, IoClose } from 'react-icons/io5';
 import { WorkloadSummaryByPeriod } from '../types/schedule';
 import { formatHours, getWeekKey, getMonthKey } from '../utils/workloadUtils';
 
@@ -23,6 +23,8 @@ export default function WorkloadSummaryView({
   const [dayDate, setDayDate] = useState<Date>(currentDate);
   const [weekDate, setWeekDate] = useState<Date>(currentDate);
   const [monthDate, setMonthDate] = useState<Date>(currentDate);
+  // 週の詳細表示状態
+  const [showWeekDetail, setShowWeekDetail] = useState<boolean>(false);
 
   // 外部からcurrentDateが変更されたら全ての日付を同期
   useEffect(() => {
@@ -89,6 +91,301 @@ export default function WorkloadSummaryView({
     
     return { day, week, month };
   }, [dayDate, weekDate, monthDate]);
+  
+  // 週の各日の工数データを計算
+  const weekDailyData = useMemo(() => {
+    // 週の各日を取得
+    const weekDays = eachDayOfInterval({
+      start: dateRanges.week.start,
+      end: dateRanges.week.end
+    });
+    
+    // 各日の工数データを取得
+    return weekDays.map(day => {
+      const dayKey = format(day, 'yyyy-MM-dd');
+      const dayWorkload = workloadData.daily.get(dayKey) || {
+        externalHours: 0,
+        internalHours: 0,
+        bufferHours: 0,
+        freeHours: 0,
+        totalHours: 0
+      };
+      
+      return {
+        date: day,
+        label: format(day, 'E', { locale: ja }),
+        ...dayWorkload
+      };
+    });
+  }, [workloadData, dateRanges.week]);
+  
+  // 折れ線グラフコンポーネント
+  const WeeklyLineChart = () => {
+    const chartWidth = 260;
+    const chartHeight = 150;
+    const padding = { top: 20, right: 20, bottom: 30, left: 40 };
+    const graphWidth = chartWidth - padding.left - padding.right;
+    const graphHeight = chartHeight - padding.top - padding.bottom;
+    
+    // 最大値を計算
+    const maxValue = Math.max(
+      ...weekDailyData.map(d => d.totalHours),
+      8 // 最低8時間は表示
+    );
+    
+    // スケールの計算
+    const xScale = graphWidth / (weekDailyData.length - 1);
+    const yScale = graphHeight / maxValue;
+    
+    // 各工数タイプのポイントを生成
+    const generatePoints = (key: 'totalHours' | 'externalHours' | 'internalHours' | 'bufferHours') => {
+      return weekDailyData.map((d, i) => ({
+        x: padding.left + i * xScale,
+        y: chartHeight - padding.bottom - d[key] * yScale
+      }));
+    };
+    
+    // 折れ線のパスを生成
+    const generatePath = (points: { x: number, y: number }[]) => {
+      return points.map((p, i) => 
+        i === 0 ? `M ${p.x},${p.y}` : `L ${p.x},${p.y}`
+      ).join(' ');
+    };
+    
+    const totalPoints = generatePoints('totalHours');
+    const externalPoints = generatePoints('externalHours');
+    const internalPoints = generatePoints('internalHours');
+    const bufferPoints = generatePoints('bufferHours');
+    
+    return (
+      <div className="pt-2">
+        <h4 className="text-sm font-medium mb-2 text-center">週間工数推移</h4>
+        <svg width={chartWidth} height={chartHeight} className="overflow-visible">
+          {/* Y軸 */}
+          <line 
+            x1={padding.left} 
+            y1={padding.top} 
+            x2={padding.left} 
+            y2={chartHeight - padding.bottom} 
+            stroke="#E5E7EB" 
+            strokeWidth="1" 
+          />
+          
+          {/* X軸 */}
+          <line 
+            x1={padding.left} 
+            y1={chartHeight - padding.bottom} 
+            x2={chartWidth - padding.right} 
+            y2={chartHeight - padding.bottom} 
+            stroke="#E5E7EB" 
+            strokeWidth="1" 
+          />
+          
+          {/* Y軸の目盛り */}
+          {[0, maxValue / 2, maxValue].map((value, i) => (
+            <g key={i}>
+              <text 
+                x={padding.left - 5} 
+                y={chartHeight - padding.bottom - value * yScale} 
+                textAnchor="end"
+                dominantBaseline="middle" 
+                fontSize="10" 
+                fill="#9CA3AF"
+              >
+                {value.toFixed(1)}h
+              </text>
+              <line 
+                x1={padding.left - 3} 
+                y1={chartHeight - padding.bottom - value * yScale} 
+                x2={padding.left} 
+                y2={chartHeight - padding.bottom - value * yScale} 
+                stroke="#E5E7EB" 
+                strokeWidth="1" 
+              />
+            </g>
+          ))}
+          
+          {/* X軸の目盛り */}
+          {weekDailyData.map((d, i) => (
+            <text 
+              key={i} 
+              x={padding.left + i * xScale} 
+              y={chartHeight - padding.bottom + 15} 
+              textAnchor="middle" 
+              fontSize="10" 
+              fill="#9CA3AF"
+            >
+              {d.label}
+            </text>
+          ))}
+          
+          {/* グリッドライン */}
+          {[maxValue / 2].map((value, i) => (
+            <line 
+              key={i}
+              x1={padding.left} 
+              y1={chartHeight - padding.bottom - value * yScale} 
+              x2={chartWidth - padding.right} 
+              y2={chartHeight - padding.bottom - value * yScale} 
+              stroke="#E5E7EB" 
+              strokeWidth="1" 
+              strokeDasharray="4" 
+            />
+          ))}
+          
+          {/* 合計時間のライン */}
+          <path
+            d={generatePath(totalPoints)}
+            fill="none"
+            stroke="#6B7280"
+            strokeWidth="2"
+          />
+          
+          {/* 外部予定のライン */}
+          <path
+            d={generatePath(externalPoints)}
+            fill="none"
+            stroke="#3B82F6"
+            strokeWidth="1.5"
+          />
+          
+          {/* 内部TODOのライン */}
+          <path
+            d={generatePath(internalPoints)}
+            fill="none"
+            stroke="#22C55E"
+            strokeWidth="1.5"
+          />
+          
+          {/* バッファのライン */}
+          <path
+            d={generatePath(bufferPoints)}
+            fill="none"
+            stroke="#F97316"
+            strokeWidth="1.5"
+          />
+          
+          {/* データポイント */}
+          {totalPoints.map((point, i) => (
+            <circle
+              key={i}
+              cx={point.x}
+              cy={point.y}
+              r="3"
+              fill="#6B7280"
+            >
+              <title>{format(weekDailyData[i].date, 'M/d')}: {formatHours(weekDailyData[i].totalHours)}</title>
+            </circle>
+          ))}
+          
+          {/* 今日を示すマーカー */}
+          {weekDailyData.map((data, i) => 
+            isSameDay(data.date, new Date()) && (
+              <circle
+                key={`today-${i}`}
+                cx={padding.left + i * xScale}
+                cy={chartHeight - padding.bottom - data.totalHours * yScale}
+                r="5"
+                fill="none"
+                stroke="#EF4444"
+                strokeWidth="1.5"
+              />
+            )
+          )}
+        </svg>
+        
+        {/* 凡例 */}
+        <div className="flex justify-center items-center gap-3 mt-2 text-xs">
+          <div className="flex items-center">
+            <div className="w-3 h-0.5 bg-gray-500 mr-1"></div>
+            <span>合計</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-3 h-0.5 bg-blue-500 mr-1"></div>
+            <span>外部</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-3 h-0.5 bg-green-500 mr-1"></div>
+            <span>内部</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-3 h-0.5 bg-orange-500 mr-1"></div>
+            <span>バッファ</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  
+  // 週間工数の合計表コンポーネント
+  const WeeklySummaryTable = () => {
+    // 各工数タイプの合計を計算
+    const totals = {
+      external: weekData.externalHours,
+      internal: weekData.internalHours,
+      buffer: weekData.bufferHours,
+      free: weekData.freeHours,
+      total: weekData.totalHours
+    };
+    
+    // 各工数タイプの割合を計算
+    const calculatePercentage = (value: number) => {
+      if (weekMaxHours <= 0) return 0;
+      return Math.round((value / weekMaxHours) * 100);
+    };
+    
+    return (
+      <div className="pt-2 ml-4">
+        <h4 className="text-sm font-medium mb-3 text-center">週間工数合計</h4>
+        <table className="w-full text-sm">
+          <tbody>
+            <tr className="border-b border-gray-100">
+              <td className="py-1.5 pr-2 flex items-center">
+                <div className="w-2 h-2 rounded-full bg-blue-500 mr-2"></div>
+                外部予定
+              </td>
+              <td className="py-1.5 text-right font-medium">{formatHours(totals.external)}</td>
+              <td className="py-1.5 pl-2 text-right text-gray-500 w-14">{calculatePercentage(totals.external)}%</td>
+            </tr>
+            <tr className="border-b border-gray-100">
+              <td className="py-1.5 pr-2 flex items-center">
+                <div className="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
+                内部TODO
+              </td>
+              <td className="py-1.5 text-right font-medium">{formatHours(totals.internal)}</td>
+              <td className="py-1.5 pl-2 text-right text-gray-500 w-14">{calculatePercentage(totals.internal)}%</td>
+            </tr>
+            <tr className="border-b border-gray-100">
+              <td className="py-1.5 pr-2 flex items-center">
+                <div className="w-2 h-2 rounded-full bg-orange-500 mr-2"></div>
+                バッファ
+              </td>
+              <td className="py-1.5 text-right font-medium">{formatHours(totals.buffer)}</td>
+              <td className="py-1.5 pl-2 text-right text-gray-500 w-14">{calculatePercentage(totals.buffer)}%</td>
+            </tr>
+            <tr className="border-b border-gray-100">
+              <td className="py-1.5 pr-2 flex items-center">
+                <div className="w-2 h-2 rounded-full bg-gray-200 mr-2"></div>
+                空き時間
+              </td>
+              <td className="py-1.5 text-right font-medium">{formatHours(totals.free)}</td>
+              <td className="py-1.5 pl-2 text-right text-gray-500 w-14">{calculatePercentage(totals.free)}%</td>
+            </tr>
+            <tr className="border-t border-gray-200 font-medium">
+              <td className="pt-2 pr-2">合計</td>
+              <td className="pt-2 text-right">{formatHours(totals.total)}</td>
+              <td className="pt-2 pl-2 text-right w-14">{calculatePercentage(totals.total)}%</td>
+            </tr>
+            <tr className="text-gray-500">
+              <td className="pt-1 pr-2">最大</td>
+              <td className="pt-1 text-right">{formatHours(weekMaxHours)}</td>
+              <td className="pt-1 pl-2 text-right w-14">100%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    );
+  };
   
   // 円グラフコンポーネント
   const DonutChart = ({ 
@@ -247,6 +544,17 @@ export default function WorkloadSummaryView({
               </div>
             </div>
           </div>
+          
+          {/* 週のチャートに詳細表示ボタンを追加 */}
+          {title.toLowerCase() === 'week' && (
+            <button
+              type="button"
+              onClick={() => setShowWeekDetail(prev => !prev)}
+              className="absolute bottom-0 right-0 bg-gray-100 p-1 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-200 transition-colors"
+            >
+              <FaChartLine size={12} />
+            </button>
+          )}
         </div>
         <div className="text-xs text-center mt-2">
           <div className="flex items-center justify-center">
@@ -334,14 +642,41 @@ export default function WorkloadSummaryView({
           <FaClock className="mr-2 text-gray-500" />
           工数集計
         </h3>
+        {showWeekDetail && (
+          <button
+            type="button"
+            onClick={() => setShowWeekDetail(false)}
+            className="text-gray-500 hover:text-gray-700 flex items-center text-sm"
+          >
+            <IoClose className="mr-1" /> 詳細を閉じる
+          </button>
+        )}
       </div>
       
       <Legend />
       
-      <div className="flex flex-wrap justify-center gap-6 pt-2">
-        <DonutChart data={dayData} maxHours={dayMaxHours} title="day" />
-        <DonutChart data={weekData} maxHours={weekMaxHours} title="week" />
-        <DonutChart data={monthData} maxHours={monthMaxHours} title="month" />
+      <div className={`${showWeekDetail ? 'flex justify-between items-start' : 'flex flex-wrap justify-center gap-6'} pt-2`}>
+        {!showWeekDetail ? (
+          // 通常表示
+          <>
+            <DonutChart data={dayData} maxHours={dayMaxHours} title="day" />
+            <DonutChart data={weekData} maxHours={weekMaxHours} title="week" />
+            <DonutChart data={monthData} maxHours={monthMaxHours} title="month" />
+          </>
+        ) : (
+          // 週の詳細表示
+          <>
+            <div className="flex-shrink-0 ml-2">
+              <DonutChart data={weekData} maxHours={weekMaxHours} title="week" />
+            </div>
+            <div className="flex-grow ml-4 mr-2 max-w-[260px]">
+              <WeeklyLineChart />
+            </div>
+            <div className="flex-shrink-0 mr-2">
+              <WeeklySummaryTable />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
