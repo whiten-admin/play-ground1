@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfDay, endOfDay, subDays, addDays, subWeeks, addWeeks, subMonths, addMonths, eachDayOfInterval, isSameDay } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfDay, endOfDay, subDays, addDays, subWeeks, addWeeks, subMonths, addMonths, eachDayOfInterval, isSameDay, eachWeekOfInterval, getDay, isToday, isWithinInterval } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { FaClock, FaExclamationTriangle, FaChartLine } from 'react-icons/fa';
 import { IoChevronBack, IoChevronForward, IoClose } from 'react-icons/io5';
@@ -25,6 +25,8 @@ export default function WorkloadSummaryView({
   const [monthDate, setMonthDate] = useState<Date>(currentDate);
   // 週の詳細表示状態
   const [showWeekDetail, setShowWeekDetail] = useState<boolean>(false);
+  // 月の詳細表示状態
+  const [showMonthDetail, setShowMonthDetail] = useState<boolean>(false);
 
   // 外部からcurrentDateが変更されたら全ての日付を同期
   useEffect(() => {
@@ -387,6 +389,278 @@ export default function WorkloadSummaryView({
     );
   };
   
+  // 月のヒートマップカレンダーコンポーネント
+  const MonthHeatmapCalendar = () => {
+    // 月の日付範囲
+    const monthDays = eachDayOfInterval({
+      start: dateRanges.month.start,
+      end: dateRanges.month.end
+    });
+    
+    // 週ごとにグループ化
+    const weeks = eachWeekOfInterval(
+      {
+        start: dateRanges.month.start,
+        end: dateRanges.month.end
+      }, 
+      { locale: ja }
+    );
+    
+    // 最初の週の開始曜日のオフセットを計算
+    const firstDayOffset = getDay(dateRanges.month.start);
+    
+    // 各日の工数データを取得
+    const daysData = monthDays.map(day => {
+      const dayKey = format(day, 'yyyy-MM-dd');
+      const dayWorkload = workloadData.daily.get(dayKey) || {
+        externalHours: 0,
+        internalHours: 0,
+        bufferHours: 0,
+        freeHours: 0,
+        totalHours: 0
+      };
+      
+      return {
+        date: day,
+        dayOfMonth: day.getDate(),
+        ...dayWorkload
+      };
+    });
+    
+    // 最大工数（色の濃さのスケール用）
+    const maxDayHours = Math.max(
+      ...daysData.map(d => d.totalHours),
+      8 // 最低8時間は表示
+    );
+    
+    // 工数に応じた色の濃さを計算
+    const getColorIntensity = (hours: number) => {
+      if (hours === 0) return 'bg-gray-50';
+      const intensity = Math.min(Math.round((hours / maxDayHours) * 100), 100);
+      
+      // 工数タイプに応じた色を決定
+      if (hours > dayMaxHours) {
+        // 超過時は赤系
+        return `bg-red-${Math.max(Math.floor(intensity / 10) * 100, 100)}`;
+      } else {
+        // 通常時は青系
+        return `bg-blue-${Math.max(Math.floor(intensity / 10) * 100, 100)}`;
+      }
+    };
+    
+    // 工数タイプのインジケーターの幅を計算
+    const getTypeIndicatorWidth = (type: 'external' | 'internal' | 'buffer', data: typeof daysData[0]) => {
+      if (data.totalHours === 0) return '0%';
+      
+      let value = 0;
+      if (type === 'external') value = data.externalHours;
+      else if (type === 'internal') value = data.internalHours;
+      else if (type === 'buffer') value = data.bufferHours;
+      
+      return `${Math.min((value / data.totalHours) * 100, 100)}%`;
+    };
+    
+    // 工数タイプの高さを計算（セル内での割合）
+    const getTypeIndicatorHeight = (type: 'external' | 'internal' | 'buffer' | 'free', data: typeof daysData[0]) => {
+      if (data.totalHours === 0) return '0%';
+      
+      let value = 0;
+      if (type === 'external') value = data.externalHours;
+      else if (type === 'internal') value = data.internalHours;
+      else if (type === 'buffer') value = data.bufferHours;
+      else if (type === 'free') value = data.freeHours;
+      
+      return `${Math.min((value / (data.totalHours + data.freeHours)) * 100, 100)}%`;
+    };
+    
+    const weekdayLabels = ['日', '月', '火', '水', '木', '金', '土'];
+    
+    return (
+      <div className="pt-2 max-w-[300px]">
+        <h4 className="text-sm font-medium mb-2 text-center">月間工数カレンダー</h4>
+        
+        {/* 曜日ラベル */}
+        <div className="grid grid-cols-7 mb-1">
+          {weekdayLabels.map((day, i) => (
+            <div key={i} className="text-center text-xs text-gray-500">
+              {day}
+            </div>
+          ))}
+        </div>
+        
+        {/* カレンダーグリッド */}
+        <div className="grid grid-cols-7 gap-1">
+          {/* 最初の週の空白セル */}
+          {Array.from({ length: firstDayOffset }).map((_, i) => (
+            <div key={`empty-${i}`} className="aspect-square"></div>
+          ))}
+          
+          {/* 日付セル */}
+          {daysData.map((day, i) => {
+            const isCurrentDay = isToday(day.date);
+            const isWithinMonth = isWithinInterval(day.date, {
+              start: dateRanges.month.start,
+              end: dateRanges.month.end
+            });
+            
+            if (!isWithinMonth) return null;
+            
+            return (
+              <div 
+                key={i} 
+                className={`relative aspect-square border border-gray-100 rounded overflow-hidden text-xs cursor-pointer hover:brightness-95 transition-all ${day.totalHours > dayMaxHours ? 'ring-1 ring-red-500' : ''}`}
+                title={`${format(day.date, 'M/d')}: ${formatHours(day.totalHours)}`}
+              >
+                {/* 工数タイプの色分け表示（積み上げ） */}
+                <div className="absolute inset-0 flex flex-col">
+                  {day.externalHours > 0 && (
+                    <div 
+                      className="w-full bg-blue-400"
+                      style={{ height: getTypeIndicatorHeight('external', day) }}
+                    ></div>
+                  )}
+                  {day.internalHours > 0 && (
+                    <div 
+                      className="w-full bg-green-400"
+                      style={{ height: getTypeIndicatorHeight('internal', day) }}
+                    ></div>
+                  )}
+                  {day.bufferHours > 0 && (
+                    <div 
+                      className="w-full bg-orange-400"
+                      style={{ height: getTypeIndicatorHeight('buffer', day) }}
+                    ></div>
+                  )}
+                  {day.freeHours > 0 && (
+                    <div 
+                      className="w-full bg-gray-100"
+                      style={{ height: getTypeIndicatorHeight('free', day) }}
+                    ></div>
+                  )}
+                </div>
+                
+                {/* 日付 */}
+                <div className={`absolute top-0.5 left-0.5 w-4 h-4 flex items-center justify-center rounded-full ${isCurrentDay ? 'bg-red-500 text-white' : 'bg-white bg-opacity-70 text-gray-700'} shadow-sm`}>
+                  {day.dayOfMonth}
+                </div>
+                
+                {/* 工数の値 */}
+                <div className="absolute bottom-0.5 right-0.5 font-medium text-[9px] bg-white bg-opacity-70 px-0.5 rounded shadow-sm">
+                  {day.totalHours > 0 && formatHours(day.totalHours)}
+                </div>
+                
+                {/* 超過警告 */}
+                {day.totalHours > dayMaxHours && (
+                  <div className="absolute top-0.5 right-0.5 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center">
+                    <span className="text-[8px] text-white font-bold">!</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        
+        {/* 凡例 */}
+        <div className="mt-3 text-xs flex flex-col gap-1">
+          <div className="flex justify-between items-center">
+            <span className="text-gray-600">工数タイプ:</span>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-blue-400 mr-1"></div>
+                <span>外部</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-green-400 mr-1"></div>
+                <span>内部</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-orange-400 mr-1"></div>
+                <span>バッファ</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-gray-100 mr-1"></div>
+                <span>空き</span>
+              </div>
+            </div>
+          </div>
+          <div className="text-center text-gray-500 text-[10px] mt-1">
+            ※各色の高さは工数割合を表します
+          </div>
+        </div>
+      </div>
+    );
+  };
+  
+  // 月間工数の合計表コンポーネント
+  const MonthlySummaryTable = () => {
+    // 各工数タイプの合計を計算
+    const totals = {
+      external: monthData.externalHours,
+      internal: monthData.internalHours,
+      buffer: monthData.bufferHours,
+      free: monthData.freeHours,
+      total: monthData.totalHours
+    };
+    
+    // 各工数タイプの割合を計算
+    const calculatePercentage = (value: number) => {
+      if (monthMaxHours <= 0) return 0;
+      return Math.round((value / monthMaxHours) * 100);
+    };
+    
+    return (
+      <div className="pt-2 ml-4">
+        <h4 className="text-sm font-medium mb-3 text-center">月間工数合計</h4>
+        <table className="w-full text-sm">
+          <tbody>
+            <tr className="border-b border-gray-100">
+              <td className="py-1.5 pr-2 flex items-center">
+                <div className="w-2 h-2 rounded-full bg-blue-500 mr-2"></div>
+                外部予定
+              </td>
+              <td className="py-1.5 text-right font-medium">{formatHours(totals.external)}</td>
+              <td className="py-1.5 pl-2 text-right text-gray-500 w-14">{calculatePercentage(totals.external)}%</td>
+            </tr>
+            <tr className="border-b border-gray-100">
+              <td className="py-1.5 pr-2 flex items-center">
+                <div className="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
+                内部TODO
+              </td>
+              <td className="py-1.5 text-right font-medium">{formatHours(totals.internal)}</td>
+              <td className="py-1.5 pl-2 text-right text-gray-500 w-14">{calculatePercentage(totals.internal)}%</td>
+            </tr>
+            <tr className="border-b border-gray-100">
+              <td className="py-1.5 pr-2 flex items-center">
+                <div className="w-2 h-2 rounded-full bg-orange-500 mr-2"></div>
+                バッファ
+              </td>
+              <td className="py-1.5 text-right font-medium">{formatHours(totals.buffer)}</td>
+              <td className="py-1.5 pl-2 text-right text-gray-500 w-14">{calculatePercentage(totals.buffer)}%</td>
+            </tr>
+            <tr className="border-b border-gray-100">
+              <td className="py-1.5 pr-2 flex items-center">
+                <div className="w-2 h-2 rounded-full bg-gray-200 mr-2"></div>
+                空き時間
+              </td>
+              <td className="py-1.5 text-right font-medium">{formatHours(totals.free)}</td>
+              <td className="py-1.5 pl-2 text-right text-gray-500 w-14">{calculatePercentage(totals.free)}%</td>
+            </tr>
+            <tr className="border-t border-gray-200 font-medium">
+              <td className="pt-2 pr-2">合計</td>
+              <td className="pt-2 text-right">{formatHours(totals.total)}</td>
+              <td className="pt-2 pl-2 text-right w-14">{calculatePercentage(totals.total)}%</td>
+            </tr>
+            <tr className="text-gray-500">
+              <td className="pt-1 pr-2">最大</td>
+              <td className="pt-1 text-right">{formatHours(monthMaxHours)}</td>
+              <td className="pt-1 pl-2 text-right w-14">100%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+  
   // 円グラフコンポーネント
   const DonutChart = ({ 
     data, 
@@ -555,6 +829,17 @@ export default function WorkloadSummaryView({
               <FaChartLine size={12} />
             </button>
           )}
+          
+          {/* 月のチャートに詳細表示ボタンを追加 */}
+          {title.toLowerCase() === 'month' && (
+            <button
+              type="button"
+              onClick={() => setShowMonthDetail(prev => !prev)}
+              className="absolute bottom-0 right-0 bg-gray-100 p-1 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-200 transition-colors"
+            >
+              <FaChartLine size={12} />
+            </button>
+          )}
         </div>
         <div className="text-xs text-center mt-2">
           <div className="flex items-center justify-center">
@@ -651,19 +936,28 @@ export default function WorkloadSummaryView({
             <IoClose className="mr-1" /> 詳細を閉じる
           </button>
         )}
+        {showMonthDetail && (
+          <button
+            type="button"
+            onClick={() => setShowMonthDetail(false)}
+            className="text-gray-500 hover:text-gray-700 flex items-center text-sm"
+          >
+            <IoClose className="mr-1" /> 詳細を閉じる
+          </button>
+        )}
       </div>
       
       <Legend />
       
-      <div className={`${showWeekDetail ? 'flex justify-between items-start' : 'flex flex-wrap justify-center gap-6'} pt-2`}>
-        {!showWeekDetail ? (
+      <div className={`${showWeekDetail || showMonthDetail ? 'flex justify-between items-start' : 'flex flex-wrap justify-center gap-6'} pt-2`}>
+        {!showWeekDetail && !showMonthDetail ? (
           // 通常表示
           <>
             <DonutChart data={dayData} maxHours={dayMaxHours} title="day" />
             <DonutChart data={weekData} maxHours={weekMaxHours} title="week" />
             <DonutChart data={monthData} maxHours={monthMaxHours} title="month" />
           </>
-        ) : (
+        ) : showWeekDetail ? (
           // 週の詳細表示
           <>
             <div className="flex-shrink-0 ml-2">
@@ -674,6 +968,19 @@ export default function WorkloadSummaryView({
             </div>
             <div className="flex-shrink-0 mr-2">
               <WeeklySummaryTable />
+            </div>
+          </>
+        ) : (
+          // 月の詳細表示
+          <>
+            <div className="flex-shrink-0 ml-2">
+              <DonutChart data={monthData} maxHours={monthMaxHours} title="month" />
+            </div>
+            <div className="flex-grow ml-4 mr-2">
+              <MonthHeatmapCalendar />
+            </div>
+            <div className="flex-shrink-0 mr-2">
+              <MonthlySummaryTable />
             </div>
           </>
         )}
