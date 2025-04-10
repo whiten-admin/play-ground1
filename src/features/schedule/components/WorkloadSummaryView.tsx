@@ -925,7 +925,7 @@ export default function WorkloadSummaryView({
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-medium flex items-center">
           <FaClock className="mr-2 text-gray-500" />
-          工数集計
+          予定工数集計
         </h3>
         {showWeekDetail && (
           <button
