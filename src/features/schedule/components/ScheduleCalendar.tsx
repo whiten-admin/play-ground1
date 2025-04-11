@@ -34,7 +34,8 @@ export default function ScheduleCalendar({
   onTodoUpdate, 
   selectedTodoId, 
   onTaskUpdate,
-  onWorkloadUpdate
+  onWorkloadUpdate,
+  onViewModeChange
 }: ScheduleCalendarProps) {
   const [isClient, setIsClient] = useState(false)
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -481,6 +482,13 @@ export default function ScheduleCalendar({
     setNewTodoText('');
     setNewTodoTaskId(null);
   };
+
+  // viewModeが変更されたときの処理を追加
+  useEffect(() => {
+    if (typeof onViewModeChange === 'function') {
+      onViewModeChange(viewMode);
+    }
+  }, [viewMode, onViewModeChange]);
 
   if (!isClient) {
     return (

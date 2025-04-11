@@ -18,6 +18,8 @@ import { useSearchParams } from 'next/navigation'
 import WorkloadSummaryView from '@/features/schedule/components/WorkloadSummaryView'
 import OverdueTodoCards from '@/features/tasks/components/OverdueTodoCards'
 import MemberList from '@/features/schedule/components/MemberList'
+import AdaptiveWorkloadSummary from '@/features/schedule/components/AdaptiveWorkloadSummary'
+import { ViewMode } from '@/features/schedule/types/schedule'
 
 // 検索パラメータを使用するコンポーネント
 function HomeContent() {
@@ -29,6 +31,9 @@ function HomeContent() {
   const { currentProject, updateProject, projects, filteredProjects } = useProjectContext()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const searchParams = useSearchParams()
+  
+  // カレンダーの表示モード
+  const [calendarViewMode, setCalendarViewMode] = useState<ViewMode>('week')
   
   // 工数サマリーのための状態
   const [workloadSummary, setWorkloadSummary] = useState({
@@ -177,6 +182,11 @@ function HomeContent() {
     setWorkloadCurrentDate(date);
   };
 
+  // カレンダーの表示モードが変更されたときの処理
+  const handleViewModeChange = (viewMode: ViewMode) => {
+    setCalendarViewMode(viewMode);
+  };
+
   if (!isAuthenticated) {
     return <Auth onLogin={login} />;
   }
@@ -237,15 +247,31 @@ function HomeContent() {
                         onTaskSelect={handleTodoSelect}
                         onTodoStatusChange={handleTodoStatusChange}
                       />
-                      <ScheduleCalendar
-                        tasks={filteredTasks}
-                        onTaskSelect={handleTaskSelect}
-                        onTodoUpdate={handleTodoUpdate}
-                        selectedTodoId={selectedTodoId}
-                        onTaskUpdate={handleTaskUpdate}
-                        onWorkloadUpdate={handleWorkloadUpdate}
-                      />
+                      <div className="flex">
+                        <div className="w-48 mr-3">
+                          <MemberList />
+                          <div className="mt-3">
+                            <AdaptiveWorkloadSummary
+                              workloadData={workloadSummary}
+                              currentDate={workloadCurrentDate}
+                              viewMode={calendarViewMode}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <ScheduleCalendar
+                            tasks={filteredTasks}
+                            onTaskSelect={handleTaskSelect}
+                            onTodoUpdate={handleTodoUpdate}
+                            selectedTodoId={selectedTodoId}
+                            onTaskUpdate={handleTaskUpdate}
+                            onWorkloadUpdate={handleWorkloadUpdate}
+                            onViewModeChange={handleViewModeChange}
+                          />
+                        </div>
+                      </div>
                     </div>
+                    {/* 予定工数集計コンポーネントは一時的に非表示
                     <div className="text-sm mt-3">
                       <WorkloadSummaryView
                         workloadData={workloadSummary}
@@ -253,6 +279,7 @@ function HomeContent() {
                         onCurrentDateChange={setWorkloadCurrentDate}
                       />
                     </div>
+                    */}
                   </div>
                 }
                 rightPanel={
@@ -298,6 +325,13 @@ function HomeContent() {
                 <div className="flex">
                   <div className="w-48 mr-3">
                     <MemberList />
+                    <div className="mt-3">
+                      <AdaptiveWorkloadSummary
+                        workloadData={workloadSummary}
+                        currentDate={workloadCurrentDate}
+                        viewMode={calendarViewMode}
+                      />
+                    </div>
                   </div>
                   <div className="flex-1">
                     <ScheduleCalendar
@@ -307,7 +341,9 @@ function HomeContent() {
                       selectedTodoId={selectedTodoId}
                       onTaskUpdate={handleTaskUpdate}
                       onWorkloadUpdate={handleWorkloadUpdate}
+                      onViewModeChange={handleViewModeChange}
                     />
+                    {/* 予定工数集計コンポーネントは一時的に非表示
                     <div className="text-sm mt-3">
                       <WorkloadSummaryView
                         workloadData={workloadSummary}
@@ -315,6 +351,7 @@ function HomeContent() {
                         onCurrentDateChange={setWorkloadCurrentDate}
                       />
                     </div>
+                    */}
                   </div>
                 </div>
               </div>
