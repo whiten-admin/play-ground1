@@ -34,7 +34,8 @@ export default function ScheduleCalendar({
   onTodoUpdate, 
   selectedTodoId, 
   onTaskUpdate,
-  onWorkloadUpdate
+  onWorkloadUpdate,
+  onViewModeChange
 }: ScheduleCalendarProps) {
   const [isClient, setIsClient] = useState(false)
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -226,21 +227,31 @@ export default function ScheduleCalendar({
       // 外部予定専用のスケジュールMapを作成
       const newExternalSchedule = new Map<string, TodoWithMeta[]>();
       
-      // Googleカレンダーのイベントを日付ごとに分類
+      // Googleカレンダーのイベントを日付ごとに分類（フィルタリングも適用）
       googleEvents.forEach(event => {
+        // ユーザーフィルターを適用
+        const todoAssigneeId = event.todo.assigneeId || '';
+        const isAssignedToSelectedUser = todoAssigneeId && selectedUserIds.includes(todoAssigneeId);
+        const isUnassigned = !todoAssigneeId;
+        
+        // 選択されたユーザーに割り当てられているか、未割り当てで表示設定がONの場合のみ表示
+        if (!(isAssignedToSelectedUser || (showUnassigned && isUnassigned))) {
+          return;
+        }
+        
         const dateKey = format(event.todo.startDate, 'yyyy-MM-dd');
         const existingEvents = newExternalSchedule.get(dateKey) || [];
         newExternalSchedule.set(dateKey, [...existingEvents, event]);
       });
       
       console.log('外部予定スケジュールを更新しました', {
-        externalEvents: googleEvents.length,
+        externalEvents: Array.from(newExternalSchedule.values()).flat().length,
         dates: Array.from(newExternalSchedule.keys())
       });
       
       setExternalSchedule(newExternalSchedule);
     }
-  }, [isClient, googleEvents]);
+  }, [isClient, googleEvents, selectedUserIds, showUnassigned]);
 
   // TODOスケジュールが更新されたら工数集計も更新
   useEffect(() => {
@@ -471,6 +482,13 @@ export default function ScheduleCalendar({
     setNewTodoText('');
     setNewTodoTaskId(null);
   };
+
+  // viewModeが変更されたときの処理を追加
+  useEffect(() => {
+    if (typeof onViewModeChange === 'function') {
+      onViewModeChange(viewMode);
+    }
+  }, [viewMode, onViewModeChange]);
 
   if (!isClient) {
     return (

@@ -53,7 +53,7 @@ export default function Sidebar({ activeTab, onTabChange, initialCollapsed = fal
   }, [])
   
   const tabs = [
-    { id: 'todo', label: 'マイタスク', icon: '📝', href: '/' },
+    { id: 'schedule', label: 'スケジュール', icon: '📝', href: '/' },
     { id: 'tasks', label: 'タスク一覧', icon: '📋', href: '/tasks' },
     { id: 'wbs', label: 'WBS・分析', icon: '📊', href: '/wbs' },
     { id: 'project-info', label: 'PJ情報', icon: 'ℹ️', href: '/project-info' },

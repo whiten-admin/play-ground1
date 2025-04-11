@@ -32,6 +32,7 @@ export interface ScheduleCalendarProps {
   selectedTodoId?: string | null
   onTaskUpdate?: (updatedTask: Task) => void
   onWorkloadUpdate?: (workloadData: WorkloadSummaryByPeriod, date: Date) => void
+  onViewModeChange?: (viewMode: ViewMode) => void
 }
 
 // 日表示コンポーネントのプロパティ型定義
