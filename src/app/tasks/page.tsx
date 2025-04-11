@@ -14,13 +14,14 @@ import EmptyProjectState from '@/features/projects/components/EmptyProjectState'
 import { getUserNameById, getUserNamesByIds } from '@/features/tasks/utils/userUtils'
 import { format, isBefore, isToday, startOfDay } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { IoAdd, IoList, IoGrid, IoBarChart, IoCaretDown, IoCaretUp, IoClose, IoBulb } from 'react-icons/io5'
+import { IoAdd, IoList, IoGrid, IoBarChart, IoCaretDown, IoCaretUp, IoClose, IoBulb, IoDocumentText } from 'react-icons/io5'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import KanbanView from '@/features/kanban/components/KanbanView'
 import GanttChartView from '@/features/gantt/components/GanttChartView'
 import TaskCreationForm from '@/features/tasks/components/TaskCreationForm'
 import TaskDetail from '@/features/tasks/components/TaskDetail'
 import { AiTaskSuggestions } from '@/features/tasks/components/AiTaskSuggestions'
+import RequirementsTaskGenerator from '@/features/tasks/components/RequirementsTaskGenerator'
 
 type ViewMode = 'list' | 'kanban' | 'gantt'
 
@@ -61,6 +62,8 @@ export default function TasksPage() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   // AIタスク提案の表示状態
   const [showAiSuggestions, setShowAiSuggestions] = useState(false)
+  // 要件からタスク自動生成の表示状態
+  const [showRequirementsGenerator, setShowRequirementsGenerator] = useState(false)
   
   // サイドバーの状態を監視
   useEffect(() => {
@@ -214,6 +217,17 @@ export default function TasksPage() {
     // ここは実装によって異なる可能性があります
   };
 
+  // 要件生成から複数タスクを追加する処理
+  const handleAddRequirementsTasks = (newTasks: Task[]) => {
+    if (currentProject) {
+      newTasks.forEach(task => {
+        task.projectId = currentProject.id;
+        addTask(task);
+      });
+    }
+    setShowRequirementsGenerator(false);
+  };
+
   if (!isAuthenticated) {
     return <Auth onLogin={login} />;
   }
@@ -271,6 +285,13 @@ export default function TasksPage() {
                     >
                       <IoBulb className="w-3 h-3" />
                       AI追加タスク提案
+                    </button>
+                    <button
+                      onClick={() => setShowRequirementsGenerator(true)}
+                      className="px-2 py-0.5 text-xs rounded flex items-center gap-1 bg-green-500 text-white hover:bg-green-600"
+                    >
+                      <IoDocumentText className="w-3 h-3" />
+                      要件からタスク生成
                     </button>
                   </div>
                   
@@ -450,6 +471,15 @@ export default function TasksPage() {
             </div>
           </div>
         </div>
+      )}
+      
+      {/* 要件からタスク自動生成ダイアログ */}
+      {showRequirementsGenerator && (
+        <RequirementsTaskGenerator
+          onClose={() => setShowRequirementsGenerator(false)}
+          onTasksCreate={handleAddRequirementsTasks}
+          projectId={currentProject?.id}
+        />
       )}
     </FilterProvider>
   );
