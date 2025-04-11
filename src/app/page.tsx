@@ -16,6 +16,7 @@ import ResizablePanel from '@/components/layout/ResizablePanel'
 import { FilterProvider } from '@/features/tasks/filters/FilterContext'
 import { useSearchParams } from 'next/navigation'
 import WorkloadSummaryView from '@/features/schedule/components/WorkloadSummaryView'
+import OverdueTodoCards from '@/features/tasks/components/OverdueTodoCards'
 
 // 検索パラメータを使用するコンポーネント
 function HomeContent() {
@@ -46,13 +47,15 @@ function HomeContent() {
 
   // URLのクエリパラメータからタスクIDとTODO IDを取得
   useEffect(() => {
-    const taskId = searchParams.get('taskId')
-    const todoId = searchParams.get('todoId')
-    
-    if (taskId) {
-      setSelectedTaskId(taskId)
-      if (todoId) {
-        setSelectedTodoId(todoId)
+    if (searchParams) {
+      const taskId = searchParams.get('taskId')
+      const todoId = searchParams.get('todoId')
+      
+      if (taskId) {
+        setSelectedTaskId(taskId)
+        if (todoId) {
+          setSelectedTodoId(todoId)
+        }
       }
     }
   }, [searchParams])
@@ -214,6 +217,7 @@ function HomeContent() {
               <ResizablePanel
                 leftPanel={
                   <div className="space-y-3">
+                    {/* TodayTodoコンポーネントは今後再利用する可能性があるためコメントアウト
                     <div className="text-sm">
                       <TodayTodo
                         tasks={filteredTasks}
@@ -223,7 +227,15 @@ function HomeContent() {
                         onTodoStatusChange={handleTodoStatusChange}
                       />
                     </div>
+                    */}
                     <div className="text-sm">
+                      <OverdueTodoCards
+                        tasks={filteredTasks}
+                        selectedTaskId={selectedTaskId}
+                        selectedTodoId={selectedTodoId}
+                        onTaskSelect={handleTodoSelect}
+                        onTodoStatusChange={handleTodoStatusChange}
+                      />
                       <ScheduleCalendar
                         tasks={filteredTasks}
                         onTaskSelect={handleTaskSelect}
@@ -263,44 +275,41 @@ function HomeContent() {
                 storageKey="todoAppPanelWidth"
               />
             ) : (
-              // タスクが未選択の場合は、左右に横並びでコンポーネントを表示（ResizablePanelを使用）
-              <ResizablePanel
-                leftPanel={
-                  <div className="text-sm pr-2">
-                    <TodayTodo
-                      tasks={filteredTasks}
-                      selectedTaskId={selectedTaskId}
-                      selectedTodoId={selectedTodoId}
-                      onTaskSelect={handleTodoSelect}
-                      onTodoStatusChange={handleTodoStatusChange}
-                      isExpanded={true}
-                    />
-                  </div>
-                }
-                rightPanel={
-                  <div className="text-sm h-full">
-                    <ScheduleCalendar
-                      tasks={filteredTasks}
-                      onTaskSelect={handleTaskSelect}
-                      onTodoUpdate={handleTodoUpdate}
-                      selectedTodoId={selectedTodoId}
-                      onTaskUpdate={handleTaskUpdate}
-                      onWorkloadUpdate={handleWorkloadUpdate}
-                    />
-                    <div className="text-sm mt-3">
-                      <WorkloadSummaryView
-                        workloadData={workloadSummary}
-                        currentDate={workloadCurrentDate}
-                        onCurrentDateChange={setWorkloadCurrentDate}
-                      />
-                    </div>
-                  </div>
-                }
-                defaultLeftWidth={450}
-                minLeftWidth={300}
-                maxLeftWidth={800}
-                storageKey="todoAppSplitViewWidth"
-              />
+              // タスクが未選択の場合は、カレンダーのみを表示
+              <div className="text-sm h-full">
+                {/* TodayTodoコンポーネントは今後再利用する可能性があるためコメントアウト
+                <TodayTodo
+                  tasks={filteredTasks}
+                  selectedTaskId={selectedTaskId}
+                  selectedTodoId={selectedTodoId}
+                  onTaskSelect={handleTodoSelect}
+                  onTodoStatusChange={handleTodoStatusChange}
+                  isExpanded={true}
+                />
+                */}
+                <OverdueTodoCards
+                  tasks={filteredTasks}
+                  selectedTaskId={selectedTaskId}
+                  selectedTodoId={selectedTodoId}
+                  onTaskSelect={handleTodoSelect}
+                  onTodoStatusChange={handleTodoStatusChange}
+                />
+                <ScheduleCalendar
+                  tasks={filteredTasks}
+                  onTaskSelect={handleTaskSelect}
+                  onTodoUpdate={handleTodoUpdate}
+                  selectedTodoId={selectedTodoId}
+                  onTaskUpdate={handleTaskUpdate}
+                  onWorkloadUpdate={handleWorkloadUpdate}
+                />
+                <div className="text-sm mt-3">
+                  <WorkloadSummaryView
+                    workloadData={workloadSummary}
+                    currentDate={workloadCurrentDate}
+                    onCurrentDateChange={setWorkloadCurrentDate}
+                  />
+                </div>
+              </div>
             )}
           </main>
         </div>
