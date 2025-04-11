@@ -17,6 +17,7 @@ import { FilterProvider } from '@/features/tasks/filters/FilterContext'
 import { useSearchParams } from 'next/navigation'
 import WorkloadSummaryView from '@/features/schedule/components/WorkloadSummaryView'
 import OverdueTodoCards from '@/features/tasks/components/OverdueTodoCards'
+import MemberList from '@/features/schedule/components/MemberList'
 
 // 検索パラメータを使用するコンポーネント
 function HomeContent() {
@@ -294,20 +295,27 @@ function HomeContent() {
                   onTaskSelect={handleTodoSelect}
                   onTodoStatusChange={handleTodoStatusChange}
                 />
-                <ScheduleCalendar
-                  tasks={filteredTasks}
-                  onTaskSelect={handleTaskSelect}
-                  onTodoUpdate={handleTodoUpdate}
-                  selectedTodoId={selectedTodoId}
-                  onTaskUpdate={handleTaskUpdate}
-                  onWorkloadUpdate={handleWorkloadUpdate}
-                />
-                <div className="text-sm mt-3">
-                  <WorkloadSummaryView
-                    workloadData={workloadSummary}
-                    currentDate={workloadCurrentDate}
-                    onCurrentDateChange={setWorkloadCurrentDate}
-                  />
+                <div className="flex">
+                  <div className="w-48 mr-3">
+                    <MemberList />
+                  </div>
+                  <div className="flex-1">
+                    <ScheduleCalendar
+                      tasks={filteredTasks}
+                      onTaskSelect={handleTaskSelect}
+                      onTodoUpdate={handleTodoUpdate}
+                      selectedTodoId={selectedTodoId}
+                      onTaskUpdate={handleTaskUpdate}
+                      onWorkloadUpdate={handleWorkloadUpdate}
+                    />
+                    <div className="text-sm mt-3">
+                      <WorkloadSummaryView
+                        workloadData={workloadSummary}
+                        currentDate={workloadCurrentDate}
+                        onCurrentDateChange={setWorkloadCurrentDate}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
