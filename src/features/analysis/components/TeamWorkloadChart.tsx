@@ -7,31 +7,11 @@ import { BUSINESS_HOURS } from '@/utils/constants/constants';
 import { addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, format, isWithinInterval, getDay } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
   ChartOptions,
   ChartData,
 } from 'chart.js';
 import { Chart } from 'react-chartjs-2';
-
-// コンポーネント内でChart.jsを登録
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-);
+import '@/utils/chartConfig'; // Chart.jsの設定をインポート
 
 interface TeamWorkloadChartProps {
   tasks: Task[];
