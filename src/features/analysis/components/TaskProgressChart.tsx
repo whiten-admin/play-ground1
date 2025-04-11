@@ -2,20 +2,10 @@
 
 import React from 'react';
 import { Doughnut } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend,
-  ChartOptions
-} from 'chart.js';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 
-// コンポーネント内でChart.jsを登録
-ChartJS.register(
-  ArcElement,
-  Tooltip,
-  Legend
-);
+// Chart.jsコンポーネントを登録
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 const TaskProgressChart: React.FC = () => {
   // サンプルデータ
@@ -41,7 +31,7 @@ const TaskProgressChart: React.FC = () => {
     ],
   };
 
-  const options: ChartOptions<'doughnut'> = {
+  const options = {
     responsive: true,
     plugins: {
       legend: {
