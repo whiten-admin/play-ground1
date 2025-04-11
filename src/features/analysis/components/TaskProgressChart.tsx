@@ -2,20 +2,8 @@
 
 import React from 'react';
 import { Doughnut } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend,
-  ChartOptions
-} from 'chart.js';
-
-// コンポーネント内でChart.jsを登録
-ChartJS.register(
-  ArcElement,
-  Tooltip,
-  Legend
-);
+import { ChartOptions } from 'chart.js';
+import '@/utils/chartConfig'; // Chart.jsの設定をインポート
 
 const TaskProgressChart: React.FC = () => {
   // サンプルデータ

@@ -2,26 +2,8 @@
 
 import React from 'react';
 import { Bar } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ChartOptions
-} from 'chart.js';
-
-// コンポーネント内でChart.jsを登録
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-);
+import { ChartOptions } from 'chart.js';
+import '@/utils/chartConfig'; // Chart.jsの設定をインポート
 
 const TeamPerformanceChart: React.FC = () => {
   // サンプルデータ
