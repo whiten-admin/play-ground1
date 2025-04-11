@@ -39,15 +39,8 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
   const [newTaskSuggestedTodos, setNewTaskSuggestedTodos] = useState<{ text: string; estimatedHours: number }[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(() => {
-    // 初期状態で全てのタスクを開く
-    const initialSet = new Set<string>();
-    tasks.forEach(task => {
-      const completionRate = (task.todos.filter(todo => todo.completed).length / task.todos.length) * 100;
-      if (completionRate < 100) {
-        initialSet.add(task.id);
-      }
-    });
-    return initialSet;
+    // 初期状態で全てのタスクを閉じる
+    return new Set<string>();
   });
 
   // タスクを開始日でソートする関数
@@ -564,7 +557,7 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
                   <span className={`transform transition-transform ${expandedTasks.has(task.id) ? 'rotate-90' : ''}`}>
                     ▶
                   </span>
-                  <span>{task.title}</span>
+                  <span className="text-xs">{task.title}</span>
                 </div>
                 <span className="text-xs text-gray-500 px-4">
                   {Math.round(
