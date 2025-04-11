@@ -6,6 +6,8 @@ import TodoEditForm from './TodoEditForm';
 import { EditingTodo } from '../hooks/useScheduleView';
 import { IoSearchOutline } from 'react-icons/io5';
 import { FaGoogle } from 'react-icons/fa';
+import { useAuth } from '@/services/auth/hooks/useAuth';
+import { getProjectMemberName } from '@/utils/memberUtils';
 
 interface TodoItemComponentProps {
   todoWithMeta: TodoWithMeta;
@@ -51,6 +53,18 @@ const TodoItemComponent: React.FC<TodoItemComponentProps> = ({
   const [resizeOffset, setResizeOffset] = useState(0); // リサイズによる位置のオフセット
   const [dayOffset, setDayOffset] = useState<number | null>(null); // 日付の変更オフセット
   const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 }); // ドラッグ位置
+  
+  // 現在のユーザー情報を取得
+  const { user } = useAuth();
+  
+  // メンバー名を取得（未アサインの場合は空文字）
+  const memberName = todo.assigneeId ? getProjectMemberName(todo.assigneeId) : '';
+  
+  // 他のメンバーのTODOかどうかを判定
+  const isOtherMembersTodo = todo.assigneeId && memberName && memberName !== '未アサイン';
+  
+  // メンバーの頭文字を取得
+  const memberInitial = memberName && memberName !== '未アサイン' ? memberName.charAt(0) : '';
   
   // 表示するTODOの日付列インデックスを計算（ドラッグ元）
   const findDayIndex = () => {
@@ -346,6 +360,13 @@ const TodoItemComponent: React.FC<TodoItemComponentProps> = ({
             {isExternal && (
               <div className="absolute bottom-0.5 right-0.5 text-xs text-[#4285F4]">
                 <FaGoogle size={10} />
+              </div>
+            )}
+            
+            {/* 他メンバーの予定の場合は左上にメンバーの頭文字を丸く表示 */}
+            {isOtherMembersTodo && memberInitial && (
+              <div className="absolute top-0.5 left-0.5 w-4 h-4 flex items-center justify-center text-[10px] font-medium text-white bg-blue-500 rounded-full">
+                {memberInitial}
               </div>
             )}
             
