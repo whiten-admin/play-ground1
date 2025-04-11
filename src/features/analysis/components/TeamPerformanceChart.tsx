@@ -10,10 +10,9 @@ import {
   Title,
   Tooltip,
   Legend,
-  ChartOptions
 } from 'chart.js';
 
-// コンポーネント内でChart.jsを登録
+// Chart.jsコンポーネントを登録
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -45,7 +44,7 @@ const TeamPerformanceChart: React.FC = () => {
     ],
   };
 
-  const options: ChartOptions<'bar'> = {
+  const options = {
     responsive: true,
     plugins: {
       legend: {

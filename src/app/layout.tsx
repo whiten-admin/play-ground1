@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import 'react-resizable/css/styles.css';
-import '@/utils/chartConfig';
 import { TaskProvider } from '@/features/tasks/contexts/TaskContext';
 import { ProjectProvider } from '@/features/projects/contexts/ProjectContext';
 import { FloatingTools } from '@/components/ui/FloatingTools';

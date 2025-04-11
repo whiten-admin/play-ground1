@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Task } from '@/features/tasks/types/task';
 import { getProjectMemberName, getMemberWorkableHours, setMemberWorkableHours as saveMemberWorkableHours } from '@/utils/memberUtils';
 import { BUSINESS_HOURS } from '@/utils/constants/constants';
@@ -10,24 +10,24 @@ import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
+  BarElement,
   PointElement,
   LineElement,
-  BarElement,
   Title,
   Tooltip,
   Legend,
   ChartOptions,
-  ChartData,
+  ChartData
 } from 'chart.js';
 import { Chart } from 'react-chartjs-2';
 
-// コンポーネント内でChart.jsを登録
+// Chart.jsの必要なコンポーネントを登録
 ChartJS.register(
   CategoryScale,
   LinearScale,
+  BarElement,
   PointElement,
   LineElement,
-  BarElement,
   Title,
   Tooltip,
   Legend
@@ -207,15 +207,11 @@ const TeamWorkloadChart: React.FC<TeamWorkloadChartProps> = ({ tasks }) => {
       maintainAspectRatio: false,
       scales: {
         y: {
-          type: 'linear',
           beginAtZero: true,
           title: {
             display: true,
             text: '時間'
           }
-        },
-        x: {
-          type: 'category',
         }
       },
       plugins: {
