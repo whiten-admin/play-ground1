@@ -47,7 +47,7 @@ export default function ProjectStatsModal({ type, progressSummary, onClose, task
     if (allTodos.length === 0) return;
     
     const startDates = allTodos.map(todo => new Date(todo.startDate).getTime());
-    const endDates = allTodos.map(todo => new Date(todo.endDate).getTime());
+    const endDates = allTodos.map(todo => new Date(todo.calendarEndDateTime).getTime());
     
     const projectStartDate = new Date(Math.min(...startDates));
     const projectEndDate = new Date(Math.max(...endDates));

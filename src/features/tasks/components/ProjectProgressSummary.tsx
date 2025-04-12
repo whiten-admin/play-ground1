@@ -12,17 +12,6 @@ interface ProjectProgressSummaryProps {
 
 type ModalType = 'progress' | 'delay' | 'buffer' | 'status' | null;
 
-// Todo型に必要なプロパティを定義
-type Todo = {
-  id: string;
-  text: string;
-  completed: boolean;
-  estimatedHours: number;
-  startDate: Date;
-  endDate: Date;
-  completedDate?: Date;
-};
-
 export default function ProjectProgressSummary({ tasks }: ProjectProgressSummaryProps) {
   const [showProgressSummary, setShowProgressSummary] = useState<boolean>(true);
   const [modalType, setModalType] = useState<ModalType>(null);
@@ -62,13 +51,13 @@ export default function ProjectProgressSummary({ tasks }: ProjectProgressSummary
     const delayedTodos = allTodos.filter(todo => {
       if (todo.completed) return false;
       
-      const endDate = new Date(todo.endDate);
+      const endDate = new Date(todo.calendarEndDateTime);
       return endDate < now;
     });
     
     // 遅延時間の計算
     const delayedHours = delayedTodos.reduce((sum, todo) => {
-      const endDate = new Date(todo.endDate);
+      const endDate = new Date(todo.calendarEndDateTime);
       const delayInDays = Math.max(0, (now.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24));
       // 1日あたりの作業時間を8時間と仮定
       return sum + delayInDays * 8;
