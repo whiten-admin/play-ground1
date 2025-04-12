@@ -2,14 +2,30 @@
 
 import { useMemo, useState } from 'react';
 import { Task } from '../types/task';
-import { IoChevronDown, IoChevronUp, IoAlertCircle, IoCheckmarkCircle, IoTimerOutline } from 'react-icons/io5';
+import { IoChevronDown, IoChevronUp, IoAlertCircle, IoCheckmarkCircle, IoTimerOutline, IoSearch, IoAnalytics } from 'react-icons/io5';
+import Link from 'next/link';
+import ProjectStatsModal from './ProjectStatsModal';
 
 interface ProjectProgressSummaryProps {
   tasks: Task[];
 }
 
+type ModalType = 'progress' | 'delay' | 'buffer' | 'status' | null;
+
+// Todo型に必要なプロパティを定義
+type Todo = {
+  id: string;
+  text: string;
+  completed: boolean;
+  estimatedHours: number;
+  startDate: Date;
+  endDate: Date;
+  completedDate?: Date;
+};
+
 export default function ProjectProgressSummary({ tasks }: ProjectProgressSummaryProps) {
   const [showProgressSummary, setShowProgressSummary] = useState<boolean>(true);
+  const [modalType, setModalType] = useState<ModalType>(null);
 
   // プロジェクトの進捗状況を計算
   const progressSummary = useMemo(() => {
@@ -21,83 +37,59 @@ export default function ProjectProgressSummary({ tasks }: ProjectProgressSummary
         delayedHours: 0,
         delayRate: 0,
         remainingBufferHours: 0,
-        projectStatus: 'normal' as 'normal' | 'warning' | 'danger' | 'good',
-        todoCount: 0,
-        completedTodoCount: 0,
-        delayedTodoCount: 0
+        bufferHours: 0, // 初期値を追加
+        projectStatus: 'normal' as 'good' | 'normal' | 'warning' | 'danger',
+        delayedTodos: [],
+        completedTodos: []
       };
     }
 
-    let totalEstimatedHours = 0;
-    let completedHours = 0;
-    let delayedHours = 0;
-    let todoCount = 0;
-    let completedTodoCount = 0;
-    let delayedTodoCount = 0;
+    // すべてのTODOを集計
+    const allTodos = tasks.flatMap(task => task.todos);
     
+    // 総見積もり工数
+    const totalEstimatedHours = allTodos.reduce((sum, todo) => sum + todo.estimatedHours, 0);
+    
+    // 完了したTODOの工数
+    const completedTodos = allTodos.filter(todo => todo.completed);
+    const completedHours = completedTodos.reduce((sum, todo) => sum + todo.estimatedHours, 0);
+    
+    // 進捗率
+    const progressRate = totalEstimatedHours > 0 ? (completedHours / totalEstimatedHours) * 100 : 0;
+    
+    // 遅延しているTODOの抽出
     const now = new Date();
-    
-    tasks.forEach(task => {
-      task.todos.forEach(todo => {
-        todoCount++;
-        const estimatedHours = todo.estimatedHours || 0;
-        totalEstimatedHours += estimatedHours;
-        
-        if (todo.completed) {
-          completedTodoCount++;
-          completedHours += estimatedHours;
-          
-          // 遅延のチェック（完了日が予定終了日より後の場合）
-          if (todo.completedDateTime && todo.calendarEndDateTime) {
-            const completedDate = new Date(todo.completedDateTime);
-            const plannedEndDate = new Date(todo.calendarEndDateTime);
-            
-            if (completedDate > plannedEndDate) {
-              // 遅延時間を計算（日単位で簡略化）
-              const delayTime = Math.ceil((completedDate.getTime() - plannedEndDate.getTime()) / (1000 * 60 * 60 * 24)) * 8; // 1日8時間で計算
-              delayedHours += delayTime;
-              delayedTodoCount++;
-            }
-          }
-        } else {
-          // 未完了タスクの遅延チェック（現在日が予定終了日より後の場合）
-          if (todo.calendarEndDateTime) {
-            const plannedEndDate = new Date(todo.calendarEndDateTime);
-            
-            if (now > plannedEndDate) {
-              // 遅延時間を計算（日単位で簡略化）
-              const delayTime = Math.ceil((now.getTime() - plannedEndDate.getTime()) / (1000 * 60 * 60 * 24)) * 8; // 1日8時間で計算
-              delayedHours += delayTime;
-              delayedTodoCount++;
-            }
-          }
-        }
-      });
+    const delayedTodos = allTodos.filter(todo => {
+      if (todo.completed) return false;
+      
+      const endDate = new Date(todo.endDate);
+      return endDate < now;
     });
     
-    // 進捗率 = 完了工数 / 総工数
-    const progressRate = totalEstimatedHours > 0 
-      ? Math.round((completedHours / totalEstimatedHours) * 100) 
-      : 0;
+    // 遅延時間の計算
+    const delayedHours = delayedTodos.reduce((sum, todo) => {
+      const endDate = new Date(todo.endDate);
+      const delayInDays = Math.max(0, (now.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24));
+      // 1日あたりの作業時間を8時間と仮定
+      return sum + delayInDays * 8;
+    }, 0);
     
-    // 遅延率 = 遅延時間 / 総工数
-    const delayRate = totalEstimatedHours > 0 
-      ? Math.round((delayedHours / totalEstimatedHours) * 100) 
-      : 0;
+    // 遅延率
+    const delayRate = totalEstimatedHours > 0 ? (delayedHours / totalEstimatedHours) * 100 : 0;
     
-    // バッファ時間（簡略化：総工数の20%をバッファとする）
-    const baseBuffer = totalEstimatedHours * 0.2;
-    const remainingBufferHours = Math.max(0, baseBuffer - delayedHours);
+    // バッファ時間の計算（総見積もり工数の20%）
+    const bufferHours = totalEstimatedHours * 0.2;
+    const remainingBufferHours = Math.max(0, bufferHours - delayedHours);
     
     // プロジェクト状態の判定
-    let projectStatus: 'normal' | 'warning' | 'danger' | 'good' = 'normal';
+    let projectStatus: 'good' | 'normal' | 'warning' | 'danger' = 'normal';
     
-    if (delayRate > 25) {
-      projectStatus = 'danger'; // 危険：遅延が大きい
-    } else if (delayRate > 10 || remainingBufferHours === 0) {
-      projectStatus = 'warning'; // 警告：軽度の遅延または残りバッファなし
+    if (delayRate >= 25 || (bufferHours > 0 && remainingBufferHours === 0)) {
+      projectStatus = 'danger';
+    } else if (delayRate >= 10 || (bufferHours > 0 && remainingBufferHours < bufferHours * 0.3)) {
+      projectStatus = 'warning';
     } else if (progressRate >= 80 && delayRate < 5) {
-      projectStatus = 'good'; // 良好：高進捗かつ低遅延
+      projectStatus = 'good';
     }
     
     return {
@@ -107,176 +99,305 @@ export default function ProjectProgressSummary({ tasks }: ProjectProgressSummary
       delayedHours,
       delayRate,
       remainingBufferHours,
+      bufferHours,
       projectStatus,
-      todoCount,
-      completedTodoCount,
-      delayedTodoCount
+      delayedTodos,
+      completedTodos
     };
   }, [tasks]);
 
-  // 進捗サマリーコンポーネント
-  const ProgressSummary = () => (
-    <div className="bg-white p-4 mb-4 border rounded-lg shadow-sm">
-      <div className="flex justify-between items-center mb-3">
-        <h3 className="text-lg font-bold">プロジェクト進捗状況</h3>
-        <button 
-          onClick={() => setShowProgressSummary(false)} 
-          className="text-gray-500 hover:text-gray-700"
-        >
-          <IoChevronUp size={20} />
-        </button>
-      </div>
-      
-      <div className="grid grid-cols-4 gap-4">
-        {/* 進捗率 */}
-        <div className="p-3 bg-blue-50 rounded-lg">
-          <h4 className="text-sm text-gray-600 mb-1">進捗率</h4>
-          <div className="flex items-center">
-            <div className="relative w-16 h-16 mr-3">
-              <svg className="w-16 h-16 -rotate-90">
-                <circle
-                  className="text-gray-200"
-                  strokeWidth="5"
-                  stroke="currentColor"
-                  fill="transparent"
-                  r="30"
-                  cx="32"
-                  cy="32"
-                />
-                <circle
-                  className="text-blue-500"
-                  strokeWidth="5"
-                  strokeDasharray={`${2 * Math.PI * 30}`}
-                  strokeDashoffset={`${2 * Math.PI * 30 * (1 - progressSummary.progressRate / 100)}`}
-                  strokeLinecap="round"
-                  stroke="currentColor"
-                  fill="transparent"
-                  r="30"
-                  cx="32"
-                  cy="32"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-xl font-bold">{progressSummary.progressRate}%</span>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm">完了: {progressSummary.completedHours.toFixed(1)}h</p>
-              <p className="text-sm">全体: {progressSummary.totalEstimatedHours.toFixed(1)}h</p>
-              <p className="text-xs text-gray-500 mt-1">
-                {progressSummary.completedTodoCount}/{progressSummary.todoCount} TODOs完了
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        {/* 遅延状況 */}
-        <div className="p-3 bg-orange-50 rounded-lg">
-          <h4 className="text-sm text-gray-600 mb-1">遅延状況</h4>
-          <div className="flex items-center">
-            <div className="relative w-16 h-16 mr-3 flex items-center justify-center">
-              <div className={`text-2xl font-bold ${progressSummary.delayRate > 10 ? 'text-red-500' : 'text-orange-500'}`}>
-                {progressSummary.delayRate}%
-              </div>
-            </div>
-            <div>
-              <p className="text-sm">遅延: {progressSummary.delayedHours.toFixed(1)}h</p>
-              <p className="text-sm">影響度: {progressSummary.delayRate > 25 ? '大' : progressSummary.delayRate > 10 ? '中' : '小'}</p>
-              <p className="text-xs text-gray-500 mt-1">
-                {progressSummary.delayedTodoCount} TODOsが遅延中
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        {/* バッファ時間 */}
-        <div className="p-3 bg-green-50 rounded-lg">
-          <h4 className="text-sm text-gray-600 mb-1">残りバッファ</h4>
-          <div className="flex items-center">
-            <div className="relative w-16 h-16 mr-3 flex items-center justify-center">
-              <IoTimerOutline size={32} className={`${progressSummary.remainingBufferHours > 0 ? 'text-green-500' : 'text-red-500'}`} />
-            </div>
-            <div>
-              <p className="text-xl font-bold">{progressSummary.remainingBufferHours.toFixed(1)}h</p>
-              <p className="text-xs text-gray-500 mt-1">
-                {progressSummary.remainingBufferHours > 0 
-                  ? '予定通りに進行中' 
-                  : 'バッファを使い切りました'}
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        {/* プロジェクト状態 */}
-        <div className="p-3 bg-gray-50 rounded-lg">
-          <h4 className="text-sm text-gray-600 mb-1">プロジェクト状態</h4>
-          <div className="flex items-center">
-            <div className="relative w-16 h-16 mr-3 flex items-center justify-center">
-              {progressSummary.projectStatus === 'danger' && (
-                <IoAlertCircle size={40} className="text-red-500" />
-              )}
-              {progressSummary.projectStatus === 'warning' && (
-                <IoAlertCircle size={40} className="text-yellow-500" />
-              )}
-              {progressSummary.projectStatus === 'normal' && (
-                <IoCheckmarkCircle size={40} className="text-blue-500" />
-              )}
-              {progressSummary.projectStatus === 'good' && (
-                <IoCheckmarkCircle size={40} className="text-green-500" />
-              )}
-            </div>
-            <div>
-              <p className="text-lg font-bold">
-                {progressSummary.projectStatus === 'danger' && '危険'}
-                {progressSummary.projectStatus === 'warning' && '注意'}
-                {progressSummary.projectStatus === 'normal' && '正常'}
-                {progressSummary.projectStatus === 'good' && '良好'}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                {progressSummary.projectStatus === 'danger' && '遅延が大きく、対策が必要です'}
-                {progressSummary.projectStatus === 'warning' && '軽度の遅延があります'}
-                {progressSummary.projectStatus === 'normal' && '予定通りに進行中です'}
-                {progressSummary.projectStatus === 'good' && '順調に進んでいます'}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  const handleModalOpen = (type: ModalType) => {
+    setModalType(type);
+  };
 
-  // 折りたたまれた進捗サマリー
-  const CollapsedProgressSummary = () => (
-    <div 
-      className="bg-white p-2 mb-4 border rounded-lg shadow-sm flex justify-between items-center cursor-pointer"
-      onClick={() => setShowProgressSummary(true)}
-    >
-      <div className="flex items-center">
-        <h3 className="text-md font-bold mr-3">プロジェクト進捗状況</h3>
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center">
-            <div className={`w-3 h-3 rounded-full ${
-              progressSummary.projectStatus === 'danger' ? 'bg-red-500' :
-              progressSummary.projectStatus === 'warning' ? 'bg-yellow-500' :
-              progressSummary.projectStatus === 'good' ? 'bg-green-500' : 'bg-blue-500'
-            } mr-1`}></div>
-            <span className="text-sm">
-              {progressSummary.projectStatus === 'danger' ? '危険' :
-               progressSummary.projectStatus === 'warning' ? '注意' :
-               progressSummary.projectStatus === 'good' ? '良好' : '正常'}
-            </span>
-          </div>
-          <span className="text-sm">進捗: {progressSummary.progressRate}%</span>
-          <span className="text-sm">遅延: {progressSummary.delayRate}%</span>
-        </div>
-      </div>
-      <IoChevronDown size={20} className="text-gray-500" />
-    </div>
-  );
+  const handleModalClose = () => {
+    setModalType(null);
+  };
+
+  const getStatusIcon = () => {
+    switch (progressSummary.projectStatus) {
+      case 'good':
+        return <IoCheckmarkCircle className="w-6 h-6 text-green-500" />;
+      case 'warning':
+        return <IoAlertCircle className="w-6 h-6 text-yellow-500" />;
+      case 'danger':
+        return <IoAlertCircle className="w-6 h-6 text-red-500" />;
+      default:
+        return <IoTimerOutline className="w-6 h-6 text-blue-500" />;
+    }
+  };
+
+  const getStatusText = () => {
+    switch (progressSummary.projectStatus) {
+      case 'good':
+        return '良好';
+      case 'warning':
+        return '注意';
+      case 'danger':
+        return '危険';
+      default:
+        return '正常';
+    }
+  };
+
+  const getDelayLevel = () => {
+    if (progressSummary.delayRate >= 20) return '大';
+    if (progressSummary.delayRate >= 10) return '中';
+    if (progressSummary.delayRate > 0) return '小';
+    return 'なし';
+  };
 
   return (
-    <>
-      {showProgressSummary ? <ProgressSummary /> : <CollapsedProgressSummary />}
-    </>
+    <div className="bg-white rounded-lg shadow p-4">
+      <div className="flex justify-between items-center mb-2">
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-bold text-gray-800">プロジェクト進捗状況</h2>
+          <Link href="/wbs?tab=analysis" className="px-3 py-1 text-xs rounded flex items-center gap-1 bg-indigo-500 text-white hover:bg-indigo-600">
+            <IoAnalytics className="w-3 h-3" />
+            分析詳細
+          </Link>
+        </div>
+        <button
+          onClick={() => setShowProgressSummary(!showProgressSummary)}
+          className="p-1 rounded hover:bg-gray-100"
+        >
+          {showProgressSummary ? <IoChevronUp /> : <IoChevronDown />}
+        </button>
+      </div>
+
+      {showProgressSummary && (
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* 進捗率 */}
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <div className="flex justify-between items-start">
+              <h3 className="text-sm font-medium text-gray-600">進捗率</h3>
+              <button 
+                className="p-1 rounded-full hover:bg-blue-100"
+                onClick={() => handleModalOpen('progress')}
+              >
+                <IoSearch className="w-4 h-4 text-blue-500" />
+              </button>
+            </div>
+            <div className="mt-2 flex items-center">
+              <div className="relative h-16 w-16">
+                <svg className="w-full h-full" viewBox="0 0 36 36">
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="16"
+                    fill="none"
+                    className="stroke-current text-blue-100"
+                    strokeWidth="2"
+                  />
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="16"
+                    fill="none"
+                    className="stroke-current text-blue-500"
+                    strokeWidth="2"
+                    strokeDasharray="100"
+                    strokeDashoffset={100 - progressSummary.progressRate}
+                    strokeLinecap="round"
+                    transform="rotate(-90 18 18)"
+                  />
+                </svg>
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+                  <span className="text-xl font-bold text-blue-600">{Math.round(progressSummary.progressRate)}%</span>
+                </div>
+              </div>
+              <div className="ml-4">
+                <div className="text-sm text-gray-600">
+                  完了: {progressSummary.completedTodos.length}件
+                </div>
+                <div className="text-sm text-gray-600">
+                  総見積: {Math.round(progressSummary.totalEstimatedHours)}時間
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 遅延状況 */}
+          <div className="bg-orange-50 p-3 rounded-lg">
+            <div className="flex justify-between items-start">
+              <h3 className="text-sm font-medium text-gray-600">遅延状況</h3>
+              <button 
+                className="p-1 rounded-full hover:bg-orange-100"
+                onClick={() => handleModalOpen('delay')}
+              >
+                <IoSearch className="w-4 h-4 text-orange-500" />
+              </button>
+            </div>
+            <div className="mt-2 flex items-center">
+              <div className="relative h-16 w-16">
+                <svg className="w-full h-full" viewBox="0 0 36 36">
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="16"
+                    fill="none"
+                    className="stroke-current text-orange-100"
+                    strokeWidth="2"
+                  />
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="16"
+                    fill="none"
+                    className={`stroke-current ${
+                      progressSummary.delayRate > 20 ? 'text-red-500' : 'text-orange-500'
+                    }`}
+                    strokeWidth="2"
+                    strokeDasharray="100"
+                    strokeDashoffset={100 - Math.min(100, progressSummary.delayRate * 2)}
+                    strokeLinecap="round"
+                    transform="rotate(-90 18 18)"
+                  />
+                </svg>
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+                  <span className={`text-xl font-bold ${
+                    progressSummary.delayRate > 20 ? 'text-red-600' : 'text-orange-600'
+                  }`}>{Math.round(progressSummary.delayRate)}%</span>
+                </div>
+              </div>
+              <div className="ml-4">
+                <div className="text-sm text-gray-600">
+                  遅延: {progressSummary.delayedTodos.length}件
+                </div>
+                <div className="text-sm text-gray-600">
+                  影響度: <span className={
+                    getDelayLevel() === '大' ? 'text-red-500 font-bold' :
+                    getDelayLevel() === '中' ? 'text-orange-500 font-bold' :
+                    getDelayLevel() === '小' ? 'text-yellow-500 font-bold' :
+                    'text-green-500'
+                  }>{getDelayLevel()}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* バッファ残量 */}
+          <div className="bg-green-50 p-3 rounded-lg">
+            <div className="flex justify-between items-start">
+              <h3 className="text-sm font-medium text-gray-600">残りバッファ</h3>
+              <button 
+                className="p-1 rounded-full hover:bg-green-100"
+                onClick={() => handleModalOpen('buffer')}
+              >
+                <IoSearch className="w-4 h-4 text-green-500" />
+              </button>
+            </div>
+            <div className="mt-2 flex items-center">
+              <div className="relative h-16 w-16">
+                <svg className="w-full h-full" viewBox="0 0 36 36">
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="16"
+                    fill="none"
+                    className="stroke-current text-green-100"
+                    strokeWidth="2"
+                  />
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="16"
+                    fill="none"
+                    className={`stroke-current ${
+                      progressSummary.bufferHours > 0 && progressSummary.remainingBufferHours === 0
+                        ? 'text-red-500'
+                        : 'text-green-500'
+                    }`}
+                    strokeWidth="2"
+                    strokeDasharray="100"
+                    strokeDashoffset={
+                      progressSummary.bufferHours > 0
+                        ? 100 - (progressSummary.remainingBufferHours / progressSummary.bufferHours) * 100
+                        : 0
+                    }
+                    strokeLinecap="round"
+                    transform="rotate(-90 18 18)"
+                  />
+                </svg>
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+                  <span className={`text-xl font-bold ${
+                    progressSummary.bufferHours > 0 && progressSummary.remainingBufferHours === 0
+                      ? 'text-red-600'
+                      : 'text-green-600'
+                  }`}>{Math.round(progressSummary.remainingBufferHours)}h</span>
+                </div>
+              </div>
+              <div className="ml-4">
+                <div className="text-sm text-gray-600">
+                  総バッファ: {Math.round(progressSummary.bufferHours)}時間
+                </div>
+                <div className="text-sm text-gray-600">
+                  消費: {Math.round(progressSummary.bufferHours - progressSummary.remainingBufferHours)}時間
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* プロジェクト状態 */}
+          <div className={`p-3 rounded-lg ${
+            progressSummary.projectStatus === 'danger' ? 'bg-red-50' :
+            progressSummary.projectStatus === 'warning' ? 'bg-yellow-50' :
+            progressSummary.projectStatus === 'good' ? 'bg-green-50' :
+            'bg-blue-50'
+          }`}>
+            <div className="flex justify-between items-start">
+              <h3 className="text-sm font-medium text-gray-600">プロジェクト状態</h3>
+              <button 
+                className={`p-1 rounded-full ${
+                  progressSummary.projectStatus === 'danger' ? 'hover:bg-red-100' :
+                  progressSummary.projectStatus === 'warning' ? 'hover:bg-yellow-100' :
+                  progressSummary.projectStatus === 'good' ? 'hover:bg-green-100' :
+                  'hover:bg-blue-100'
+                }`}
+                onClick={() => handleModalOpen('status')}
+              >
+                <IoSearch className={`w-4 h-4 ${
+                  progressSummary.projectStatus === 'danger' ? 'text-red-500' :
+                  progressSummary.projectStatus === 'warning' ? 'text-yellow-500' :
+                  progressSummary.projectStatus === 'good' ? 'text-green-500' :
+                  'text-blue-500'
+                }`} />
+              </button>
+            </div>
+            <div className="mt-2 flex items-center">
+              <div className="w-16 h-16 flex items-center justify-center">
+                {getStatusIcon()}
+              </div>
+              <div className="ml-4">
+                <div className={`text-xl font-bold ${
+                  progressSummary.projectStatus === 'danger' ? 'text-red-600' :
+                  progressSummary.projectStatus === 'warning' ? 'text-yellow-600' :
+                  progressSummary.projectStatus === 'good' ? 'text-green-600' :
+                  'text-blue-600'
+                }`}>
+                  {getStatusText()}
+                </div>
+                <div className="text-sm text-gray-600">
+                  {progressSummary.projectStatus === 'danger' ? '重大な遅延あり' :
+                   progressSummary.projectStatus === 'warning' ? '軽度の遅延あり' :
+                   progressSummary.projectStatus === 'good' ? '順調に進行中' :
+                   '通常通り進行中'}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* モーダル */}
+      {modalType && (
+        <ProjectStatsModal
+          type={modalType}
+          progressSummary={progressSummary}
+          onClose={handleModalClose}
+          tasks={tasks}
+        />
+      )}
+    </div>
   );
 } 
