@@ -4,8 +4,6 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { Project } from '@/features/projects/types/project'
 import { ProjectMember, ProjectMemberRole } from '@/features/projects/types/projectMember'
 import { User } from '@/features/tasks/types/user'
-import projectsData from '@/features/projects/data/projects.json'
-import projectMembersData from '@/features/projects/data/projectMembers.json'
 import { getProjectMembers as getProjectMembersUtil, getProjectUsers as getProjectUsersUtil } from '@/utils/memberUtils'
 import { useAuth } from '@/services/auth/hooks/useAuth'
 
@@ -33,10 +31,10 @@ interface ProjectContextType {
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined)
 
-// デフォルトプロジェクトデータ
-const defaultProjects = projectsData as Project[]
-// デフォルトプロジェクトメンバーデータ
-const defaultProjectMembers = projectMembersData as ProjectMember[]
+// デフォルトプロジェクトデータ - 空の配列を初期値として設定
+const defaultProjects: Project[] = []
+// デフォルトプロジェクトメンバーデータ - 空の配列を初期値として設定
+const defaultProjectMembers: ProjectMember[] = []
 
 export function ProjectProvider({ children }: { children: ReactNode }) {
   // Auth情報を取得
@@ -54,8 +52,6 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   // 初期化時にプロジェクトデータをロード
   useEffect(() => {
-    console.log("デフォルトのプロジェクトデータ:", defaultProjects);
-    
     const savedProjects = localStorage.getItem('projects')
     if (savedProjects) {
       try {
@@ -63,13 +59,14 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         console.log("ローカルストレージから読み込んだプロジェクトデータ:", parsedProjects);
         setProjects(parsedProjects)
       } catch (e) {
-        console.error('Failed to parse projects from localStorage', e)
-        setProjects(defaultProjects) // デフォルトデータにフォールバック
+        console.error('ローカルストレージのプロジェクトデータ解析に失敗:', e)
+        // エラー時は空の配列にする
+        setProjects([])
       }
     } else {
-      // ローカルストレージにデータがない場合はデフォルトデータを使用
-      console.log("ローカルストレージにプロジェクトデータがないため、デフォルトデータを使用します");
-      setProjects(defaultProjects)
+      // ローカルストレージにデータがない場合は空の配列
+      console.log("ローカルストレージにプロジェクトデータがないため、空の配列を使用します");
+      setProjects([])
     }
   }, [])
 
@@ -153,8 +150,6 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   // 初期化時にプロジェクトメンバーデータをロード
   useEffect(() => {
-    console.log("デフォルトのプロジェクトメンバーデータ:", defaultProjectMembers);
-    
     const savedProjectMembers = localStorage.getItem('projectMembers')
     if (savedProjectMembers) {
       try {
@@ -162,24 +157,14 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         console.log("ローカルストレージから読み込んだプロジェクトメンバーデータ:", parsedMembers);
         setProjectMembers(parsedMembers)
       } catch (e) {
-        console.error('Failed to parse project members from localStorage', e)
-        setProjectMembers(defaultProjectMembers) // デフォルトデータにフォールバック
+        console.error('ローカルストレージのプロジェクトメンバーデータ解析に失敗:', e)
+        // エラー時は空の配列にする
+        setProjectMembers([])
       }
     } else {
-      // ローカルストレージにデータがない場合はデフォルトデータを使用
-      console.log("ローカルストレージにデータがないため、デフォルトのプロジェクトメンバーデータを使用します");
-      setProjectMembers(defaultProjectMembers)
-    }
-    
-    // プロジェクトデータの確認 (メソッド内に定義されていない場合のための確認)
-    const savedProjects = localStorage.getItem('projects');
-    if (savedProjects) {
-      try {
-        const parsedProjects = JSON.parse(savedProjects);
-        console.log("ローカルストレージから読み込んだプロジェクトデータ:", parsedProjects);
-      } catch (e) {
-        console.error('Failed to parse projects from localStorage', e);
-      }
+      // ローカルストレージにデータがない場合は空の配列
+      console.log("ローカルストレージにデータがないため、空の配列を使用します");
+      setProjectMembers([])
     }
   }, [])
 
@@ -277,16 +262,14 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('projectMembers');
     localStorage.removeItem('currentProjectId');
     
-    // stateをデフォルトに設定
-    setProjects(defaultProjects);
-    setProjectMembers(defaultProjectMembers);
+    // stateを空に設定
+    setProjects([]);
+    setProjectMembers([]);
     
-    console.log("リセット後に設定されるデフォルトプロジェクト:", defaultProjects);
-    console.log("リセット後に設定されるデフォルトプロジェクトメンバー:", defaultProjectMembers);
+    console.log("リセット後のプロジェクト: 空の配列");
+    console.log("リセット後のプロジェクトメンバー: 空の配列");
     
-    if (defaultProjects.length > 0) {
-      setCurrentProject(defaultProjects[0]);
-    }
+    setCurrentProject(null);
   }
 
   // ユーザーをプロジェクトに割り当てる
