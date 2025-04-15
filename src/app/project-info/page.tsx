@@ -11,7 +11,8 @@ import { useAuth } from '@/services/auth/hooks/useAuth'
 import Auth from '@/services/auth/components/Auth'
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
-import { IoPencil, IoEye } from 'react-icons/io5'
+import { IoPencil, IoEye, IoLogoGoogle, IoLogoDropbox, IoCloudOutline } from 'react-icons/io5'
+import { SiNotion } from 'react-icons/si'
 
 // 情報入力項目の定義
 interface CompletionItem {
@@ -19,10 +20,14 @@ interface CompletionItem {
   isComplete: boolean;
 }
 
+// タブの定義
+type TabType = 'project-info' | 'external-reference';
+
 export default function ProjectInfo() {
   const { currentProject } = useProjectContext()
   const { isAuthenticated, user, login, logout } = useAuth()
   const [activeTab, setActiveTab] = useState('project-info')
+  const [activeContentTab, setActiveContentTab] = useState<TabType>('project-info')
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>('edit')
   const [originalText, setOriginalText] = useState('')
   const [summaryText, setSummaryText] = useState('')
@@ -207,64 +212,131 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
     return <Auth onLogin={login} />;
   }
 
-  const renderContent = () => {
+  // タブコンテンツをレンダリング
+  const renderTabContent = () => {
     if (!currentProject) {
       return (
         <div className="p-6">
-          <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-md p-6">
-            <h1 className="text-xl font-semibold text-gray-900 mb-4">PJ情報</h1>
-            <p className="text-gray-500">プロジェクトが選択されていません。</p>
-          </div>
+          <p className="text-gray-500">プロジェクトが選択されていません。</p>
         </div>
-      )
+      );
     }
 
-    return (
-      <div className="p-6">
-        <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-md p-6">
-          <h1 className="text-xl font-semibold text-gray-900 mb-4">PJ情報</h1>
-          
-          {/* <div className="flex justify-between items-center mb-4">
-            <div className="flex space-x-2">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-                accept=".txt,.pdf,.doc,.docx,.md"
-                className="hidden"
-              />
-              <div className="relative">
+    switch (activeContentTab) {
+      case 'external-reference':
+        return (
+          <div className="p-6">
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-yellow-700">
+                    この機能は現在開発中です。外部サービスと連携することで、プロジェクト関連情報をAIが参照し、より精度の高い情報提供が可能になります。
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Google Drive 連携 */}
+              <div className="bg-white shadow rounded-lg p-6">
+                <div className="flex items-center mb-4">
+                  <IoLogoGoogle className="h-8 w-8 text-blue-500 mr-3" />
+                  <h3 className="text-lg font-medium text-gray-900">Google Drive連携</h3>
+                </div>
+                <p className="text-gray-600 mb-4 text-sm">Google Driveと連携することで、プロジェクト関連のドキュメントをAIが自動参照し、最新の情報に基づいた精度の高い回答が得られます。</p>
+                <ul className="list-disc pl-5 text-gray-600 mb-6 space-y-1 text-xs">
+                  <li>プロジェクト関連のドキュメントをAIが自動参照</li>
+                  <li>チーム内での情報共有の効率化</li>
+                </ul>
+                
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-1 group"
+                  disabled
+                  className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-400 cursor-not-allowed"
                 >
-                  {isUploading ? (
-                    <>
-                      <svg className="animate-spin h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      ファイルをアップロード中...
-                    </>
-                  ) : (
-                    <>ファイルからインポート</>
-                  )}
+                  <IoLogoGoogle className="mr-2 h-5 w-5" />
+                  連携する（準備中）
+                </button>
+              </div>
+              
+              {/* Notion連携 */}
+              <div className="bg-white shadow rounded-lg p-6">
+                <div className="flex items-center mb-4">
+                  <SiNotion className="h-8 w-8 text-gray-900 mr-3" />
+                  <h3 className="text-lg font-medium text-gray-900">Notion連携</h3>
+                </div>
+                <p className="text-gray-600 mb-4 text-sm">Notionと連携することで、プロジェクトのナレッジベースとデータベースをAIが参照し、効率的な情報管理と分析が可能になります。</p>
+                <ul className="list-disc pl-5 text-gray-600 mb-6 space-y-1 text-xs">
+                  <li>プロジェクトのナレッジベースとの連携</li>
+                  <li>データベース・ドキュメント情報の自動取得</li>
+                </ul>
+                
+                <button
+                  type="button"
+                  disabled
+                  className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-400 cursor-not-allowed"
+                >
+                  <SiNotion className="mr-2 h-5 w-5" />
+                  連携する（準備中）
+                </button>
+              </div>
+              
+              {/* Dropbox連携 */}
+              <div className="bg-white shadow rounded-lg p-6">
+                <div className="flex items-center mb-4">
+                  <IoLogoDropbox className="h-8 w-8 text-blue-600 mr-3" />
+                  <h3 className="text-lg font-medium text-gray-900">Dropbox連携</h3>
+                </div>
+                <p className="text-gray-600 mb-4 text-sm">Dropboxと連携することで、プロジェクト関連のファイルをAIが参照し、大容量ファイルの管理と検索・分析が効率化されます。</p>
+                <ul className="list-disc pl-5 text-gray-600 mb-6 space-y-1 text-xs">
+                  <li>プロジェクト関連ファイルの自動インデックス化</li>
+                  <li>大容量ファイルの効率的な管理と参照</li>
+                </ul>
+                
+                <button
+                  type="button"
+                  disabled
+                  className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-400 cursor-not-allowed"
+                >
+                  <IoLogoDropbox className="mr-2 h-5 w-5" />
+                  連携する（準備中）
                 </button>
               </div>
             </div>
-          </div> */}
 
-          {/* {uploadError && (
-            <div className="mb-4 bg-red-50 p-3 rounded-lg">
-              <p className="text-xs text-red-700">
-                <span className="font-medium">エラー:</span> {uploadError}
-              </p>
+            <div className="mt-8 bg-blue-50 rounded-lg p-6">
+              <h3 className="text-lg font-medium text-blue-900 mb-2">外部情報連携のメリット</h3>
+              <p className="text-blue-800 mb-4 text-sm">外部サービスと連携することで、AIは以下のような高度な支援が可能になります：</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white p-4 rounded-lg">
+                  <h4 className="font-medium text-blue-800 mb-2 text-sm">情報の自動収集・分析</h4>
+                  <p className="text-gray-600 text-xs">プロジェクト関連の外部ドキュメントやファイルを自動的に収集・分析し、最新の情報に基づいた提案や回答を生成します。</p>
+                </div>
+                <div className="bg-white p-4 rounded-lg">
+                  <h4 className="font-medium text-blue-800 mb-2 text-sm">コンテキスト理解の向上</h4>
+                  <p className="text-gray-600 text-xs">プロジェクトの背景や詳細な情報を理解することで、より文脈に即した適切な提案や回答ができるようになります。</p>
+                </div>
+                <div className="bg-white p-4 rounded-lg">
+                  <h4 className="font-medium text-blue-800 mb-2 text-sm">チーム連携の効率化</h4>
+                  <p className="text-gray-600 text-xs">チーム内の情報共有や知識の集約が効率化され、メンバー間のコミュニケーションがスムーズになります。</p>
+                </div>
+                <div className="bg-white p-4 rounded-lg">
+                  <h4 className="font-medium text-blue-800 mb-2 text-sm">意思決定の迅速化</h4>
+                  <p className="text-gray-600 text-xs">必要な情報へのアクセスが迅速になることで、プロジェクトの意思決定スピードが向上します。</p>
+                </div>
+              </div>
             </div>
-          )} */}
+          </div>
+        );
 
-          <div className="flex flex-col md:flex-row gap-6">
+      default:
+        return (
+          <div className="flex flex-col md:flex-row gap-6 p-6">
             {/* 左側: プロジェクト情報 */}
             <div className="flex-1 space-y-4">
               <div className="flex justify-between items-center mb-2">
@@ -272,53 +344,33 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
                   プロジェクト概要
                 </h4>
                 <div className='flex space-x-2'>
-                {/* {viewMode === 'edit' && (
-                  <button
-                    type="button"
-                    className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-1"
-                    onClick={handleFormatText}
-                    disabled={isFormatting}
-                  >
-                    {isFormatting ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        要約取り込み中...
-                      </>
-                    ) : (
-                      <>要約取り込み</>
-                    )}
-                  </button>
-                )} */}
-                <div className="flex space-x-2">
+                  <div className="flex space-x-2">
                     <button
-                        type="button"
-                        className={`px-3 py-1.5 text-xs font-medium rounded-md flex items-center gap-1 ${
+                      type="button"
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md flex items-center gap-1 ${
                         viewMode === 'edit'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                        onClick={() => setViewMode('edit')}
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                      onClick={() => setViewMode('edit')}
                     >
-                        <IoPencil className="w-3.5 h-3.5" />
-                        編集モード
+                      <IoPencil className="w-3.5 h-3.5" />
+                      編集モード
                     </button>
                     <button
-                        type="button"
-                        className={`px-3 py-1.5 text-xs font-medium rounded-md flex items-center gap-1 ${
+                      type="button"
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md flex items-center gap-1 ${
                         viewMode === 'preview'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                        onClick={() => setViewMode('preview')}
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                      onClick={() => setViewMode('preview')}
                     >
-                        <IoEye className="w-3.5 h-3.5" />
-                        プレビュー
+                      <IoEye className="w-3.5 h-3.5" />
+                      プレビュー
                     </button>
-                    </div>
-                    </div>
+                  </div>
+                </div>
               </div>
               
               {viewMode === 'edit' ? (
@@ -384,6 +436,54 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
               </div>
             </div>
           </div>
+        );
+    }
+  };
+
+  const renderContent = () => {
+    if (!currentProject) {
+      return (
+        <div className="p-2">
+          <div className="bg-white rounded-xl shadow-md p-4">
+            <h1 className="text-xl font-semibold text-gray-900 mb-4">PJ情報</h1>
+            <p className="text-gray-500">プロジェクトが選択されていません。</p>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div className="p-2">
+        <div className="bg-white rounded-xl shadow-md p-4">          
+          {/* タブナビゲーション */}
+          <div className="border-b border-gray-200">
+            <nav className="flex -mb-px space-x-8">
+              <button
+                onClick={() => setActiveContentTab('project-info')}
+                className={`pb-4 px-1 border-b-2 font-medium text-sm ${
+                  activeContentTab === 'project-info'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                基本情報
+              </button>
+              <button
+                onClick={() => setActiveContentTab('external-reference')}
+                className={`pb-4 px-1 border-b-2 font-medium text-sm inline-flex items-center ${
+                  activeContentTab === 'external-reference'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <IoCloudOutline className="mr-2" />
+                外部情報参照
+              </button>
+            </nav>
+          </div>
+          
+          {/* タブコンテンツ */}
+          {renderTabContent()}
         </div>
       </div>
     )
