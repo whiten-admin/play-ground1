@@ -291,20 +291,35 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   // ユーザーをプロジェクトに割り当てる
   const assignUserToProject = (projectId: string, userId: string, role: ProjectMemberRole) => {
+    console.log('メンバー登録開始:', { projectId, userId, role });
+    
+    // ローカルストレージから最新のメンバー情報を取得
+    const storedMembers = localStorage.getItem('projectMembers');
+    let currentMembers = projectMembers;
+    
+    if (storedMembers) {
+      try {
+        currentMembers = JSON.parse(storedMembers) as ProjectMember[];
+        console.log('ローカルストレージから取得した最新メンバーリスト:', currentMembers);
+      } catch (e) {
+        console.error('ローカルストレージからのメンバー情報取得に失敗:', e);
+      }
+    }
+    
     // すでに同じプロジェクトにアサインされているか確認
-    const existingAssignment = projectMembers.find(
+    const existingAssignment = currentMembers.find(
       member => member.projectId === projectId && member.userId === userId
-    )
+    );
+    
+    let updatedMembers: ProjectMember[];
     
     if (existingAssignment) {
       // 既存のアサインメントがあれば、ロールだけ更新
-      setProjectMembers(prev => 
-        prev.map(member => 
-          member.projectId === projectId && member.userId === userId
-            ? { ...member, role }
-            : member
-        )
-      )
+      updatedMembers = currentMembers.map(member => 
+        member.projectId === projectId && member.userId === userId
+          ? { ...member, role }
+          : member
+      );
     } else {
       // 新規アサインメント
       const newMember: ProjectMember = {
@@ -315,26 +330,39 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         assignedAt: new Date().toISOString()
       }
       
-      setProjectMembers(prev => [...prev, newMember])
+      // 新しいメンバーリスト
+      updatedMembers = [...currentMembers, newMember];
+      console.log('新しいメンバーリスト:', updatedMembers);
       
       // プロジェクトのmembersフィールドも更新
       const project = projects.find(p => p.id === projectId)
       if (project) {
-        const updatedMembers = project.members ? [...project.members, userId] : [userId]
+        const updatedMemberIds = project.members ? [...project.members, userId] : [userId]
         updateProject({
           ...project,
-          members: updatedMembers
+          members: updatedMemberIds
         })
       }
     }
+    
+    // stateとローカルストレージを更新
+    setProjectMembers(updatedMembers);
+    localStorage.setItem('projectMembers', JSON.stringify(updatedMembers));
+    
+    // デバッグ情報
+    console.log(`ユーザー ${userId} をプロジェクト ${projectId} に ${role} として割り当てました`);
   }
   
   // ユーザーをプロジェクトから削除
   const removeUserFromProject = (projectId: string, userId: string) => {
     // メンバーシップから削除
-    setProjectMembers(prev => 
-      prev.filter(member => !(member.projectId === projectId && member.userId === userId))
-    )
+    const filteredMembers = projectMembers.filter(
+      member => !(member.projectId === projectId && member.userId === userId)
+    );
+    
+    // stateとローカルストレージを更新
+    setProjectMembers(filteredMembers);
+    localStorage.setItem('projectMembers', JSON.stringify(filteredMembers));
     
     // プロジェクトのmembersフィールドからも削除
     const project = projects.find(p => p.id === projectId)
@@ -344,11 +372,27 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         members: project.members.filter(id => id !== userId)
       })
     }
+    
+    // デバッグ情報
+    console.log(`ユーザー ${userId} をプロジェクト ${projectId} から削除しました`);
   }
   
   // プロジェクトに所属するメンバーを取得
   const getProjectMembers = (projectId: string): ProjectMember[] => {
-    return getProjectMembersUtil(projectId);
+    // ローカルストレージから最新のプロジェクトメンバー情報を取得
+    const storedMembers = localStorage.getItem('projectMembers');
+    
+    if (storedMembers) {
+      try {
+        const allMembers = JSON.parse(storedMembers) as ProjectMember[];
+        return allMembers.filter(member => member.projectId === projectId);
+      } catch (e) {
+        console.error('Failed to parse project members from localStorage', e);
+      }
+    }
+    
+    // ローカルストレージからの取得に失敗した場合はstateから取得
+    return projectMembers.filter(member => member.projectId === projectId);
   }
   
   // プロジェクトに所属するユーザーを取得（User情報を含む）

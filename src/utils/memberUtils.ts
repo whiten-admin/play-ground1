@@ -13,10 +13,37 @@ export interface UserData {
 
 // データの読み込み
 const users: UserData[] = usersData as UserData[];
-const projectMembers: ProjectMember[] = projectMembersData as ProjectMember[];
 
 // メンバーの稼働時間設定をlocalStorageに保存するキー
 const MEMBER_WORKABLE_HOURS_KEY = 'memberWorkableHours';
+const PROJECT_MEMBERS_KEY = 'projectMembers';
+
+// ローカルストレージからプロジェクトメンバー情報を取得または初期化
+function getProjectMembersFromStorage(): ProjectMember[] {
+  if (typeof window === 'undefined') {
+    return projectMembersData as ProjectMember[];
+  }
+
+  const storedData = localStorage.getItem(PROJECT_MEMBERS_KEY);
+  if (storedData) {
+    try {
+      return JSON.parse(storedData);
+    } catch (e) {
+      console.error('プロジェクトメンバーデータの解析に失敗しました', e);
+      return projectMembersData as ProjectMember[];
+    }
+  }
+  
+  // 初期データをストレージに保存
+  const initialData = projectMembersData as ProjectMember[];
+  localStorage.setItem(PROJECT_MEMBERS_KEY, JSON.stringify(initialData));
+  return initialData;
+}
+
+// メンバー情報を遅延読み込み（関数呼び出し時に最新の情報を取得）
+function getAllProjectMembers(): ProjectMember[] {
+  return getProjectMembersFromStorage();
+}
 
 // localStorageから稼働時間設定を取得
 function getMemberWorkableHoursFromStorage(): Record<string, number> {
@@ -62,7 +89,8 @@ export function getAllUsers(): UserData[] {
 export function getProjectMemberById(projectMemberId: string | undefined): ProjectMember | null {
   if (!projectMemberId) return null;
   
-  const member = projectMembers.find(m => m.id === projectMemberId);
+  const members = getAllProjectMembers();
+  const member = members.find(m => m.id === projectMemberId);
   return member || null;
 }
 
@@ -92,7 +120,8 @@ export function getProjectMemberName(projectMemberId: string | undefined): strin
  * 特定のプロジェクトのメンバーを取得する
  */
 export function getProjectMembers(projectId: string): ProjectMember[] {
-  return projectMembers.filter(member => member.projectId === projectId);
+  const allMembers = getProjectMembersFromStorage();
+  return allMembers.filter(member => member.projectId === projectId);
 }
 
 /**
@@ -103,6 +132,38 @@ export function getProjectUsers(projectId: string): UserData[] {
   const userIds = members.map(member => member.userId);
   
   return users.filter(user => userIds.includes(user.id));
+}
+
+/**
+ * プロジェクトメンバーを追加または更新する
+ */
+export function saveProjectMember(member: ProjectMember): void {
+  if (typeof window === 'undefined') return;
+  
+  const members = getProjectMembersFromStorage();
+  const existingIndex = members.findIndex(m => m.id === member.id);
+  
+  if (existingIndex >= 0) {
+    // 既存のメンバーを更新
+    members[existingIndex] = member;
+  } else {
+    // 新しいメンバーを追加
+    members.push(member);
+  }
+  
+  localStorage.setItem(PROJECT_MEMBERS_KEY, JSON.stringify(members));
+}
+
+/**
+ * プロジェクトメンバーを削除する
+ */
+export function removeProjectMember(memberId: string): void {
+  if (typeof window === 'undefined') return;
+  
+  const members = getProjectMembersFromStorage();
+  const filteredMembers = members.filter(m => m.id !== memberId);
+  
+  localStorage.setItem(PROJECT_MEMBERS_KEY, JSON.stringify(filteredMembers));
 }
 
 /**

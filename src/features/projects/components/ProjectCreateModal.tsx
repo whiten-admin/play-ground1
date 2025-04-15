@@ -71,6 +71,8 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject, u
       const projectId = localStorage.getItem('currentProjectId')
       
       if (projectId) {
+        console.log('selectedMembers')
+        console.log(selectedMembers)
         // 選択されたメンバーをプロジェクトにアサイン
         selectedMembers.forEach(member => {
           assignUserToProject(projectId, member.userId, member.role)
