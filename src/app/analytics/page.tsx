@@ -78,45 +78,10 @@ export default function WBSPage() {
         <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header onLogout={logout} user={user} project={project} />
-          <main className="flex-1 overflow-y-auto p-6">
-            {/* タブナビゲーション */}
-            <div className="flex mb-4 bg-white rounded-lg shadow-sm border-b">
-              <button
-                onClick={() => changeView('wbs')}
-                className={`px-4 py-2 text-sm font-medium ${
-                  activeView === 'wbs'
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                WBS
-              </button>
-              <button
-                onClick={() => changeView('analysis')}
-                className={`px-4 py-2 text-sm font-medium ${
-                  activeView === 'analysis'
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                プロジェクト分析
-              </button>
-            </div>
-
+          <main className="flex-1 overflow-y-auto p-2">
             {/* タブコンテンツ */}
-            <div className="bg-white rounded-lg shadow">
-              {activeView === 'wbs' ? (
-                <WBSView 
-                  onTaskSelect={handleTaskSelect}
-                  onTaskCreate={handleTaskCreate}
-                  onTaskUpdate={handleTaskUpdate}
-                  projectId={project.id}
-                />
-              ) : (
-                <div className="p-3">
-                  <ProjectAnalysisDashboard />
-                </div>
-              )}
+            <div className="bg-white rounded-lg shadow p-3">
+              <ProjectAnalysisDashboard />
             </div>
           </main>
         </div>
