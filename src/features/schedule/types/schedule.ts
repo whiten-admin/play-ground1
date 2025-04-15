@@ -22,6 +22,8 @@ export interface TodoWithMeta {
   isNextTodo?: boolean;
   isExternal?: boolean;
   category?: TodoCategory;
+  projectTitle?: string;
+  isAllProjectsMode?: boolean;
 }
 
 // スケジュールカレンダーのプロパティ型定義

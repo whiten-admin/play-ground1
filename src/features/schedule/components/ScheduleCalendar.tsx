@@ -59,7 +59,7 @@ export default function ScheduleCalendar({
   const { selectedUserIds, showUnassigned } = useFilterContext()
   
   // プロジェクトコンテキストを使用
-  const { currentProject, getProjectMembers } = useProjectContext()
+  const { currentProject, getProjectMembers, isAllProjectsMode, filteredProjects } = useProjectContext()
   
   // Authコンテキストからユーザー情報を取得
   const { user } = useAuth();
@@ -131,14 +131,23 @@ export default function ScheduleCalendar({
     if (isClient) {
       console.log('ScheduleCalendar - tasksが変更されました。スケジュール再計算', {
         tasksLength: tasks.length,
-        totalTodos: tasks.reduce((acc, task) => acc + task.todos.length, 0)
+        totalTodos: tasks.reduce((acc, task) => acc + task.todos.length, 0),
+        isAllProjectsMode: isAllProjectsMode,
+        currentProject: currentProject,
+        filteredProjects: filteredProjects
       });
       
       // 共通化したユーティリティ関数を使用してスケジュールを計算
-      const schedule = filterTodosForDisplay(tasks, selectedUserIds, showUnassigned);
+      const schedule = filterTodosForDisplay(
+        tasks, 
+        selectedUserIds, 
+        showUnassigned, 
+        isAllProjectsMode, 
+        filteredProjects
+      );
       setTodoSchedule(schedule);
     }
-  }, [tasks, selectedUserIds, showUnassigned, isClient]);
+  }, [tasks, selectedUserIds, showUnassigned, isClient, isAllProjectsMode, filteredProjects, currentProject]);
   
   // todoScheduleとexternalScheduleを結合して新しいmergedScheduleを作成
   useEffect(() => {
@@ -429,10 +438,16 @@ export default function ScheduleCalendar({
 
     // プロジェクトメンバーからユーザーIDに対応するメンバーIDを取得
     let assigneeId = '';
-    if (currentUserId && currentProject) {
-      const currentProjectMembers = getProjectMembers(currentProject.id);
-      const projectMember = currentProjectMembers.find(member => member.userId === currentUserId);
-      assigneeId = projectMember ? projectMember.id : '';
+    if (currentUserId) {
+      if (currentProject) {
+        const projectMember = getProjectMembers(currentProject.id).find(
+          member => member.userId === currentUserId
+        );
+        assigneeId = projectMember ? projectMember.id : '';
+      } else if (isAllProjectsMode) {
+        // プロジェクト全体モードの場合はユーザーIDをそのまま使用
+        assigneeId = currentUserId;
+      }
     }
 
     const newTodo: Todo = {
@@ -546,10 +561,16 @@ export default function ScheduleCalendar({
 
             // プロジェクトメンバーからユーザーIDに対応するメンバーIDを取得
             let assigneeId = '';
-            if (currentUserId && currentProject) {
-              const currentProjectMembers = getProjectMembers(currentProject.id);
-              const projectMember = currentProjectMembers.find(member => member.userId === currentUserId);
-              assigneeId = projectMember ? projectMember.id : '';
+            if (currentUserId) {
+              if (currentProject) {
+                const projectMember = getProjectMembers(currentProject.id).find(
+                  member => member.userId === currentUserId
+                );
+                assigneeId = projectMember ? projectMember.id : '';
+              } else if (isAllProjectsMode) {
+                // プロジェクト全体モードの場合はユーザーIDをそのまま使用
+                assigneeId = currentUserId;
+              }
             }
             
             const mockGoogleEvents: TodoWithMeta[] = [

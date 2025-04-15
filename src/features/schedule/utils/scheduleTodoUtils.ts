@@ -2,6 +2,7 @@ import { Task, Todo } from '@/features/tasks/types/task';
 import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { BUSINESS_HOURS } from '@/utils/constants/constants';
 import { TodoWithMeta } from '../types/schedule';
+import { Project } from '@/features/projects/types/project';
 
 /**
  * TODOをカレンダーに表示するためのフィルタリング
@@ -9,18 +10,31 @@ import { TodoWithMeta } from '../types/schedule';
 export const filterTodosForDisplay = (
   tasks: Task[],
   selectedUserIds: string[],
-  showUnassigned: boolean
+  showUnassigned: boolean,
+  isAllProjectsMode: boolean = false,
+  projects: Project[] = []
 ): Map<string, TodoWithMeta[]> => {
   const todosByDate = new Map<string, TodoWithMeta[]>();
   
+  // プロジェクトIDからプロジェクト名を取得するマップを作成
+  const projectMap = new Map<string, string>();
+  if (projects.length > 0) {
+    projects.forEach(project => {
+      projectMap.set(project.id, project.title);
+    });
+  }
+  
   tasks.forEach(task => {
+    // タスクに関連するプロジェクト名を取得
+    const projectTitle = projectMap.get(task.projectId) || '';
+    
     task.todos.forEach(todo => {      
       // フィルタリング条件：担当者が選択されているか、未割り当てが表示対象か
       const todoAssigneeId = todo.assigneeId || '';
       const isAssignedToSelectedUser = todoAssigneeId && selectedUserIds.includes(todoAssigneeId);
       const isUnassigned = !todoAssigneeId;
       
-      if (!(isAssignedToSelectedUser || (showUnassigned && isUnassigned))) {
+      if (!isAllProjectsMode && !(isAssignedToSelectedUser || (showUnassigned && isUnassigned))) {
         return;
       }
       
@@ -40,7 +54,9 @@ export const filterTodosForDisplay = (
         taskId: task.id,
         taskTitle: task.title,
         priority: 0,
-        isNextTodo: false
+        isNextTodo: false,
+        projectTitle: isAllProjectsMode ? projectTitle : '', // 全プロジェクトモードの場合のみプロジェクト名を表示
+        isAllProjectsMode: isAllProjectsMode // 全プロジェクトモードかどうかのフラグを追加
       });
     });
   });

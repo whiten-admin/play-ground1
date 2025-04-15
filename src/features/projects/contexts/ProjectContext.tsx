@@ -13,12 +13,15 @@ interface ProjectContextType {
   projects: Project[]
   filteredProjects: Project[] // ユーザーがアサインされているプロジェクトのみ
   currentProject: Project | null
-  setCurrentProject: (project: Project) => void
-  switchProject: (projectId: string) => void
+  setCurrentProject: (project: Project | null) => void
+  switchProject: (projectId: string | null) => void // nullを許容するように変更
   updateProject: (updatedProject: Project) => void
   createProject: (newProject: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => void
   clearAllProjects: () => void
   resetToDefaultProjects: () => void
+  
+  // プロジェクト全体表示モードかどうか
+  isAllProjectsMode: boolean
   
   // プロジェクトメンバー管理関連
   projectMembers: ProjectMember[]
@@ -46,6 +49,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const [projectMembers, setProjectMembers] = useState<ProjectMember[]>(defaultProjectMembers)
   // ユーザーがアサインされているプロジェクトのみをフィルタリング
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([])
+  // プロジェクト全体表示モード
+  const [isAllProjectsMode, setIsAllProjectsMode] = useState(false)
 
   // 初期化時にプロジェクトデータをロード
   useEffect(() => {
@@ -123,9 +128,16 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   // 初期化時に最初のプロジェクトを選択
   useEffect(() => {
-    if (filteredProjects.length > 0 && !currentProject) {
+    if (filteredProjects.length > 0 && !currentProject && !isAllProjectsMode) {
       // ローカルストレージから前回選択したプロジェクトIDを取得
       const savedProjectId = localStorage.getItem('currentProjectId')
+      
+      // 全体表示モードの場合
+      if (savedProjectId === 'all') {
+        setIsAllProjectsMode(true)
+        setCurrentProject(null)
+        return
+      }
       
       // 保存されているプロジェクトIDがフィルタリング後のプロジェクトに含まれているか確認
       const initialProject = savedProjectId && filteredProjects.find(p => p.id === savedProjectId)
@@ -137,7 +149,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       // ユーザーがアサインされているプロジェクトがない場合
       setCurrentProject(null)
     }
-  }, [filteredProjects, currentProject])
+  }, [filteredProjects, currentProject, isAllProjectsMode])
 
   // 初期化時にプロジェクトメンバーデータをロード
   useEffect(() => {
@@ -179,7 +191,18 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   }, [projectMembers])
 
   // プロジェクト切り替え
-  const switchProject = (projectId: string) => {
+  const switchProject = (projectId: string | null) => {
+    // プロジェクト全体モードの場合
+    if (projectId === null) {
+      setCurrentProject(null)
+      setIsAllProjectsMode(true)
+      // 選択状態をローカルストレージに保存
+      localStorage.setItem('currentProjectId', 'all')
+      return
+    }
+    
+    // 通常のプロジェクト選択
+    setIsAllProjectsMode(false)
     const project = projects.find(p => p.id === projectId)
     if (project) {
       setCurrentProject(project)
@@ -351,6 +374,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         createProject,
         clearAllProjects,
         resetToDefaultProjects,
+        isAllProjectsMode,
         projectMembers,
         assignUserToProject,
         removeUserFromProject,
