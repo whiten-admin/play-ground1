@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import { useAuth } from '@/services/auth/hooks/useAuth'
@@ -11,7 +11,6 @@ import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
 import UserFilter from '@/components/UserFilter'
 import { FilterProvider } from '@/features/tasks/filters/FilterContext'
 import EmptyProjectState from '@/features/projects/components/EmptyProjectState'
-import { getUserNameById, getUserNamesByIds } from '@/features/tasks/utils/userUtils'
 import { format, isBefore, isToday, startOfDay } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { IoAdd, IoList, IoGrid, IoBarChart, IoCaretDown, IoCaretUp, IoClose, IoBulb, IoDocumentText, IoCheckmarkCircle } from 'react-icons/io5'
@@ -72,6 +71,27 @@ function NewProjectGuidePopup({ isVisible, onClose }: { isVisible: boolean; onCl
   );
 }
 
+// Suspenseバウンダリの中でuseSearchParamsを使用するコンポーネント
+function ProjectGuideHandler({ onShowGuide }: { onShowGuide: (show: boolean) => void }) {
+  const searchParams = useSearchParams();
+  
+  useEffect(() => {
+    const isNewProject = searchParams?.get('newProject') === 'true';
+    if (isNewProject) {
+      onShowGuide(true);
+      
+      // 10秒後に自動的に閉じる
+      const timer = setTimeout(() => {
+        onShowGuide(false);
+      }, 10000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, onShowGuide]);
+  
+  return null;
+}
+
 export default function TasksPage() {
   const { isAuthenticated, user, login, logout } = useAuth()
   const [activeTab, setActiveTab] = useState('tasks')
@@ -100,22 +120,6 @@ export default function TasksPage() {
   
   // 新規プロジェクト作成後のガイド表示状態
   const [showNewProjectGuide, setShowNewProjectGuide] = useState(false)
-  const searchParams = useSearchParams()
-  
-  // URLクエリパラメータをチェックして、新規プロジェクト作成後かどうかを判定
-  useEffect(() => {
-    const isNewProject = searchParams?.get('newProject') === 'true';
-    if (isNewProject) {
-      setShowNewProjectGuide(true)
-      
-      // 10秒後に自動的に閉じる
-      const timer = setTimeout(() => {
-        setShowNewProjectGuide(false)
-      }, 10000)
-      
-      return () => clearTimeout(timer)
-    }
-  }, [searchParams])
   
   // サイドバーの状態を監視
   useEffect(() => {
@@ -304,6 +308,11 @@ export default function TasksPage() {
   return (
     <FilterProvider>
       <div className="flex h-screen bg-gray-100">
+        {/* Suspenseバウンダリの中でuseSearchParamsを使用 */}
+        <Suspense fallback={null}>
+          <ProjectGuideHandler onShowGuide={setShowNewProjectGuide} />
+        </Suspense>
+        
         <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header onLogout={logout} user={user} project={currentProject || undefined} />

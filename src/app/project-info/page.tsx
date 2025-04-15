@@ -13,14 +13,11 @@ import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import { IoPencil, IoEye, IoLogoGoogle, IoLogoDropbox, IoCloudOutline, IoPeople } from 'react-icons/io5'
 import { SiNotion } from 'react-icons/si'
-import { FiPlus, FiX, FiUserCheck, FiEdit2, FiTrash2, FiMail, FiUsers, FiUpload, FiFile, FiCheckCircle, FiInfo, FiTag, FiChevronDown, FiChevronRight } from 'react-icons/fi'
+import { FiPlus, FiX, FiEdit2, FiTrash2, FiMail, FiUsers, FiUpload, FiFile, FiCheckCircle, FiInfo, FiTag, FiChevronDown, FiChevronRight } from 'react-icons/fi'
 import { User } from '@/features/tasks/types/user'
 import { ProjectMember, ProjectMemberRole, Skill, SkillLevel } from '@/features/projects/types/projectMember'
 import { getAllUsers } from '@/utils/memberUtils'
-import FloatingTools from '@/components/ui/FloatingTools'
-import Badge from '@/components/ui/Badge'
-import { useDropzone } from 'react-dropzone'
-import ProjectInfoForm from '@/features/project-info/components/ProjectInfoForm'
+import { FloatingTools }from '@/components/ui/FloatingTools'
 import EmptyProjectState from '@/features/projects/components/EmptyProjectState'
 
 // 情報入力項目の定義
@@ -452,7 +449,6 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
           <main className="flex-1 overflow-y-auto p-4">
             <EmptyProjectState 
               onCreateProject={openAddModal} 
-              showAllProjects={projects.length === 0}
             />
           </main>
         </div>
@@ -1580,7 +1576,7 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
       return member
     })
     
-    setMembers(updatedMembers)
+    setMembers(updatedMembers as MemberWithUser[])
     setShowSkillModal(false)
   }
 

@@ -156,7 +156,7 @@ export default function MemberList({ className = '' }: MemberListProps) {
           
           if (isAllProjectsMode) {
             // 全プロジェクトモード：メンバーIDの配列のいずれかが選択されているか確認
-            isSelected = member.memberIds.some(id => selectedUserIds.includes(id));
+            isSelected = member.memberIds.some((id: string) => selectedUserIds.includes(id));
             displayName = member.name;
             displayProjectId = member.projectIds.length > 1 
               ? `${member.projectIds.length}プロジェクト` 
