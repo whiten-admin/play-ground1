@@ -20,7 +20,7 @@ export default function Sidebar({ activeTab, onTabChange, initialCollapsed = fal
   const [collapsed, setCollapsed] = useState(initialCollapsed)
   const [isDevMenuOpen, setIsDevMenuOpen] = useState(false)
   const { tasks, setTasks, resetTasks, clearAllTasks } = useTaskContext();
-  const { resetToDefaultProjects, clearAllProjects } = useProjectContext();
+  const { resetToDefaultProjects, clearAllProjects, isAllProjectsMode } = useProjectContext();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -53,13 +53,13 @@ export default function Sidebar({ activeTab, onTabChange, initialCollapsed = fal
   }, [])
   
   const tabs = [
-    { id: 'schedule', label: 'スケジュール', icon: '📝', href: '/' },
-    { id: 'tasks', label: 'タスク一覧', icon: '📋', href: '/tasks' },
-    { id: 'wbs', label: 'WBS・分析', icon: '📊', href: '/wbs' },
-    { id: 'project-info', label: 'PJ情報', icon: 'ℹ️', href: '/project-info' },
-    { id: 'team-management', label: 'チーム管理', icon: '🧑‍🤝‍🧑', href: '/team-management' },
-    { id: 'settings', label: '設定', icon: '⚙️', href: '/settings' },
-    { id: 'guide', label: '使い方', icon: '🎓', href: '/guide' },
+    { id: 'schedule', label: 'スケジュール', icon: '📝', href: '/', hideOnAllProjects: false },
+    { id: 'dashboard', label: 'ダッシュボード', icon: '📊', href: '/dashboard', showOnlyAllProjects: true },
+    { id: 'tasks', label: 'タスク一覧', icon: '📋', href: '/tasks', hideOnAllProjects: true },
+    { id: 'analytics', label: 'PJ分析', icon: '📊', href: '/analytics', hideOnAllProjects: true },
+    { id: 'project-info', label: 'PJ情報', icon: 'ℹ️', href: '/project-info', hideOnAllProjects: true },
+    { id: 'settings', label: '設定', icon: '⚙️', href: '/settings', hideOnAllProjects: true },
+    { id: 'guide', label: '使い方', icon: '🎓', href: '/guide', hideOnAllProjects: false },
   ]
 
   // データをリセット（タスクとプロジェクト両方）
@@ -151,22 +151,32 @@ export default function Sidebar({ activeTab, onTabChange, initialCollapsed = fal
 
       <div className="p-4 flex flex-col flex-grow">
         <div className="space-y-2 mt-2">
-          {tabs.filter(tab => tab.id !== 'guide').map((tab) => (
-            <Link
-              key={tab.id}
-              href={tab.href}
-              onClick={() => onTabChange(tab.id)}
-              className={`w-full flex items-center ${collapsed ? 'justify-center' : 'justify-start space-x-3'} px-4 py-2 rounded-lg ${
-                activeTab === tab.id
-                  ? 'bg-blue-500 text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
-              }`}
-              title={collapsed ? tab.label : undefined}
-            >
-              <span className="flex-shrink-0">{tab.icon}</span>
-              {!collapsed && <span className="truncate">{tab.label}</span>}
-            </Link>
-          ))}
+          {tabs
+            .filter(tab => tab.id !== 'guide')
+            .filter(tab => {
+              // プロジェクト全体モードの場合の表示制御
+              if (isAllProjectsMode) {
+                return !tab.hideOnAllProjects || tab.showOnlyAllProjects;
+              } else {
+                return !tab.showOnlyAllProjects;
+              }
+            })
+            .map((tab) => (
+              <Link
+                key={tab.id}
+                href={tab.href}
+                onClick={() => onTabChange(tab.id)}
+                className={`w-full flex items-center ${collapsed ? 'justify-center' : 'justify-start space-x-3'} px-4 py-2 rounded-lg ${
+                  activeTab === tab.id
+                    ? 'bg-blue-500 text-white'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+                title={collapsed ? tab.label : undefined}
+              >
+                <span className="flex-shrink-0">{tab.icon}</span>
+                {!collapsed && <span className="truncate">{tab.label}</span>}
+              </Link>
+            ))}
         </div>
       </div>
       

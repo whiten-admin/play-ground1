@@ -327,6 +327,12 @@ const TodoItemComponent: React.FC<TodoItemComponentProps> = ({
               transition: 'all 0.2s ease-in-out',
             }}
           >
+            {/* プロジェクト全体モード時にはプロジェクト名を表示 */}
+            {todoWithMeta.isAllProjectsMode && todoWithMeta.projectTitle ? (
+              <span className="text-[9px] text-blue-400 font-medium mr-1">
+                [{todoWithMeta.projectTitle}]
+              </span>
+            ) : null}
             {/* タスク名とTODO */}
             <div className="flex flex-col justify-between h-full">
               <div>

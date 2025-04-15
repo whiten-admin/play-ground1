@@ -4,8 +4,6 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { Project } from '@/features/projects/types/project'
 import { ProjectMember, ProjectMemberRole } from '@/features/projects/types/projectMember'
 import { User } from '@/features/tasks/types/user'
-import projectsData from '@/features/projects/data/projects.json'
-import projectMembersData from '@/features/projects/data/projectMembers.json'
 import { getProjectMembers as getProjectMembersUtil, getProjectUsers as getProjectUsersUtil } from '@/utils/memberUtils'
 import { useAuth } from '@/services/auth/hooks/useAuth'
 
@@ -13,12 +11,15 @@ interface ProjectContextType {
   projects: Project[]
   filteredProjects: Project[] // ユーザーがアサインされているプロジェクトのみ
   currentProject: Project | null
-  setCurrentProject: (project: Project) => void
-  switchProject: (projectId: string) => void
+  setCurrentProject: (project: Project | null) => void
+  switchProject: (projectId: string | null) => void // nullを許容するように変更
   updateProject: (updatedProject: Project) => void
   createProject: (newProject: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => void
   clearAllProjects: () => void
   resetToDefaultProjects: () => void
+  
+  // プロジェクト全体表示モードかどうか
+  isAllProjectsMode: boolean
   
   // プロジェクトメンバー管理関連
   projectMembers: ProjectMember[]
@@ -30,10 +31,10 @@ interface ProjectContextType {
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined)
 
-// デフォルトプロジェクトデータ
-const defaultProjects = projectsData as Project[]
-// デフォルトプロジェクトメンバーデータ
-const defaultProjectMembers = projectMembersData as ProjectMember[]
+// デフォルトプロジェクトデータ - 空の配列を初期値として設定
+const defaultProjects: Project[] = []
+// デフォルトプロジェクトメンバーデータ - 空の配列を初期値として設定
+const defaultProjectMembers: ProjectMember[] = []
 
 export function ProjectProvider({ children }: { children: ReactNode }) {
   // Auth情報を取得
@@ -46,11 +47,11 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const [projectMembers, setProjectMembers] = useState<ProjectMember[]>(defaultProjectMembers)
   // ユーザーがアサインされているプロジェクトのみをフィルタリング
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([])
+  // プロジェクト全体表示モード
+  const [isAllProjectsMode, setIsAllProjectsMode] = useState(false)
 
   // 初期化時にプロジェクトデータをロード
   useEffect(() => {
-    console.log("デフォルトのプロジェクトデータ:", defaultProjects);
-    
     const savedProjects = localStorage.getItem('projects')
     if (savedProjects) {
       try {
@@ -58,13 +59,14 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         console.log("ローカルストレージから読み込んだプロジェクトデータ:", parsedProjects);
         setProjects(parsedProjects)
       } catch (e) {
-        console.error('Failed to parse projects from localStorage', e)
-        setProjects(defaultProjects) // デフォルトデータにフォールバック
+        console.error('ローカルストレージのプロジェクトデータ解析に失敗:', e)
+        // エラー時は空の配列にする
+        setProjects([])
       }
     } else {
-      // ローカルストレージにデータがない場合はデフォルトデータを使用
-      console.log("ローカルストレージにプロジェクトデータがないため、デフォルトデータを使用します");
-      setProjects(defaultProjects)
+      // ローカルストレージにデータがない場合は空の配列
+      console.log("ローカルストレージにプロジェクトデータがないため、空の配列を使用します");
+      setProjects([])
     }
   }, [])
 
@@ -123,9 +125,16 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   // 初期化時に最初のプロジェクトを選択
   useEffect(() => {
-    if (filteredProjects.length > 0 && !currentProject) {
+    if (filteredProjects.length > 0 && !currentProject && !isAllProjectsMode) {
       // ローカルストレージから前回選択したプロジェクトIDを取得
       const savedProjectId = localStorage.getItem('currentProjectId')
+      
+      // 全体表示モードの場合
+      if (savedProjectId === 'all') {
+        setIsAllProjectsMode(true)
+        setCurrentProject(null)
+        return
+      }
       
       // 保存されているプロジェクトIDがフィルタリング後のプロジェクトに含まれているか確認
       const initialProject = savedProjectId && filteredProjects.find(p => p.id === savedProjectId)
@@ -137,12 +146,10 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       // ユーザーがアサインされているプロジェクトがない場合
       setCurrentProject(null)
     }
-  }, [filteredProjects, currentProject])
+  }, [filteredProjects, currentProject, isAllProjectsMode])
 
   // 初期化時にプロジェクトメンバーデータをロード
   useEffect(() => {
-    console.log("デフォルトのプロジェクトメンバーデータ:", defaultProjectMembers);
-    
     const savedProjectMembers = localStorage.getItem('projectMembers')
     if (savedProjectMembers) {
       try {
@@ -150,24 +157,14 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         console.log("ローカルストレージから読み込んだプロジェクトメンバーデータ:", parsedMembers);
         setProjectMembers(parsedMembers)
       } catch (e) {
-        console.error('Failed to parse project members from localStorage', e)
-        setProjectMembers(defaultProjectMembers) // デフォルトデータにフォールバック
+        console.error('ローカルストレージのプロジェクトメンバーデータ解析に失敗:', e)
+        // エラー時は空の配列にする
+        setProjectMembers([])
       }
     } else {
-      // ローカルストレージにデータがない場合はデフォルトデータを使用
-      console.log("ローカルストレージにデータがないため、デフォルトのプロジェクトメンバーデータを使用します");
-      setProjectMembers(defaultProjectMembers)
-    }
-    
-    // プロジェクトデータの確認 (メソッド内に定義されていない場合のための確認)
-    const savedProjects = localStorage.getItem('projects');
-    if (savedProjects) {
-      try {
-        const parsedProjects = JSON.parse(savedProjects);
-        console.log("ローカルストレージから読み込んだプロジェクトデータ:", parsedProjects);
-      } catch (e) {
-        console.error('Failed to parse projects from localStorage', e);
-      }
+      // ローカルストレージにデータがない場合は空の配列
+      console.log("ローカルストレージにデータがないため、空の配列を使用します");
+      setProjectMembers([])
     }
   }, [])
 
@@ -179,7 +176,18 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   }, [projectMembers])
 
   // プロジェクト切り替え
-  const switchProject = (projectId: string) => {
+  const switchProject = (projectId: string | null) => {
+    // プロジェクト全体モードの場合
+    if (projectId === null) {
+      setCurrentProject(null)
+      setIsAllProjectsMode(true)
+      // 選択状態をローカルストレージに保存
+      localStorage.setItem('currentProjectId', 'all')
+      return
+    }
+    
+    // 通常のプロジェクト選択
+    setIsAllProjectsMode(false)
     const project = projects.find(p => p.id === projectId)
     if (project) {
       setCurrentProject(project)
@@ -254,34 +262,47 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('projectMembers');
     localStorage.removeItem('currentProjectId');
     
-    // stateをデフォルトに設定
-    setProjects(defaultProjects);
-    setProjectMembers(defaultProjectMembers);
+    // stateを空に設定
+    setProjects([]);
+    setProjectMembers([]);
     
-    console.log("リセット後に設定されるデフォルトプロジェクト:", defaultProjects);
-    console.log("リセット後に設定されるデフォルトプロジェクトメンバー:", defaultProjectMembers);
+    console.log("リセット後のプロジェクト: 空の配列");
+    console.log("リセット後のプロジェクトメンバー: 空の配列");
     
-    if (defaultProjects.length > 0) {
-      setCurrentProject(defaultProjects[0]);
-    }
+    setCurrentProject(null);
   }
 
   // ユーザーをプロジェクトに割り当てる
   const assignUserToProject = (projectId: string, userId: string, role: ProjectMemberRole) => {
+    console.log('メンバー登録開始:', { projectId, userId, role });
+    
+    // ローカルストレージから最新のメンバー情報を取得
+    const storedMembers = localStorage.getItem('projectMembers');
+    let currentMembers = projectMembers;
+    
+    if (storedMembers) {
+      try {
+        currentMembers = JSON.parse(storedMembers) as ProjectMember[];
+        console.log('ローカルストレージから取得した最新メンバーリスト:', currentMembers);
+      } catch (e) {
+        console.error('ローカルストレージからのメンバー情報取得に失敗:', e);
+      }
+    }
+    
     // すでに同じプロジェクトにアサインされているか確認
-    const existingAssignment = projectMembers.find(
+    const existingAssignment = currentMembers.find(
       member => member.projectId === projectId && member.userId === userId
-    )
+    );
+    
+    let updatedMembers: ProjectMember[];
     
     if (existingAssignment) {
       // 既存のアサインメントがあれば、ロールだけ更新
-      setProjectMembers(prev => 
-        prev.map(member => 
-          member.projectId === projectId && member.userId === userId
-            ? { ...member, role }
-            : member
-        )
-      )
+      updatedMembers = currentMembers.map(member => 
+        member.projectId === projectId && member.userId === userId
+          ? { ...member, role }
+          : member
+      );
     } else {
       // 新規アサインメント
       const newMember: ProjectMember = {
@@ -292,26 +313,39 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         assignedAt: new Date().toISOString()
       }
       
-      setProjectMembers(prev => [...prev, newMember])
+      // 新しいメンバーリスト
+      updatedMembers = [...currentMembers, newMember];
+      console.log('新しいメンバーリスト:', updatedMembers);
       
       // プロジェクトのmembersフィールドも更新
       const project = projects.find(p => p.id === projectId)
       if (project) {
-        const updatedMembers = project.members ? [...project.members, userId] : [userId]
+        const updatedMemberIds = project.members ? [...project.members, userId] : [userId]
         updateProject({
           ...project,
-          members: updatedMembers
+          members: updatedMemberIds
         })
       }
     }
+    
+    // stateとローカルストレージを更新
+    setProjectMembers(updatedMembers);
+    localStorage.setItem('projectMembers', JSON.stringify(updatedMembers));
+    
+    // デバッグ情報
+    console.log(`ユーザー ${userId} をプロジェクト ${projectId} に ${role} として割り当てました`);
   }
   
   // ユーザーをプロジェクトから削除
   const removeUserFromProject = (projectId: string, userId: string) => {
     // メンバーシップから削除
-    setProjectMembers(prev => 
-      prev.filter(member => !(member.projectId === projectId && member.userId === userId))
-    )
+    const filteredMembers = projectMembers.filter(
+      member => !(member.projectId === projectId && member.userId === userId)
+    );
+    
+    // stateとローカルストレージを更新
+    setProjectMembers(filteredMembers);
+    localStorage.setItem('projectMembers', JSON.stringify(filteredMembers));
     
     // プロジェクトのmembersフィールドからも削除
     const project = projects.find(p => p.id === projectId)
@@ -321,11 +355,27 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         members: project.members.filter(id => id !== userId)
       })
     }
+    
+    // デバッグ情報
+    console.log(`ユーザー ${userId} をプロジェクト ${projectId} から削除しました`);
   }
   
   // プロジェクトに所属するメンバーを取得
   const getProjectMembers = (projectId: string): ProjectMember[] => {
-    return getProjectMembersUtil(projectId);
+    // ローカルストレージから最新のプロジェクトメンバー情報を取得
+    const storedMembers = localStorage.getItem('projectMembers');
+    
+    if (storedMembers) {
+      try {
+        const allMembers = JSON.parse(storedMembers) as ProjectMember[];
+        return allMembers.filter(member => member.projectId === projectId);
+      } catch (e) {
+        console.error('Failed to parse project members from localStorage', e);
+      }
+    }
+    
+    // ローカルストレージからの取得に失敗した場合はstateから取得
+    return projectMembers.filter(member => member.projectId === projectId);
   }
   
   // プロジェクトに所属するユーザーを取得（User情報を含む）
@@ -351,6 +401,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         createProject,
         clearAllProjects,
         resetToDefaultProjects,
+        isAllProjectsMode,
         projectMembers,
         assignUserToProject,
         removeUserFromProject,

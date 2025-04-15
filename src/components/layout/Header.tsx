@@ -16,7 +16,7 @@ interface HeaderProps {
 }
 
 export default function Header({ onLogout, user, project }: HeaderProps) {
-  const { currentProject, filteredProjects, switchProject, createProject, updateProject, getProjectMembers, getProjectUsers, resetToDefaultProjects } = useProjectContext()
+  const { currentProject, filteredProjects, switchProject, createProject, updateProject, getProjectMembers, getProjectUsers, resetToDefaultProjects, isAllProjectsMode } = useProjectContext()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isProjectDetailModalOpen, setIsProjectDetailModalOpen] = useState(false)
@@ -80,7 +80,7 @@ export default function Header({ onLogout, user, project }: HeaderProps) {
     setIsDropdownOpen(!isDropdownOpen)
   }
 
-  const handleProjectSelect = (projectId: string) => {
+  const handleProjectSelect = (projectId: string | null) => {
     switchProject(projectId)
     setIsDropdownOpen(false)
   }
@@ -109,7 +109,7 @@ export default function Header({ onLogout, user, project }: HeaderProps) {
   }
 
   return (
-    <header className="bg-white border-b border-gray-200 py-2 px-4">
+    <header className={`${isAllProjectsMode ? 'bg-blue-50' : 'bg-white'} border-b border-gray-200 py-2 px-4`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           {filteredProjects.length > 0 ? (
@@ -119,11 +119,15 @@ export default function Header({ onLogout, user, project }: HeaderProps) {
                   className="flex flex-col items-start gap-0.5 hover:text-gray-600 transition-colors"
                   onClick={toggleDropdown}
                 >
-                  {displayProject?.code && (
+                  {isAllProjectsMode ? (
+                    <span className="text-xs text-gray-400 font-normal">全プロジェクト</span>
+                  ) : displayProject?.code && (
                     <span className="text-xs text-gray-400 font-normal">{displayProject.code}</span>
                   )}
                   <div className="flex items-center gap-1">
-                    <span className="text-lg font-bold text-gray-800">{displayProject?.title || 'プロジェクト'}</span> 
+                    <span className="text-lg font-bold text-gray-800">
+                      {isAllProjectsMode ? 'プロジェクト全体' : (displayProject?.title || 'プロジェクト')}
+                    </span> 
                     <ChevronDownIcon className="h-4 w-4" />
                   </div>
                 </button>
@@ -131,6 +135,24 @@ export default function Header({ onLogout, user, project }: HeaderProps) {
                 {isDropdownOpen && (
                   <div className="absolute top-full left-0 mt-1 w-60 bg-white border border-gray-200 rounded-md shadow-lg z-50">
                     <ul className="py-1">
+                      <li>
+                        <button
+                          className={`w-full text-left px-3 py-2 text-sm ${isAllProjectsMode ? 'bg-gray-100 font-medium' : 'hover:bg-gray-50'}`}
+                          onClick={() => handleProjectSelect(null)}
+                        >
+                          <div className="flex flex-col">
+                            <span className="text-xs text-gray-400">全プロジェクト</span>
+                            <span>プロジェクト全体</span>
+                          </div>
+                        </button>
+                      </li>
+                      
+                      <li className="border-t border-gray-100 mt-1 pt-1">
+                        <div className="px-3 py-1">
+                          <span className="text-xs text-gray-500">個別プロジェクト</span>
+                        </div>
+                      </li>
+                      
                       {filteredProjects.map(project => (
                         <li key={project.id}>
                           <button
@@ -161,31 +183,43 @@ export default function Header({ onLogout, user, project }: HeaderProps) {
                 )}
               </div>
               
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <span>{formatDate(displayProject?.startDate)} - {formatDate(displayProject?.endDate)}</span>
-                {remainingDays !== null && (
-                  <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded">
-                    残り{remainingDays}日
-                  </span>
-                )}
-              </div>
-              
-              {displayProject && projectMemberUsers.length > 0 && (
-                <div className="flex items-center ml-4">
-                  <div className="flex -space-x-2 mr-2">
-                    {projectMemberUsers.slice(0, 3).map((memberUser) => (
-                      <div key={memberUser.id} className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center border-2 border-white text-xs font-medium text-gray-600">
-                        {memberUser.name.charAt(0)}
-                      </div>
-                    ))}
-                    {projectMemberUsers.length > 3 && (
-                      <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center border-2 border-white text-xs font-medium text-gray-600">
-                        +{projectMemberUsers.length - 3}
-                      </div>
+              {!isAllProjectsMode && (
+                <>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span>{formatDate(displayProject?.startDate)} - {formatDate(displayProject?.endDate)}</span>
+                    {remainingDays !== null && (
+                      <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded">
+                        残り{remainingDays}日
+                      </span>
                     )}
                   </div>
-                  <span className="text-xs text-gray-500">
-                    {projectMemberUsers.length}人のメンバー
+                  
+                  {displayProject && projectMemberUsers.length > 0 && (
+                    <div className="flex items-center ml-4">
+                      <div className="flex -space-x-2 mr-2">
+                        {projectMemberUsers.slice(0, 3).map((memberUser) => (
+                          <div key={memberUser.id} className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center border-2 border-white text-xs font-medium text-gray-600">
+                            {memberUser.name.charAt(0)}
+                          </div>
+                        ))}
+                        {projectMemberUsers.length > 3 && (
+                          <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center border-2 border-white text-xs font-medium text-gray-600">
+                            +{projectMemberUsers.length - 3}
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-xs text-gray-500">
+                        {projectMemberUsers.length}人のメンバー
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+              
+              {isAllProjectsMode && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded">
+                    全{filteredProjects.length}プロジェクト
                   </span>
                 </div>
               )}

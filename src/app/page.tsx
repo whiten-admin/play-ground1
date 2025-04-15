@@ -4,7 +4,6 @@ import { useState, useEffect, Suspense } from 'react'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import TaskDetail from '@/features/tasks/components/TaskDetail'
-import TodayTodo from '@/features/tasks/components/TodayTodo'
 import ScheduleCalendar from '@/features/schedule/components/ScheduleCalendar'
 import Auth from '@/services/auth/components/Auth'
 import EmptyProjectState from '@/features/projects/components/EmptyProjectState'
@@ -14,8 +13,6 @@ import { useTaskContext } from '@/features/tasks/contexts/TaskContext'
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
 import ResizablePanel from '@/components/layout/ResizablePanel'
 import { FilterProvider } from '@/features/tasks/filters/FilterContext'
-import { useSearchParams } from 'next/navigation'
-import WorkloadSummaryView from '@/features/schedule/components/WorkloadSummaryView'
 import OverdueTodoCards from '@/features/tasks/components/OverdueTodoCards'
 import MemberList from '@/features/schedule/components/MemberList'
 import AdaptiveWorkloadSummary from '@/features/schedule/components/AdaptiveWorkloadSummary'
@@ -30,7 +27,6 @@ function HomeContent() {
   const { filteredTasks, setTasks, addTask } = useTaskContext()
   const { currentProject, updateProject, projects, filteredProjects } = useProjectContext()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-  const searchParams = useSearchParams()
   
   // カレンダーの表示モード
   const [calendarViewMode, setCalendarViewMode] = useState<ViewMode>('week')
@@ -50,21 +46,6 @@ function HomeContent() {
     role: user.role,
     password: '' // HeaderコンポーネントではパスワードはUI表示に使用されないため、空文字を設定
   } : null;
-
-  // URLのクエリパラメータからタスクIDとTODO IDを取得
-  useEffect(() => {
-    if (searchParams) {
-      const taskId = searchParams.get('taskId')
-      const todoId = searchParams.get('todoId')
-      
-      if (taskId) {
-        setSelectedTaskId(taskId)
-        if (todoId) {
-          setSelectedTodoId(todoId)
-        }
-      }
-    }
-  }, [searchParams])
 
   // プロジェクト作成モーダルを開く
   const handleOpenCreateModal = () => {
@@ -201,7 +182,6 @@ function HomeContent() {
           <main className="flex-1 overflow-y-auto p-4">
             <EmptyProjectState 
               onCreateProject={handleOpenCreateModal} 
-              showAllProjects={projects.length === 0}
             />
           </main>
         </div>

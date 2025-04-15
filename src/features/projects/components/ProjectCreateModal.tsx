@@ -4,11 +4,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Project } from '@/features/projects/types/project'
 import { FiEdit3, FiFileText, FiUpload } from 'react-icons/fi'
 import { extractTextFromPDF, extractProjectInfoFromText } from '@/services/api/utils/pdfUtils'
-import { generateProjectTasks } from '@/services/api/utils/openai'
-import { convertGeneratedTasksToTaskObjects } from '@/features/tasks/utils/taskUtils'
-import { useTaskContext } from '@/features/tasks/contexts/TaskContext'
 import { useRouter } from 'next/navigation'
-import TaskGenerationDialog from '@/features/projects/components/TaskGenerationDialog'
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
 import { User } from '@/features/tasks/types/user'
 import { ProjectMemberRole } from '@/features/projects/types/projectMember'
@@ -25,7 +21,6 @@ type TabType = 'manual' | 'document'
 
 export default function ProjectCreateModal({ isOpen, onClose, onCreateProject, users = [] }: ProjectCreateModalProps) {
   const router = useRouter()
-  const { addTask } = useTaskContext()
   const { assignUserToProject } = useProjectContext()
   const { user: currentUser } = useAuth()
   const [projectData, setProjectData] = useState<Omit<Project, 'id' | 'createdAt' | 'updatedAt'>>({
@@ -46,11 +41,6 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject, u
   // 概要を手動入力するか資料から生成するかの選択状態
   const [descriptionInputMode, setDescriptionInputMode] = useState<'manual' | 'document'>('manual')
   
-  // タスク生成関連の状態
-  const [isTaskGenerationDialogOpen, setIsTaskGenerationDialogOpen] = useState(false)
-  const [isGeneratingTasks, setIsGeneratingTasks] = useState(false)
-  const [createdProjectData, setCreatedProjectData] = useState<Omit<Project, 'id' | 'createdAt' | 'updatedAt'> | null>(null)
-
   // 現在のユーザーをデフォルトでメンバーとして追加
   useEffect(() => {
     if (currentUser && isOpen && selectedMembers.length === 0) {
@@ -73,25 +63,16 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject, u
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    // プロジェクト情報を一時保存
-    setCreatedProjectData(projectData)
-    
-    // タスク生成確認ダイアログを表示
-    setIsTaskGenerationDialogOpen(true)
-  }
-
-  // プロジェクトを最終的に作成する処理
-  const finalizeProjectCreation = (withTasks: boolean = false) => {
-    if (!createdProjectData) return;
-    
-    // プロジェクトを作成
-    onCreateProject(createdProjectData)
+    // プロジェクトを直接作成
+    onCreateProject(projectData)
     
     // プロジェクトIDを取得（ローカルストレージから）
     setTimeout(() => {
       const projectId = localStorage.getItem('currentProjectId')
       
       if (projectId) {
+        console.log('selectedMembers')
+        console.log(selectedMembers)
         // 選択されたメンバーをプロジェクトにアサイン
         selectedMembers.forEach(member => {
           assignUserToProject(projectId, member.userId, member.role)
@@ -99,76 +80,14 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject, u
       }
     }, 100)
     
-    // タスク生成ダイアログを閉じる
-    setIsTaskGenerationDialogOpen(false)
-    
     // モーダルを閉じる
     onClose()
     
     // フォームをリセット
     resetForm()
     
-    // タスク一覧画面に遷移
-    router.push('/tasks')
-  }
-
-  // タスク生成開始
-  const handleGenerateTasks = async () => {
-    if (!createdProjectData) return;
-    
-    try {
-      setIsGeneratingTasks(true)
-      
-      // APIを使ってタスクを生成
-      const generatedTasksData = await generateProjectTasks({
-        title: createdProjectData.title,
-        description: createdProjectData.description || '',
-        startDate: createdProjectData.startDate,
-        endDate: createdProjectData.endDate,
-        phase: createdProjectData.phase
-      })
-      
-      // プロジェクトを作成（IDを取得するため）
-      onCreateProject(createdProjectData)
-      
-      // 少し遅延を入れてプロジェクトIDが確実に設定されるようにする
-      setTimeout(() => {
-        // プロジェクトIDを取得（ローカルストレージから）
-        const projectId = localStorage.getItem('currentProjectId')
-        
-        if (projectId) {
-          // 生成されたタスクをTaskオブジェクトに変換
-          const tasks = convertGeneratedTasksToTaskObjects(generatedTasksData, projectId)
-          
-          // タスクを追加
-          tasks.forEach(task => {
-            addTask(task)
-          })
-          
-          console.log(`${tasks.length}個のタスクが生成されました`)
-        }
-        
-        // 処理完了
-        setIsGeneratingTasks(false)
-        setIsTaskGenerationDialogOpen(false)
-        onClose()
-        resetForm()
-        
-        // タスク一覧画面に遷移
-        router.push('/tasks')
-      }, 500)
-    } catch (error) {
-      console.error('タスク生成中にエラーが発生しました:', error)
-      alert('タスクの生成中にエラーが発生しました。プロジェクトは作成されます。')
-      
-      // エラーが発生してもプロジェクトは作成する
-      finalizeProjectCreation(false)
-    }
-  }
-
-  // タスク生成をスキップ
-  const skipTaskGeneration = () => {
-    finalizeProjectCreation(false)
+    // タスク一覧画面に遷移（クエリパラメータを追加）
+    router.push('/tasks?newProject=true')
   }
 
   const handleDocumentSubmit = async (e: React.FormEvent) => {
@@ -241,14 +160,11 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject, u
         endDate: endDateStr
       }
       
-      // プロジェクト情報を一時保存
-      setCreatedProjectData(newProjectData)
+      // フォームデータを更新
+      setProjectData(newProjectData)
       
       // ローディング終了
       setIsLoading(false)
-      
-      // タスク生成確認ダイアログを表示
-      setIsTaskGenerationDialogOpen(true)
     } catch (error) {
       console.error('プロジェクト情報の抽出中にエラーが発生しました:', error)
       setExtractionError('プロジェクト情報の抽出に失敗しました。手動入力を試してください。')
@@ -331,7 +247,6 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject, u
     setExtractedText('')
     setExtractionError('')
     setDescriptionInputMode('manual')
-    setCreatedProjectData(null)
   }
 
   if (!isOpen) return null
@@ -653,14 +568,6 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject, u
           </form>
         </div>
       </div>
-
-      {/* タスク生成確認ダイアログ */}
-      <TaskGenerationDialog
-        isOpen={isTaskGenerationDialogOpen}
-        onClose={skipTaskGeneration}
-        onConfirm={handleGenerateTasks}
-        isLoading={isGeneratingTasks}
-      />
     </>
   )
 } 

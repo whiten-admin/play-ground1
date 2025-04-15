@@ -8,7 +8,7 @@ import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 
 interface TaskContextType {
   tasks: Task[];
-  filteredTasks: Task[]; // 現在のプロジェクトのタスクのみ
+  filteredTasks: Task[]; // 現在のプロジェクトのタスクのみ、またはプロジェクト全体モード時は全タスク
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
   resetTasks: () => void;
   resetTasksWithSchedule: () => void;
@@ -22,12 +22,23 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
   // 初期値はシードデータを使用
   const [tasks, setTasks] = useState<Task[]>(seedTasks);
   const [initialized, setInitialized] = useState(false);
-  const { currentProject } = useProjectContext();
+  const { currentProject, isAllProjectsMode, filteredProjects } = useProjectContext();
   
   // 現在のプロジェクトに基づいてタスクをフィルタリング
-  const filteredTasks = currentProject
-    ? tasks.filter(task => task.projectId === currentProject.id)
-    : [];
+  const filteredTasks = (() => {
+    // プロジェクト全体モードの場合は、ユーザーがアサインされている全プロジェクトのタスクを表示
+    if (isAllProjectsMode) {
+      // ユーザーがアサインされているプロジェクトIDのリスト
+      const userProjectIds = filteredProjects.map(project => project.id);
+      // ユーザーのプロジェクトに属するタスクのみ表示
+      return tasks.filter(task => userProjectIds.includes(task.projectId));
+    }
+    
+    // 通常モードでは現在選択中のプロジェクトのタスクのみ表示
+    return currentProject
+      ? tasks.filter(task => task.projectId === currentProject.id)
+      : [];
+  })();
   
   // 初回レンダリング時にローカルストレージからデータを読み込む
   useEffect(() => {
