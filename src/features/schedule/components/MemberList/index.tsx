@@ -10,7 +10,7 @@ interface MemberListProps {
 }
 
 export default function MemberList({ className = '' }: MemberListProps) {
-  const { projectMembers, currentProject } = useProjectContext();
+  const { projectMembers, currentProject, isAllProjectsMode } = useProjectContext();
   const { 
     selectedUserIds, 
     toggleUserSelection, 
@@ -19,14 +19,16 @@ export default function MemberList({ className = '' }: MemberListProps) {
     setShowUnassigned 
   } = useFilterContext();
 
-  // 現在のプロジェクトのメンバーのみをフィルタリング
-  const currentProjectMembers = currentProject 
-    ? projectMembers.filter(member => member.projectId === currentProject.id)
-    : [];
+  // プロジェクト全体モードの場合は全メンバー、個別プロジェクトの場合は現在のプロジェクトのメンバーのみをフィルタリング
+  const filteredMembers = isAllProjectsMode
+    ? projectMembers
+    : currentProject 
+      ? projectMembers.filter(member => member.projectId === currentProject.id)
+      : [];
 
   // 全メンバーを選択する処理
   const handleSelectAll = () => {
-    setSelectedUserIds(currentProjectMembers.map(member => member.id));
+    setSelectedUserIds(filteredMembers.map(member => member.id));
     setShowUnassigned(true);
   };
 
@@ -41,8 +43,8 @@ export default function MemberList({ className = '' }: MemberListProps) {
     setShowUnassigned(!showUnassigned);
   };
 
-  // プロジェクトが選択されていない場合は何も表示しない
-  if (!currentProject) {
+  // プロジェクトが選択されておらず、かつプロジェクト全体モードでもない場合は何も表示しない
+  if (!currentProject && !isAllProjectsMode) {
     return null;
   }
 
@@ -67,7 +69,7 @@ export default function MemberList({ className = '' }: MemberListProps) {
       </div>
 
       <div className="space-y-2">
-        {currentProjectMembers.map(member => {
+        {filteredMembers.map(member => {
           const user = getUserByProjectMemberId(member.id);
           const isSelected = selectedUserIds.includes(member.id);
           
@@ -83,7 +85,14 @@ export default function MemberList({ className = '' }: MemberListProps) {
                 <div className={`w-3 h-3 rounded-full mr-2 ${isSelected ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
                 <span className="text-sm">{user?.name || '不明なユーザー'}</span>
               </div>
-              <div className="text-xs text-gray-500">{member.role}</div>
+              <div className="text-xs text-gray-500">
+                {isAllProjectsMode && (
+                  <span className="mr-1 text-gray-400">
+                    {projectMembers.find(p => p.id === member.id)?.projectId.substring(0, 4)}
+                  </span>
+                )}
+                {member.role}
+              </div>
             </div>
           );
         })}

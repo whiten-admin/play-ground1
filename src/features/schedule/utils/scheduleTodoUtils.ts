@@ -34,7 +34,8 @@ export const filterTodosForDisplay = (
       const isAssignedToSelectedUser = todoAssigneeId && selectedUserIds.includes(todoAssigneeId);
       const isUnassigned = !todoAssigneeId;
       
-      if (!isAllProjectsMode && !(isAssignedToSelectedUser || (showUnassigned && isUnassigned))) {
+      // プロジェクト全体モードに関係なく、常にユーザーフィルターを適用
+      if (!(isAssignedToSelectedUser || (showUnassigned && isUnassigned))) {
         return;
       }
       
