@@ -10,12 +10,10 @@ import { User } from '@/features/tasks/types/user'
 
 interface EmptyProjectStateProps {
   onCreateProject: () => void;
-  showAllProjects?: boolean; // すべてのプロジェクトを表示するかのフラグ
 }
 
 export default function EmptyProjectState({ 
   onCreateProject,
-  showAllProjects = false
 }: EmptyProjectStateProps) {
   const { createProject } = useProjectContext()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -66,15 +64,11 @@ export default function EmptyProjectState({
       </svg>
       
       <h3 className="text-lg font-medium text-gray-900 mb-1">
-        {showAllProjects
-          ? 'プロジェクトがありません'
-          : 'アサインされているプロジェクトがありません'}
+        アサインされているプロジェクトがありません
       </h3>
       
       <p className="text-gray-500 mb-6 max-w-md">
-        {showAllProjects
-          ? 'まだプロジェクトが作成されていません。新しいプロジェクトを作成して始めましょう。'
-          : 'あなたがアサインされているプロジェクトがありません。新しいプロジェクトを作成するか、既存のプロジェクトにアサインされるのを待ちましょう。'}
+        あなたがアサインされているプロジェクトがありません。新しいプロジェクトを作成するか、既存のプロジェクトにアサインされるのを待ちましょう。
       </p>
       
       <button

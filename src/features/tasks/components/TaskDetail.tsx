@@ -16,6 +16,11 @@ import {
   IoFilter,
   IoCheckbox,
   IoCalculator,
+  IoCalendarOutline,
+  IoTimeOutline,
+  IoPersonOutline,
+  IoCreate,
+  IoTrashOutline,
 } from 'react-icons/io5';
 import { Task, Todo } from '@/features/tasks/types/task';
 import { format, startOfDay, isBefore, isToday } from 'date-fns';
@@ -98,6 +103,12 @@ const toHalfWidth = (str: string): string => {
     return String.fromCharCode(s.charCodeAt(0) - 0xfee0);
   });
 };
+
+// Todo型拡張用の型定義
+interface TodoExtended extends Todo {
+  projectTitle?: string;
+  isAllProjectsMode?: boolean;
+}
 
 export default function TaskDetail({
   selectedTask,
@@ -1264,8 +1275,10 @@ export default function TaskDetail({
                       type="checkbox"
                       checked={todo.completed}
                       onChange={() => handleTodoStatusChange(todo.id)}
-                      className="w-5 h-5"
-                      aria-label={`${todo.text}の完了状態`}
+                      className={`h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded ${
+                        todo.completed ? 'opacity-50' : ''
+                      }`}
+                      aria-label={`${todo.text}を完了としてマーク`}
                     />
                     <label
                       htmlFor={generateInputId('todo-status', todo.id)}
@@ -1281,20 +1294,40 @@ export default function TaskDetail({
                       }`}
                     >
                       <div className="flex-1">
-                        <input
-                          type="text"
-                          value={todo.text}
-                          onChange={(e) =>
-                            handleTodoTextChange(todo.id, e.target.value)
-                          }
-                          className={`w-full border-b border-gray-300 focus:border-blue-500 focus:outline-none mb-2 ${
-                            todo.completed
-                              ? 'text-gray-500 bg-gray-100'
-                              : 'text-gray-800 bg-white'
-                          }`}
-                          placeholder="TODOの内容を入力"
-                          aria-label={`TODO: ${todo.text}`}
-                        />
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={todo.completed}
+                            onChange={() => handleTodoStatusChange(todo.id)}
+                            className={`h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded ${
+                              todo.completed ? 'opacity-50' : ''
+                            }`}
+                            aria-label={`${todo.text}を完了としてマーク`}
+                          />
+                          <span
+                            className={`text-sm ${
+                              todo.completed
+                                ? 'line-through text-gray-400'
+                                : 'text-gray-700'
+                            }`}
+                          >
+                            {todo.text}
+                            {/* プロジェクト名を表示（全プロジェクトモード時） */}
+                            {(todo as TodoExtended).isAllProjectsMode && (todo as TodoExtended).projectTitle && (
+                              <span className="ml-2 text-xs px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full">
+                                {(todo as TodoExtended).projectTitle}
+                              </span>
+                            )}
+                          </span>
+                          <button
+                            onClick={() => toggleEdit(todo.id, true)}
+                            className="ml-2 p-1 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100"
+                            title="TODOを編集"
+                          >
+                            <IoPencil className="w-4 h-4" />
+                            <span className="sr-only">TODOを編集</span>
+                          </button>
+                        </div>
                         <div className="text-xs text-gray-500 mt-1 space-y-1 p-1 rounded flex flex-wrap items-center gap-x-4 gap-y-2">
                           <div className="flex items-center">
                             <span className="mr-2">着手予定日:</span>
@@ -1485,15 +1518,30 @@ export default function TaskDetail({
                       }`}
                     >
                       <div className="flex-1">
-                        <div className="flex items-center">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={todo.completed}
+                            onChange={() => handleTodoStatusChange(todo.id)}
+                            className={`h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded ${
+                              todo.completed ? 'opacity-50' : ''
+                            }`}
+                            aria-label={`${todo.text}を完了としてマーク`}
+                          />
                           <span
-                            className={`${
+                            className={`text-sm ${
                               todo.completed
-                                ? 'line-through text-gray-500'
-                                : 'text-gray-800'
+                                ? 'line-through text-gray-400'
+                                : 'text-gray-700'
                             }`}
                           >
                             {todo.text}
+                            {/* プロジェクト名を表示（全プロジェクトモード時） */}
+                            {(todo as TodoExtended).isAllProjectsMode && (todo as TodoExtended).projectTitle && (
+                              <span className="ml-2 text-xs px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full">
+                                {(todo as TodoExtended).projectTitle}
+                              </span>
+                            )}
                           </span>
                           <button
                             onClick={() => toggleEdit(todo.id, true)}

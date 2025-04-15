@@ -17,6 +17,11 @@ import { FiPlus, FiX, FiUserCheck, FiEdit2, FiTrash2, FiMail, FiUsers, FiUpload,
 import { User } from '@/features/tasks/types/user'
 import { ProjectMember, ProjectMemberRole, Skill, SkillLevel } from '@/features/projects/types/projectMember'
 import { getAllUsers } from '@/utils/memberUtils'
+import FloatingTools from '@/components/ui/FloatingTools'
+import Badge from '@/components/ui/Badge'
+import { useDropzone } from 'react-dropzone'
+import ProjectInfoForm from '@/features/project-info/components/ProjectInfoForm'
+import EmptyProjectState from '@/features/projects/components/EmptyProjectState'
 
 // 情報入力項目の定義
 interface CompletionItem {
@@ -44,7 +49,7 @@ interface InvitedUser {
 type TabType = 'project-info' | 'external-reference' | 'team';
 
 export default function ProjectInfo() {
-  const { currentProject, getProjectMembers, assignUserToProject, removeUserFromProject } = useProjectContext()
+  const { currentProject, getProjectMembers, assignUserToProject, removeUserFromProject, filteredProjects, projects } = useProjectContext()
   const { isAuthenticated, user, login, logout } = useAuth()
   const [activeTab, setActiveTab] = useState('project-info')
   const [activeContentTab, setActiveContentTab] = useState<TabType>('project-info')
@@ -435,6 +440,24 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
 
   if (!isAuthenticated) {
     return <Auth onLogin={login} />;
+  }
+
+  // ユーザーがアサインされているプロジェクトが存在しない場合は専用画面を表示
+  if (filteredProjects.length === 0) {
+    return (
+      <div className="flex h-screen bg-gray-100">
+        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header onLogout={logout} user={user} />
+          <main className="flex-1 overflow-y-auto p-4">
+            <EmptyProjectState 
+              onCreateProject={openAddModal} 
+              showAllProjects={projects.length === 0}
+            />
+          </main>
+        </div>
+      </div>
+    );
   }
 
   // タブコンテンツをレンダリング
@@ -1097,7 +1120,7 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
                           value={newSkill.name}
                           onChange={(e) => setNewSkill({ ...newSkill, name: e.target.value })}
                           placeholder="スキル名"
-                          className="flex-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                          className="flex-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-transparent"
                         />
                         <select
                           value={newSkill.level}
@@ -1157,8 +1180,13 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
                         value={newTag}
                         onChange={(e) => setNewTag(e.target.value)}
                         placeholder="新しいタグ"
-                        className="flex-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        onKeyDown={(e) => e.key === 'Enter' && addTag()}
+                        className="flex-1 border border-gray-300 rounded-l-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addTag();
+                          }
+                        }}
                       />
                       <button
                         type="button"
@@ -1476,6 +1504,86 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
     )
   }
 
+  // スキルを追加
+  const addSkill = () => {
+    if (!newSkill.name.trim()) return
+    
+    // 重複チェック
+    if (memberSkills.some(skill => skill.name.toLowerCase() === newSkill.name.toLowerCase())) {
+      alert('同じ名前のスキルが既に登録されています。')
+      return
+    }
+    
+    setMemberSkills([...memberSkills, { ...newSkill }])
+    setNewSkill({ name: '', level: 'intermediate' })
+  }
+  
+  // スキルを削除
+  const removeSkill = (index: number) => {
+    const updatedSkills = [...memberSkills]
+    updatedSkills.splice(index, 1)
+    setMemberSkills(updatedSkills)
+  }
+  
+  // タグを追加
+  const addTag = () => {
+    if (!newTag.trim()) return
+    
+    // 重複チェック
+    if (memberTags.some(tag => tag.toLowerCase() === newTag.toLowerCase())) {
+      alert('同じタグが既に登録されています。')
+      return
+    }
+    
+    setMemberTags([...memberTags, newTag.trim()])
+    setNewTag('')
+  }
+  
+  // タグを削除
+  const removeTag = (index: number) => {
+    const updatedTags = [...memberTags]
+    updatedTags.splice(index, 1)
+    setMemberTags(updatedTags)
+  }
+  
+  // ファイル選択ダイアログを開く
+  const handleFileSelect = () => {
+    if (skillFileInputRef.current) {
+      skillFileInputRef.current.click()
+    }
+  }
+  
+  // ファイル選択処理
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    // ファイル名だけを保存
+    setSkillSheetFile(file.name)
+  }
+  
+  // スキル情報を保存
+  const saveSkillInfo = () => {
+    if (!selectedMember || !currentProject) return
+    
+    // メンバーリストを更新
+    const updatedMembers = members.map(member => {
+      if (member.id === selectedMember.id) {
+        return {
+          ...member,
+          skills: memberSkills,
+          skillDescription,
+          skillSheetFile,
+          tags: memberTags
+        }
+      }
+      return member
+    })
+    
+    setMembers(updatedMembers)
+    setShowSkillModal(false)
+  }
+
   return (
     <div className="flex h-screen bg-gray-100">
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
@@ -1484,6 +1592,7 @@ ${project.risks || 'リスク・課題情報はまだ入力されていません
         <main className="flex-1 overflow-y-auto">
           {renderContent()}
         </main>
+        <FloatingTools />
       </div>
     </div>
   )

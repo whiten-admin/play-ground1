@@ -11,12 +11,15 @@ import { Project } from '@/features/projects/types/project'
 import { FilterProvider } from '@/features/tasks/filters/FilterContext'
 import { Task } from '@/features/tasks/types/task'
 import { useTaskContext } from '@/features/tasks/contexts/TaskContext'
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
+import EmptyProjectState from '@/features/projects/components/EmptyProjectState'
 
 // タブの種類を定義
 type TabView = 'wbs' | 'analysis';
 
 export default function WBSPage() {
   const { isAuthenticated, user, login, logout } = useAuth()
+  const { filteredProjects, projects } = useProjectContext()
   const [activeTab, setActiveTab] = useState('wbs')
   const [activeView, setActiveView] = useState<TabView>('wbs')
   const [selectedTaskId, setSelectedTaskId] = useState<string>('')
@@ -68,8 +71,31 @@ export default function WBSPage() {
     setProject(updatedProject)
   }
 
+  // プロジェクト作成モーダルを開く処理
+  const handleOpenCreateModal = () => {
+    console.log('プロジェクト作成モーダルを開く')
+  }
+
   if (!isAuthenticated) {
     return <Auth onLogin={login} />;
+  }
+
+  // ユーザーがアサインされているプロジェクトが存在しない場合は専用画面を表示
+  if (filteredProjects.length === 0) {
+    return (
+      <div className="flex h-screen bg-gray-100">
+        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header onLogout={logout} user={user} />
+          <main className="flex-1 overflow-y-auto p-4">
+            <EmptyProjectState 
+              onCreateProject={handleOpenCreateModal} 
+              showAllProjects={projects.length === 0}
+            />
+          </main>
+        </div>
+      </div>
+    );
   }
 
   return (
