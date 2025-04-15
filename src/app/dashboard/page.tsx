@@ -184,78 +184,12 @@ export default function Dashboard() {
         <Header onLogout={logout} user={userData} />
         <main className="flex-1 overflow-y-auto p-4">
           <div className="mx-auto max-w-7xl">
-            {/* ダッシュボードヘッダー */}
-            <div className="mb-6">
-              <div className="text-red-500">※中身はこれから詰めていきます</div>
-              <h1 className="text-2xl font-bold text-gray-800">プロジェクト全体ダッシュボード</h1>
-              <p className="text-gray-500 mt-1">
-                全{filteredProjects.length}プロジェクトの進捗状況と概要を確認できます
-              </p>
-            </div>
-
-            {/* サマリーカード */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              {/* 合計プロジェクト数 */}
-              <div className="bg-white rounded-lg shadow p-4 flex items-center">
-                <div className="rounded-full bg-blue-100 p-3 mr-4">
-                  <FiUsers className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-gray-500">プロジェクト数</div>
-                  <div className="text-xl font-bold">{filteredProjects.length}</div>
-                </div>
-              </div>
-
-              {/* 合計タスク数と完了率 */}
-              <div className="bg-white rounded-lg shadow p-4 flex items-center">
-                <div className="rounded-full bg-green-100 p-3 mr-4">
-                  <FiCheckCircle className="h-6 w-6 text-green-600" />
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-gray-500">全タスク完了率</div>
-                  <div className="text-xl font-bold">
-                    {filteredTasks.length > 0 
-                      ? Math.round(
-                        (filteredTasks.filter(task => !!task.completedDateTime).length / filteredTasks.length) * 100
-                      )
-                      : 0}%
-                  </div>
-                </div>
-              </div>
-
-              {/* 合計工数 */}
-              <div className="bg-white rounded-lg shadow p-4 flex items-center">
-                <div className="rounded-full bg-purple-100 p-3 mr-4">
-                  <FiClock className="h-6 w-6 text-purple-600" />
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-gray-500">合計予定工数</div>
-                  <div className="text-xl font-bold">
-                    {filteredTasks
-                      .flatMap(task => task.todos)
-                      .reduce((sum, todo) => sum + (todo.estimatedHours || 0), 0).toFixed(1)}h
-                  </div>
-                </div>
-              </div>
-
-              {/* ハイリスクプロジェクト数 */}
-              <div className="bg-white rounded-lg shadow p-4 flex items-center">
-                <div className="rounded-full bg-red-100 p-3 mr-4">
-                  <FiAlertTriangle className="h-6 w-6 text-red-600" />
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-gray-500">高リスクプロジェクト</div>
-                  <div className="text-xl font-bold">
-                    {projectStats.filter(project => project.riskLevel === 'high').length}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <div className="text-red-500">※中身はこれから詰めていきます</div>
 
             {/* プロジェクト一覧テーブル */}
             <div className="bg-white rounded-lg shadow overflow-hidden mb-6">
-              <div className="p-4 border-b">
-                <h2 className="text-lg font-medium">プロジェクト一覧</h2>
+              <div className="p-2 border-b">
+                <h3 className="font-medium">プロジェクト一覧</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
@@ -285,7 +219,7 @@ export default function Dashboard() {
                           <div className="flex items-center">
                             <div>
                               <div className="text-sm font-medium text-gray-900">{project.title}</div>
-                              <div className="text-sm text-gray-500">{project.code || '-'}</div>
+                              <div className="text-xs text-gray-500">{project.code || 'コードなし'}</div>
                             </div>
                           </div>
                         </td>
