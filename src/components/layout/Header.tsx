@@ -109,7 +109,7 @@ export default function Header({ onLogout, user, project }: HeaderProps) {
   }
 
   return (
-    <header className="bg-white border-b border-gray-200 py-2 px-4">
+    <header className={`${isAllProjectsMode ? 'bg-blue-50' : 'bg-white'} border-b border-gray-200 py-2 px-4`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           {filteredProjects.length > 0 ? (
