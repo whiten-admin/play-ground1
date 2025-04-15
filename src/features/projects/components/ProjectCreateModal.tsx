@@ -86,8 +86,8 @@ export default function ProjectCreateModal({ isOpen, onClose, onCreateProject, u
     // フォームをリセット
     resetForm()
     
-    // タスク一覧画面に遷移
-    router.push('/tasks')
+    // タスク一覧画面に遷移（クエリパラメータを追加）
+    router.push('/tasks?newProject=true')
   }
 
   const handleDocumentSubmit = async (e: React.FormEvent) => {

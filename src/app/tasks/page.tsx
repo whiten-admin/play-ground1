@@ -14,7 +14,7 @@ import EmptyProjectState from '@/features/projects/components/EmptyProjectState'
 import { getUserNameById, getUserNamesByIds } from '@/features/tasks/utils/userUtils'
 import { format, isBefore, isToday, startOfDay } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { IoAdd, IoList, IoGrid, IoBarChart, IoCaretDown, IoCaretUp, IoClose, IoBulb, IoDocumentText } from 'react-icons/io5'
+import { IoAdd, IoList, IoGrid, IoBarChart, IoCaretDown, IoCaretUp, IoClose, IoBulb, IoDocumentText, IoCheckmarkCircle } from 'react-icons/io5'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import KanbanView from '@/features/kanban/components/KanbanView'
 import GanttChartView from '@/features/gantt/components/GanttChartView'
@@ -23,6 +23,7 @@ import TaskDetail from '@/features/tasks/components/TaskDetail'
 import { AiTaskSuggestions } from '@/features/tasks/components/AiTaskSuggestions'
 import RequirementsTaskGenerator from '@/features/tasks/components/RequirementsTaskGenerator'
 import ProjectProgressSummary from '@/features/tasks/components/ProjectProgressSummary'
+import { useSearchParams } from 'next/navigation'
 
 type ViewMode = 'list' | 'kanban' | 'gantt'
 
@@ -38,6 +39,37 @@ type SortOrder = 'asc' | 'desc'
 interface SortState {
   field: SortField
   order: SortOrder
+}
+
+// 新規プロジェクト作成後のガイドポップアップコンポーネント
+function NewProjectGuidePopup({ isVisible, onClose }: { isVisible: boolean; onClose: () => void }) {
+  if (!isVisible) return null;
+  
+  return (
+    <div className="fixed bottom-4 right-4 w-96 bg-white rounded-lg shadow-xl z-50 overflow-hidden transition-all duration-300 opacity-100 transform translate-y-0">
+      <div className="bg-green-500 px-4 py-2 flex justify-between items-center">
+        <div className="flex items-center">
+          <IoCheckmarkCircle className="text-white w-6 h-6 mr-2" />
+          <h3 className="text-white font-bold">プロジェクト作成完了</h3>
+        </div>
+        <button onClick={onClose} className="text-white hover:text-green-100">
+          <IoClose className="w-5 h-5" />
+        </button>
+      </div>
+      <div className="p-4">
+        <p className="text-gray-700 mb-3">おめでとうございます！プロジェクトが正常に作成されました。</p>
+        <p className="text-gray-700 mb-3">次のステップとして、プロジェクトのタスクを作成しましょう。「+ 新しいタスク」ボタンをクリックし、プロジェクトを進めていきましょう。</p>
+        <div className="mt-2 flex justify-end">
+          <button
+            onClick={onClose}
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
+          >
+            閉じる
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function TasksPage() {
@@ -65,6 +97,25 @@ export default function TasksPage() {
   const [showAiSuggestions, setShowAiSuggestions] = useState(false)
   // 要件からタスク自動生成の表示状態
   const [showRequirementsGenerator, setShowRequirementsGenerator] = useState(false)
+  
+  // 新規プロジェクト作成後のガイド表示状態
+  const [showNewProjectGuide, setShowNewProjectGuide] = useState(false)
+  const searchParams = useSearchParams()
+  
+  // URLクエリパラメータをチェックして、新規プロジェクト作成後かどうかを判定
+  useEffect(() => {
+    const isNewProject = searchParams?.get('newProject') === 'true';
+    if (isNewProject) {
+      setShowNewProjectGuide(true)
+      
+      // 10秒後に自動的に閉じる
+      const timer = setTimeout(() => {
+        setShowNewProjectGuide(false)
+      }, 10000)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [searchParams])
   
   // サイドバーの状態を監視
   useEffect(() => {
@@ -486,6 +537,12 @@ export default function TasksPage() {
           projectId={currentProject?.id}
         />
       )}
+
+      {/* 新規プロジェクト作成後のガイドポップアップ */}
+      <NewProjectGuidePopup 
+        isVisible={showNewProjectGuide} 
+        onClose={() => setShowNewProjectGuide(false)} 
+      />
     </FilterProvider>
   );
 } 
