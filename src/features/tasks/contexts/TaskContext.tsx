@@ -11,7 +11,6 @@ interface TaskContextType {
   filteredTasks: Task[]; // 現在のプロジェクトのタスクのみ、またはプロジェクト全体モード時は全タスク
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
   resetTasks: () => void;
-  resetTasksWithSchedule: () => void;
   addTask: (task: Task) => void;
   clearAllTasks: () => void;
 }
@@ -80,12 +79,6 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
     const defaultTasks = resetToSeedData();
     setTasks(defaultTasks);
   };
-  
-  // スケジュール済みシードデータにリセットする関数
-  const resetTasksWithSchedule = () => {
-    const scheduledTasks = resetToScheduledSeedData();
-    setTasks(scheduledTasks);
-  };
 
   // 新しいタスクを追加する関数
   const addTask = (task: Task) => {
@@ -107,7 +100,6 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
       filteredTasks,
       setTasks, 
       resetTasks, 
-      resetTasksWithSchedule,
       addTask,
       clearAllTasks 
     }}>
