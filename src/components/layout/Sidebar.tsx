@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import { IoChevronBack, IoChevronForward, IoSettingsSharp, IoCloudUpload, IoCloudDownload } from 'react-icons/io5'
 import { useTaskContext } from '@/features/tasks/contexts/TaskContext'
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
@@ -16,7 +15,6 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ activeTab, onTabChange, initialCollapsed = false }: SidebarProps) {
-  const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(initialCollapsed)
   const [isDevMenuOpen, setIsDevMenuOpen] = useState(false)
   const { tasks, setTasks, resetTasks, clearAllTasks } = useTaskContext();
