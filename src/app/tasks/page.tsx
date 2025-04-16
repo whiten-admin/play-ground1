@@ -338,140 +338,159 @@ function TasksContent({
             <div className="flex-1 overflow-y-auto mt-1">
               {viewMode === 'list' && (
                 <div className="px-4">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gray-50 border-b text-left text-sm text-gray-600">
-                        <th className="py-1 px-2 font-medium text-xs">タスク名</th>
-                        <th className="py-1 px-2 font-medium text-xs text-center">担当者</th>
-                        <th className="py-1 px-2 font-medium text-xs text-center">進捗率</th>
-                        <th className="py-1 px-2 font-medium text-xs">期日</th>
-                        <th className="py-1 px-2 font-medium text-xs text-center">工数</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sortedTasks.map((task) => {
-                        // タスクの担当者を収集（重複なし）
-                        const assignees = new Set<string>();
-                        task.todos.forEach(todo => {
-                          if (todo.assigneeId) {
-                            assignees.add(todo.assigneeId);
-                          }
-                        });
-                        
-                        // タスクの合計工数を計算
-                        const totalHours = task.todos.reduce((sum, todo) => sum + todo.estimatedHours, 0);
-                        
-                        // 完了したTODOの数
-                        const completedTodos = task.todos.filter(todo => todo.completed).length;
-                        
-                        // 期日（最も早いTODOの開始日）
-                        const earliestDate = task.todos.length > 0
-                          ? new Date(Math.min(...task.todos.map(todo => 
-                              todo.startDate instanceof Date 
-                                ? todo.startDate.getTime() 
-                                : new Date(todo.startDate as any).getTime()
-                            )))
-                          : null;
+                  {sortedTasks.length > 0 ? (
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 border-b text-left text-sm text-gray-600">
+                          <th className="py-1 px-2 font-medium text-xs">タスク名</th>
+                          <th className="py-1 px-2 font-medium text-xs text-center">担当者</th>
+                          <th className="py-1 px-2 font-medium text-xs text-center">進捗率</th>
+                          <th className="py-1 px-2 font-medium text-xs">期日</th>
+                          <th className="py-1 px-2 font-medium text-xs text-center">工数</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sortedTasks.map((task) => {
+                          // タスクの担当者を収集（重複なし）
+                          const assignees = new Set<string>();
+                          task.todos.forEach(todo => {
+                            if (todo.assigneeId) {
+                              assignees.add(todo.assigneeId);
+                            }
+                          });
                           
-                        const progress = calculateProgress(task.todos);
-                        
-                        return (
-                          <tr 
-                            key={task.id}
-                            onClick={() => handleTaskSelect(task.id)}
-                            className={`border-b ${
-                              progress === 100
-                                ? 'bg-gray-50 opacity-60'
-                                : 'hover:bg-gray-50 cursor-pointer'
-                            }`}
-                          >
-                            <td className="py-4 px-2">
-                              <div className="font-medium text-gray-800">{task.title}</div>
-                              <div className="text-xs text-gray-500 mt-1 line-clamp-1">{task.description}</div>
-                            </td>
-                            <td className="py-4 px-2 text-center">
-                              <div className="flex justify-center">
-                                {Array.from(assignees).length > 0 ? (
-                                  <div className="flex -space-x-2">
-                                    {Array.from(assignees).map((assigneeId, index) => {
-                                      const memberInfo = getUserInfo(assigneeId);
-                                      const isCurrentUser = memberInfo?.isCurrentUser || false;
-                                      const displayName = memberInfo?.name || 'Unknown';
-                                      const initial = displayName.charAt(0);
-                                      
-                                      return (
-                                        <div 
-                                          key={assigneeId}
-                                          className={`w-8 h-8 rounded-full border-2 border-white flex items-center justify-center text-xs font-medium ${
-                                            isCurrentUser
-                                              ? 'bg-orange-100 text-orange-700 border-orange-300'
-                                              : 'bg-blue-100 text-blue-700'
-                                          }`}
-                                          style={{ zIndex: 10 - index }}
-                                          title={`${displayName}${isCurrentUser ? ' (あなた)' : ''}`}
-                                        >
-                                          {initial}
-                                        </div>
-                                      );
-                                    })}
+                          // タスクの合計工数を計算
+                          const totalHours = task.todos.reduce((sum, todo) => sum + todo.estimatedHours, 0);
+                          
+                          // 完了したTODOの数
+                          const completedTodos = task.todos.filter(todo => todo.completed).length;
+                          
+                          // 期日（最も早いTODOの開始日）
+                          const earliestDate = task.todos.length > 0
+                            ? new Date(Math.min(...task.todos.map(todo => 
+                                todo.startDate instanceof Date 
+                                  ? todo.startDate.getTime() 
+                                  : new Date(todo.startDate as any).getTime()
+                              )))
+                            : null;
+                            
+                          const progress = calculateProgress(task.todos);
+                          
+                          return (
+                            <tr 
+                              key={task.id}
+                              onClick={() => handleTaskSelect(task.id)}
+                              className={`border-b ${
+                                progress === 100
+                                  ? 'bg-gray-50 opacity-60'
+                                  : 'hover:bg-gray-50 cursor-pointer'
+                              }`}
+                            >
+                              <td className="py-4 px-2">
+                                <div className="font-medium text-gray-800">{task.title}</div>
+                                <div className="text-xs text-gray-500 mt-1 line-clamp-1">{task.description}</div>
+                              </td>
+                              <td className="py-4 px-2 text-center">
+                                <div className="flex justify-center">
+                                  {Array.from(assignees).length > 0 ? (
+                                    <div className="flex -space-x-2">
+                                      {Array.from(assignees).map((assigneeId, index) => {
+                                        const memberInfo = getUserInfo(assigneeId);
+                                        const isCurrentUser = memberInfo?.isCurrentUser || false;
+                                        const displayName = memberInfo?.name || 'Unknown';
+                                        const initial = displayName.charAt(0);
+                                        
+                                        return (
+                                          <div 
+                                            key={assigneeId}
+                                            className={`w-8 h-8 rounded-full border-2 border-white flex items-center justify-center text-xs font-medium ${
+                                              isCurrentUser
+                                                ? 'bg-orange-100 text-orange-700 border-orange-300'
+                                                : 'bg-blue-100 text-blue-700'
+                                            }`}
+                                            style={{ zIndex: 10 - index }}
+                                            title={`${displayName}${isCurrentUser ? ' (あなた)' : ''}`}
+                                          >
+                                            {initial}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center">
+                                      <span className="text-xs text-gray-400">-</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-4 px-2 text-center">
+                                <div className="flex flex-col items-center">
+                                  {/* ドーナツチャート型の進捗表示 */}
+                                  <div className="relative w-10 h-10">
+                                    <svg className="w-10 h-10" viewBox="0 0 36 36">
+                                      {/* 背景円 */}
+                                      <circle 
+                                        cx="18" 
+                                        cy="18" 
+                                        r="15" 
+                                        fill="none" 
+                                        stroke="#e5e7eb" 
+                                        strokeWidth="3" 
+                                      />
+                                      {/* 進捗円 */}
+                                      <circle 
+                                        cx="18" 
+                                        cy="18" 
+                                        r="15" 
+                                        fill="none" 
+                                        stroke="#3b82f6" 
+                                        strokeWidth="3" 
+                                        strokeDasharray={`${progress * 0.94}, 100`} 
+                                        strokeLinecap="round" 
+                                        transform="rotate(-90 18 18)" 
+                                      />
+                                    </svg>
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                      <span className="text-xs font-medium">{progress}%</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-4 px-2">
+                                {earliestDate ? (
+                                  <div className={`text-sm ${getDueDateStyle(earliestDate)}`}>
+                                    {format(earliestDate, 'yyyy/MM/dd', { locale: ja })}
                                   </div>
                                 ) : (
-                                  <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center">
-                                    <span className="text-xs text-gray-400">-</span>
-                                  </div>
+                                  <span className="text-sm text-gray-400">未設定</span>
                                 )}
-                              </div>
-                            </td>
-                            <td className="py-4 px-2 text-center">
-                              <div className="flex flex-col items-center">
-                                {/* ドーナツチャート型の進捗表示 */}
-                                <div className="relative w-10 h-10">
-                                  <svg className="w-10 h-10" viewBox="0 0 36 36">
-                                    {/* 背景円 */}
-                                    <circle 
-                                      cx="18" 
-                                      cy="18" 
-                                      r="15" 
-                                      fill="none" 
-                                      stroke="#e5e7eb" 
-                                      strokeWidth="3" 
-                                    />
-                                    {/* 進捗円 */}
-                                    <circle 
-                                      cx="18" 
-                                      cy="18" 
-                                      r="15" 
-                                      fill="none" 
-                                      stroke="#3b82f6" 
-                                      strokeWidth="3" 
-                                      strokeDasharray={`${progress * 0.94}, 100`} 
-                                      strokeLinecap="round" 
-                                      transform="rotate(-90 18 18)" 
-                                    />
-                                  </svg>
-                                  <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-xs font-medium">{progress}%</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="py-4 px-2">
-                              {earliestDate ? (
-                                <div className={`text-sm ${getDueDateStyle(earliestDate)}`}>
-                                  {format(earliestDate, 'yyyy/MM/dd', { locale: ja })}
-                                </div>
-                              ) : (
-                                <span className="text-sm text-gray-400">未設定</span>
-                              )}
-                            </td>
-                            <td className="py-4 px-2 text-center">
-                              <span className="text-sm">{totalHours.toFixed(1)}h</span>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+                              </td>
+                              <td className="py-4 px-2 text-center">
+                                <span className="text-sm">{totalHours.toFixed(1)}h</span>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+                      <div className="bg-gray-50 rounded-full p-4 mb-4">
+                        <IoList className="w-8 h-8 text-blue-500" />
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">タスクがありません</h3>
+                      <p className="text-gray-500 mb-6 max-w-md">
+                        このプロジェクトにはまだタスクが登録されていません。「タスク追加」ボタンをクリックして最初のタスクを作成しましょう。
+                      </p>
+                      <button
+                        onClick={() => setIsCreatingTask(true)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 transition-colors flex items-center gap-2"
+                      >
+                        <IoAdd className="w-5 h-5" />
+                        <span>タスク追加</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
