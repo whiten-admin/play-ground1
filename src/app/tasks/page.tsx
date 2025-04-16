@@ -330,18 +330,18 @@ export default function TasksPage() {
                   <span>タスク追加</span>
                 </button>
                 <button
-                  onClick={() => setShowAiSuggestions(!showAiSuggestions)}
-                  className="px-3 py-2 rounded-md border border-purple-300 text-purple-600 bg-white hover:bg-purple-50 flex items-center gap-2"
-                >
-                  <IoBulb className="w-5 h-5" />
-                  <span className="text-sm">AI追加提案</span>
-                </button>
-                <button
                   onClick={() => setShowRequirementsGenerator(true)}
                   className="px-3 py-2 rounded-md border border-green-300 text-green-600 bg-white hover:bg-green-50 flex items-center gap-2"
                 >
                   <IoDocumentText className="w-5 h-5" />
                   <span className="text-sm">要件から一括生成</span>
+                </button>
+                <button
+                  onClick={() => setShowAiSuggestions(!showAiSuggestions)}
+                  className="px-3 py-2 rounded-md border border-purple-300 text-purple-600 bg-white hover:bg-purple-50 flex items-center gap-2"
+                >
+                  <IoBulb className="w-5 h-5" />
+                  <span className="text-sm">AIヌケモレチェック</span>
                 </button>
               </div>
             </div>
