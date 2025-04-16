@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect } from 'react';
-import { IoFilter, IoCaretDown } from 'react-icons/io5';
+import { IoCheckmarkCircle, IoCloseCircle, IoPersonOutline } from 'react-icons/io5';
 import { useFilterContext } from '@/features/tasks/filters/FilterContext';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 import { getProjectUsers } from '@/utils/memberUtils';
@@ -11,10 +11,8 @@ export default function UserFilter() {
     currentUserId,
     selectedUserIds,
     showUnassigned,
-    isFilterOpen,
     toggleUserSelection,
     setShowUnassigned,
-    setIsFilterOpen,
     setSelectedUserIds
   } = useFilterContext();
   
@@ -41,21 +39,12 @@ export default function UserFilter() {
       })
     : [];
   
-  const modalRef = useRef<HTMLDivElement>(null);
-  
-  // 外側をクリックしたときに閉じる処理
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
-        setIsFilterOpen(false);
-      }
-    }
-    
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [setIsFilterOpen]);
+  // 自分を左端に配置するためにソート
+  const sortedMemberUsers = [...projectMemberUsers].sort((a, b) => {
+    if (a.isCurrentUser) return -1;
+    if (b.isCurrentUser) return 1;
+    return 0;
+  });
   
   // 一括選択 - プロジェクトメンバーと未アサインを全て選択
   const selectAll = () => {
@@ -76,90 +65,66 @@ export default function UserFilter() {
     return member ? member.name : '不明なメンバー';
   };
   
-  // 選択中のメンバー名のリストを取得
-  const getSelectedMemberNames = (): string => {
-    return selectedUserIds
-      .map(id => getMemberName(id))
-      .join(', ');
-  };
-  
   return (
-    <div className="mb-4 relative">
-      <div className="flex items-center gap-2 mb-2">
-        <button 
-          onClick={() => setIsFilterOpen(!isFilterOpen)}
-          className="flex items-center gap-1 text-sm bg-blue-50 px-3 py-1 rounded hover:bg-blue-100"
-        >
-          <IoFilter className="w-4 h-4" />
-          表示するメンバーを選択
-          <IoCaretDown className={`w-3 h-3 transition-transform ${isFilterOpen ? 'rotate-180' : ''}`} />
-        </button>
-        <div className="text-xs text-gray-500">
-          現在の表示: {getSelectedMemberNames()}
-          {showUnassigned ? '、未アサイン' : ''}
+    <div>
+      <div className="flex flex-col">
+        <span className="text-xs text-gray-500 mb-1 ml-1">メンバーフィルタ</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 mr-3">
+            <button
+              onClick={selectAll}
+              className="flex items-center gap-1 text-xs py-1 px-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 border border-gray-200"
+              title="全てのメンバーを選択"
+            >
+              <IoCheckmarkCircle className="w-3.5 h-3.5 text-green-600" />
+              <span>全て</span>
+            </button>
+            <button
+              onClick={deselectAll}
+              className="flex items-center gap-1 text-xs py-1 px-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 border border-gray-200"
+              title="選択を全て解除"
+            >
+              <IoCloseCircle className="w-3.5 h-3.5 text-red-600" />
+              <span>解除</span>
+            </button>
+          </div>
+          
+          {/* メンバーアイコン一覧 */}
+          <div className="flex flex-wrap items-center gap-2">
+            {sortedMemberUsers.map((member) => (
+              <button
+                key={member.assigneeId}
+                onClick={() => toggleUserSelection(member.assigneeId)}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all ${
+                  member.isCurrentUser
+                    ? selectedUserIds.includes(member.assigneeId)
+                      ? 'bg-orange-100 border-2 border-orange-400 text-orange-700'
+                      : 'bg-orange-50 border border-gray-200 text-orange-700 opacity-80 hover:opacity-100'
+                    : selectedUserIds.includes(member.assigneeId)
+                      ? 'bg-blue-100 border-2 border-blue-400 text-blue-700'
+                      : 'bg-blue-50 border border-gray-200 text-blue-700 opacity-60 hover:opacity-100'
+                }`}
+                title={`${member.name}${member.isCurrentUser ? ' (自分)' : ''}`}
+              >
+                {member.name.charAt(0)}
+              </button>
+            ))}
+            
+            {/* 未アサインの選択ボタン */}
+            <button
+              onClick={() => setShowUnassigned(!showUnassigned)}
+              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all ${
+                showUnassigned
+                  ? 'bg-gray-200 border-2 border-gray-400 text-gray-700'
+                  : 'bg-gray-100 border border-gray-200 text-gray-600 opacity-60 hover:opacity-100'
+              }`}
+              title="未アサイン"
+            >
+              <IoPersonOutline className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
-      
-      {isFilterOpen && (
-        <div 
-          ref={modalRef}
-          className="absolute top-10 left-0 z-50 p-3 bg-white rounded shadow-lg border min-w-[270px] max-w-[320px] animate-fadeIn"
-        >
-          <h3 className="text-sm font-medium mb-2 border-b pb-2">表示するメンバーを選択</h3>
-          
-          <div className="flex justify-between mb-2 text-xs">
-            <button 
-              onClick={selectAll}
-              className="text-blue-600 hover:text-blue-800"
-            >
-              一括選択
-            </button>
-            <button 
-              onClick={deselectAll}
-              className="text-blue-600 hover:text-blue-800"
-            >
-              一括解除
-            </button>
-          </div>
-          
-          <div className="space-y-1.5 max-h-[250px] overflow-y-auto py-1">
-            {projectMemberUsers.map((member) => (
-              <div key={member.assigneeId} className="flex items-center py-1 px-1 hover:bg-gray-50 rounded">
-                <input
-                  type="checkbox"
-                  id={`member-${member.assigneeId}`}
-                  checked={selectedUserIds.includes(member.assigneeId)}
-                  onChange={() => toggleUserSelection(member.assigneeId)}
-                  className="mr-2"
-                />
-                <label htmlFor={`member-${member.assigneeId}`} className="text-sm flex items-center gap-2 cursor-pointer flex-1">
-                  {member.name}
-                  {member.isCurrentUser && <span className="text-xs bg-blue-100 px-1 py-0.5 rounded">自分</span>}
-                </label>
-              </div>
-            ))}
-            <div className="flex items-center py-1 px-1 hover:bg-gray-50 rounded mt-1 border-t pt-2">
-              <input
-                type="checkbox"
-                id="unassigned"
-                checked={showUnassigned}
-                onChange={() => setShowUnassigned(!showUnassigned)}
-                className="mr-2"
-              />
-              <label htmlFor="unassigned" className="text-sm cursor-pointer flex-1">未アサイン</label>
-            </div>
-          </div>
-          
-          <div className="flex gap-2 justify-end mt-3 pt-2 border-t">
-            <button
-              onClick={() => setIsFilterOpen(false)}
-              className="text-xs px-2 py-1 text-gray-600 hover:text-gray-800"
-            >
-              閉じる
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 } 

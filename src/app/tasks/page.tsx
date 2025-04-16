@@ -56,7 +56,7 @@ function NewProjectGuidePopup({ isVisible, onClose }: { isVisible: boolean; onCl
       </div>
       <div className="p-4">
         <p className="text-gray-700 mb-3">おめでとうございます！プロジェクトが正常に作成されました。</p>
-        <p className="text-gray-700 mb-3">次のステップとして、プロジェクトのタスクを作成しましょう。「+ 新しいタスク」ボタンをクリックし、プロジェクトを進めていきましょう。</p>
+        <p className="text-gray-700 mb-3">次のステップとして、プロジェクトのタスクを作成しましょう。「+ タスク追加」ボタンをクリックし、プロジェクトを進めていきましょう。</p>
         <div className="mt-2 flex justify-end">
           <button
             onClick={onClose}
@@ -315,10 +315,35 @@ export default function TasksPage() {
         <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header onLogout={logout} user={user} project={currentProject || undefined} />
-          <main className="flex-1 overflow-y-auto p-4">
-            {/* ユーザーフィルター */}
-            <div className="mb-4">
-              <UserFilter />
+          <main className="flex-1 overflow-y-auto p-4 relative z-0">
+            {/* ユーザーフィルターとアクションボタンを横並びに */}
+            <div className="mb-2 flex justify-between items-center">
+              <div className="flex-grow">
+                <UserFilter />
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsCreatingTask(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 transition-colors flex items-center gap-2"
+                >
+                  <IoAdd className="w-5 h-5" />
+                  <span>タスク追加</span>
+                </button>
+                <button
+                  onClick={() => setShowAiSuggestions(!showAiSuggestions)}
+                  className="px-3 py-2 rounded-md border border-purple-300 text-purple-600 bg-white hover:bg-purple-50 flex items-center gap-2"
+                >
+                  <IoBulb className="w-5 h-5" />
+                  <span className="text-sm">AI追加提案</span>
+                </button>
+                <button
+                  onClick={() => setShowRequirementsGenerator(true)}
+                  className="px-3 py-2 rounded-md border border-green-300 text-green-600 bg-white hover:bg-green-50 flex items-center gap-2"
+                >
+                  <IoDocumentText className="w-5 h-5" />
+                  <span className="text-sm">要件から一括生成</span>
+                </button>
+              </div>
             </div>
             
             <div className="bg-white rounded-lg shadow">
@@ -328,78 +353,15 @@ export default function TasksPage() {
                 </div>
               )}
               
-              <div className="p-4 border-b">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-bold text-gray-800">タスク一覧</h2>
-                    <button
-                      onClick={() => setIsCreatingTask(true)}
-                      className="px-2 py-0.5 text-xs rounded flex items-center gap-1 bg-blue-500 text-white hover:bg-blue-600"
-                    >
-                      <IoAdd className="w-3 h-3" />
-                      タスク追加
-                    </button>
-                    <button
-                      onClick={() => setShowAiSuggestions(!showAiSuggestions)}
-                      className="px-2 py-0.5 text-xs rounded flex items-center gap-1 bg-purple-500 text-white hover:bg-purple-600"
-                    >
-                      <IoBulb className="w-3 h-3" />
-                      AI追加タスク提案
-                    </button>
-                    <button
-                      onClick={() => setShowRequirementsGenerator(true)}
-                      className="px-2 py-0.5 text-xs rounded flex items-center gap-1 bg-green-500 text-white hover:bg-green-600"
-                    >
-                      <IoDocumentText className="w-3 h-3" />
-                      要件からタスク生成
-                    </button>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <DragDropContext onDragEnd={handleDragEnd}>
-                      <Droppable droppableId="viewModeButtons" direction="horizontal">
-                        {(provided) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.droppableProps}
-                            className="flex gap-1"
-                          >
-                            {viewModeButtons.map((button, index) => (
-                              <Draggable key={button.id} draggableId={button.id} index={index}>
-                                {(provided) => (
-                                  <button
-                                    ref={provided.innerRef}
-                                    {...provided.draggableProps}
-                                    {...provided.dragHandleProps}
-                                    onClick={() => setViewMode(button.id as ViewMode)}
-                                    className={`p-2 rounded-md flex items-center justify-center ${
-                                      viewMode === button.id
-                                        ? 'bg-blue-500 text-white'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                    }`}
-                                    title={button.label}
-                                  >
-                                    {button.icon}
-                                  </button>
-                                )}
-                              </Draggable>
-                            ))}
-                            {provided.placeholder}
-                          </div>
-                        )}
-                      </Droppable>
-                    </DragDropContext>
-                  </div>
-                </div>
-
-                {viewMode === 'list' && (
-                  <div className="flex justify-end border-b pb-2">
+              <div className="px-4 pt-4 pb-0 border-b">
+                <div className="flex justify-between items-center mb-4">
+                  {viewMode === 'list' && (
                     <div className="flex gap-1 items-center">
                       <button
                         onClick={() => toggleSort('dueDate')}
-                        className={`px-2 py-0.5 text-xs rounded flex items-center gap-1 ${
+                        className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
                           sortState.field === 'dueDate'
-                            ? 'bg-blue-500 text-white'
+                            ? 'bg-blue-100 text-blue-700 font-medium'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
                       >
@@ -409,8 +371,46 @@ export default function TasksPage() {
                         )}
                       </button>
                     </div>
-                  </div>
-                )}
+                  )}
+                  <div className="flex-grow"></div>
+                </div>
+
+                {/* タブ切り替え */}
+                <div className="flex border-b">
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`px-4 py-2 text-sm font-medium flex items-center gap-2 border-b-2 -mb-px ${
+                      viewMode === 'list'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <IoList className="w-4 h-4" />
+                    リスト
+                  </button>
+                  <button
+                    onClick={() => setViewMode('kanban')}
+                    className={`px-4 py-2 text-sm font-medium flex items-center gap-2 border-b-2 -mb-px ${
+                      viewMode === 'kanban'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <IoGrid className="w-4 h-4" />
+                    カンバン
+                  </button>
+                  <button
+                    onClick={() => setViewMode('gantt')}
+                    className={`px-4 py-2 text-sm font-medium flex items-center gap-2 border-b-2 -mb-px ${
+                      viewMode === 'gantt'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <IoBarChart className="w-4 h-4" />
+                    ガントチャート
+                  </button>
+                </div>
               </div>
 
               <div className="flex-1 overflow-y-auto mt-1">
