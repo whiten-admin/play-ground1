@@ -67,6 +67,7 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
   const resetTasks = () => {
     const defaultTasks = resetToSeedData();
     setTasks(defaultTasks);
+    localStorage.setItem('appTasks', JSON.stringify(defaultTasks))
   };
 
   // 新しいタスクを追加する関数
