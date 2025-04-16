@@ -9,7 +9,7 @@ import { Task } from '@/features/tasks/types/task'
 import { useTaskContext } from '@/features/tasks/contexts/TaskContext'
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext'
 import UserFilter from '@/components/UserFilter'
-import { FilterProvider } from '@/features/tasks/filters/FilterContext'
+import { FilterProvider, useFilterContext } from '@/features/tasks/filters/FilterContext'
 import EmptyProjectState from '@/features/projects/components/EmptyProjectState'
 import { format, isBefore, isToday, startOfDay } from 'date-fns'
 import { ja } from 'date-fns/locale'
@@ -91,6 +91,343 @@ function ProjectGuideHandler({ onShowGuide }: { onShowGuide: (show: boolean) => 
   return null;
 }
 
+// FilterProvider内で使用するユーザーフィルタリングのためのコンポーネント
+interface TasksContentProps {
+  user: any;
+  logout: () => void;
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  currentProject: any;
+  filteredTasks: Task[];
+  sortTasks: (tasks: Task[]) => Task[];
+  calculateProgress: (todos: Task["todos"]) => number;
+  viewMode: ViewMode;
+  setViewMode: (mode: ViewMode) => void;
+  isCreatingTask: boolean;
+  setIsCreatingTask: (isCreating: boolean) => void;
+  handleTaskCreate: (task: Task) => void;
+  handleTaskUpdate: (task: Task) => void;
+  handleTaskSelect: (taskId: string, todoId?: string) => void;
+  selectedTask: Task | null;
+  selectedTodoId: string | null;
+  isTaskDetailModalOpen: boolean;
+  handleCloseTaskDetail: () => void;
+  showAiSuggestions: boolean;
+  setShowAiSuggestions: (show: boolean) => void;
+  handleAddAiTask: (task: Task) => void;
+  showRequirementsGenerator: boolean;
+  setShowRequirementsGenerator: (show: boolean) => void;
+  handleAddRequirementsTasks: (tasks: Task[]) => void;
+  showNewProjectGuide: boolean;
+  setShowNewProjectGuide: (show: boolean) => void;
+  sortState: SortState;
+  toggleSort: (field: SortField) => void;
+}
+
+function TasksContent({
+  user,
+  logout,
+  activeTab,
+  setActiveTab,
+  currentProject,
+  filteredTasks,
+  sortTasks,
+  calculateProgress,
+  viewMode,
+  setViewMode,
+  isCreatingTask,
+  setIsCreatingTask,
+  handleTaskCreate,
+  handleTaskUpdate,
+  handleTaskSelect,
+  selectedTask,
+  selectedTodoId,
+  isTaskDetailModalOpen,
+  handleCloseTaskDetail,
+  showAiSuggestions,
+  setShowAiSuggestions,
+  handleAddAiTask,
+  showRequirementsGenerator,
+  setShowRequirementsGenerator,
+  handleAddRequirementsTasks,
+  showNewProjectGuide,
+  setShowNewProjectGuide,
+  sortState,
+  toggleSort
+}: TasksContentProps) {
+  // ここでFilterContextのデータを使用する
+  const { selectedUserIds, showUnassigned } = useFilterContext();
+  
+  // ユーザーフィルターを適用する
+  const userFilteredTasks = filteredTasks.filter((task) => {
+    // 各タスクのTODOから担当者リストを作成
+    const taskAssignees = new Set<string>();
+    task.todos.forEach((todo) => {
+      if (todo.assigneeId) {
+        taskAssignees.add(todo.assigneeId);
+      }
+    });
+
+    // アサインされていないタスクを表示するかどうか
+    if (showUnassigned && taskAssignees.size === 0) {
+      return true;
+    }
+
+    // 選択されたユーザーのタスクを表示
+    if (Array.from(taskAssignees).some((id) => selectedUserIds.includes(id))) {
+      return true;
+    }
+
+    return false;
+  });
+
+  const sortedTasks = sortTasks(userFilteredTasks);
+  
+  return (
+    <div className="flex h-screen bg-gray-100">
+      {/* Suspenseバウンダリの中でuseSearchParamsを使用 */}
+      <Suspense fallback={null}>
+        <ProjectGuideHandler onShowGuide={setShowNewProjectGuide} />
+      </Suspense>
+      
+      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header onLogout={logout} user={user} project={currentProject || undefined} />
+        <main className="flex-1 overflow-y-auto p-4 relative z-0">
+          {/* ユーザーフィルターとアクションボタンを横並びに */}
+          <div className="mb-2 flex justify-between items-center">
+            <div className="flex-grow">
+              <UserFilter />
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsCreatingTask(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <IoAdd className="w-5 h-5" />
+                <span>タスク追加</span>
+              </button>
+              <button
+                onClick={() => setShowRequirementsGenerator(true)}
+                className="px-3 py-2 rounded-md border border-green-300 text-green-600 bg-white hover:bg-green-50 flex items-center gap-2"
+              >
+                <IoDocumentText className="w-5 h-5" />
+                <span className="text-sm">要件から一括生成</span>
+              </button>
+              <button
+                onClick={() => setShowAiSuggestions(!showAiSuggestions)}
+                className="px-3 py-2 rounded-md border border-purple-300 text-purple-600 bg-white hover:bg-purple-50 flex items-center gap-2"
+              >
+                <IoBulb className="w-5 h-5" />
+                <span className="text-sm">AIヌケモレチェック</span>
+              </button>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow">
+            {showAiSuggestions && (
+              <div className="border-b">
+                <AiTaskSuggestions onAddTask={handleAddAiTask} />
+              </div>
+            )}
+            
+            <div className="px-4 pt-4 pb-0 border-b">
+              <div className="flex justify-between items-center mb-4">
+                {viewMode === 'list' && (
+                  <div className="flex gap-1 items-center">
+                    <button
+                      onClick={() => toggleSort('dueDate')}
+                      className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
+                        sortState.field === 'dueDate'
+                          ? 'bg-blue-100 text-blue-700 font-medium'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      期日
+                      {sortState.field === 'dueDate' && (
+                        sortState.order === 'asc' ? <IoCaretUp className="w-3 h-3" /> : <IoCaretDown className="w-3 h-3" />
+                      )}
+                    </button>
+                  </div>
+                )}
+                <div className="flex-grow"></div>
+              </div>
+
+              {/* タブ切り替え */}
+              <div className="flex border-b">
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-4 py-2 text-sm font-medium flex items-center gap-2 border-b-2 -mb-px ${
+                    viewMode === 'list'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <IoList className="w-4 h-4" />
+                  リスト
+                </button>
+                <button
+                  onClick={() => setViewMode('kanban')}
+                  className={`px-4 py-2 text-sm font-medium flex items-center gap-2 border-b-2 -mb-px ${
+                    viewMode === 'kanban'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <IoGrid className="w-4 h-4" />
+                  カンバン
+                </button>
+                <button
+                  onClick={() => setViewMode('gantt')}
+                  className={`px-4 py-2 text-sm font-medium flex items-center gap-2 border-b-2 -mb-px ${
+                    viewMode === 'gantt'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <IoBarChart className="w-4 h-4" />
+                  ガントチャート
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto mt-1">
+              {viewMode === 'list' && (
+                <div className="space-y-4 pr-2 p-4">
+                  {sortedTasks.map((task) => (
+                    <div
+                      key={task.id}
+                      onClick={() => handleTaskSelect(task.id)}
+                      className={`p-4 border rounded-lg cursor-pointer ${
+                        calculateProgress(task.todos) === 100
+                          ? 'bg-gray-50 opacity-60'
+                          : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <h3 className="text-lg font-semibold text-gray-800 flex-shrink-0">{task.title}</h3>
+                        <div className="flex items-center gap-4 ml-auto">
+                          <div className="text-sm text-gray-500 whitespace-nowrap">
+                            TODO: {task.todos.length}件
+                          </div>
+                          <div className="flex items-center gap-2 border-l pl-4">
+                            <div className="w-16 h-2 bg-gray-200 rounded-full">
+                              <div
+                                className="h-full rounded-full"
+                                style={{
+                                  width: `${calculateProgress(task.todos)}%`,
+                                  background: `linear-gradient(to right, rgb(219, 234, 254), rgb(37, 99, 235))`
+                                }}
+                              />
+                            </div>
+                            <span className="text-sm text-gray-500 whitespace-nowrap">
+                              {calculateProgress(task.todos)}%
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-2 line-clamp-2">{task.description}</p>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                        <div className="flex items-center gap-2">
+                          <span>期日:</span>
+                          <span>
+                            {task.todos.length > 0
+                              ? format(
+                                  new Date(Math.min(...task.todos.map(todo => todo.startDate.getTime()))),
+                                  'yyyy年M月d日',
+                                  { locale: ja }
+                                )
+                              : '未設定'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {viewMode === 'kanban' && (
+                <div className="flex-1 overflow-x-auto p-4">
+                  <KanbanView 
+                    tasks={sortedTasks} 
+                    projectId={currentProject?.id || ''} 
+                    onTaskSelect={handleTaskSelect}
+                    onTaskUpdate={handleTaskUpdate}
+                    onTaskCreate={handleTaskCreate}
+                  />
+                </div>
+              )}
+
+              {viewMode === 'gantt' && (
+                <div className="p-4">
+                  <GanttChartView
+                    onTaskSelect={handleTaskSelect}
+                    onTaskCreate={handleTaskCreate}
+                    onTaskUpdate={handleTaskUpdate}
+                    projectId={currentProject?.id || ''}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </main>
+      </div>
+      
+      {/* 新規プロジェクト作成後のガイドポップアップ */}
+      <NewProjectGuidePopup 
+        isVisible={showNewProjectGuide} 
+        onClose={() => setShowNewProjectGuide(false)} 
+      />
+
+      {/* タスク作成フォーム */}
+      {isCreatingTask && (
+        <TaskCreationForm
+          onCancel={() => setIsCreatingTask(false)}
+          onTaskCreate={handleTaskCreate}
+          projectId={currentProject?.id}
+          title="新しいタスクを作成"
+        />
+      )}
+
+      {/* タスク詳細モーダル */}
+      {isTaskDetailModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center border-b p-4">
+              <h2 className="text-xl font-bold text-gray-800">タスク詳細</h2>
+              <button 
+                onClick={handleCloseTaskDetail}
+                className="p-2 rounded-full hover:bg-gray-100"
+              >
+                <IoClose className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <TaskDetail
+                selectedTask={selectedTask}
+                selectedTodoId={selectedTodoId}
+                onTaskUpdate={handleTaskUpdate}
+                tasks={filteredTasks}
+                onTaskSelect={() => {}}
+                onTaskCreate={handleTaskCreate}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* 要件からタスク自動生成ダイアログ */}
+      {showRequirementsGenerator && (
+        <RequirementsTaskGenerator
+          onClose={() => setShowRequirementsGenerator(false)}
+          onTasksCreate={handleAddRequirementsTasks}
+          projectId={currentProject?.id}
+        />
+      )}
+    </div>
+  );
+}
+
 export default function TasksPage() {
   const { isAuthenticated, user, login, logout } = useAuth()
   const [activeTab, setActiveTab] = useState('tasks')
@@ -119,6 +456,8 @@ export default function TasksPage() {
   
   // 新規プロジェクト作成後のガイド表示状態
   const [showNewProjectGuide, setShowNewProjectGuide] = useState(false)
+  
+  // フィルタリングコンテキストを使用しない（TasksContentで使用する）
   
   // サイドバーの状態を監視
   useEffect(() => {
@@ -251,6 +590,7 @@ export default function TasksPage() {
     });
   };
 
+  // FilterProvider内で使用するため、TasksContentコンポーネントに処理を移動
   const sortedTasks = sortTasks(filteredTasks);
 
   // 選択されたタスクを取得
@@ -306,246 +646,36 @@ export default function TasksPage() {
 
   return (
     <FilterProvider>
-      <div className="flex h-screen bg-gray-100">
-        {/* Suspenseバウンダリの中でuseSearchParamsを使用 */}
-        <Suspense fallback={null}>
-          <ProjectGuideHandler onShowGuide={setShowNewProjectGuide} />
-        </Suspense>
-        
-        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Header onLogout={logout} user={user} project={currentProject || undefined} />
-          <main className="flex-1 overflow-y-auto p-4 relative z-0">
-            {/* ユーザーフィルターとアクションボタンを横並びに */}
-            <div className="mb-2 flex justify-between items-center">
-              <div className="flex-grow">
-                <UserFilter />
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsCreatingTask(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 transition-colors flex items-center gap-2"
-                >
-                  <IoAdd className="w-5 h-5" />
-                  <span>タスク追加</span>
-                </button>
-                <button
-                  onClick={() => setShowRequirementsGenerator(true)}
-                  className="px-3 py-2 rounded-md border border-green-300 text-green-600 bg-white hover:bg-green-50 flex items-center gap-2"
-                >
-                  <IoDocumentText className="w-5 h-5" />
-                  <span className="text-sm">要件から一括生成</span>
-                </button>
-                <button
-                  onClick={() => setShowAiSuggestions(!showAiSuggestions)}
-                  className="px-3 py-2 rounded-md border border-purple-300 text-purple-600 bg-white hover:bg-purple-50 flex items-center gap-2"
-                >
-                  <IoBulb className="w-5 h-5" />
-                  <span className="text-sm">AIヌケモレチェック</span>
-                </button>
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-lg shadow">
-              {showAiSuggestions && (
-                <div className="border-b">
-                  <AiTaskSuggestions onAddTask={handleAddAiTask} />
-                </div>
-              )}
-              
-              <div className="px-4 pt-4 pb-0 border-b">
-                <div className="flex justify-between items-center mb-4">
-                  {viewMode === 'list' && (
-                    <div className="flex gap-1 items-center">
-                      <button
-                        onClick={() => toggleSort('dueDate')}
-                        className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
-                          sortState.field === 'dueDate'
-                            ? 'bg-blue-100 text-blue-700 font-medium'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
-                      >
-                        期日
-                        {sortState.field === 'dueDate' && (
-                          sortState.order === 'asc' ? <IoCaretUp className="w-3 h-3" /> : <IoCaretDown className="w-3 h-3" />
-                        )}
-                      </button>
-                    </div>
-                  )}
-                  <div className="flex-grow"></div>
-                </div>
-
-                {/* タブ切り替え */}
-                <div className="flex border-b">
-                  <button
-                    onClick={() => setViewMode('list')}
-                    className={`px-4 py-2 text-sm font-medium flex items-center gap-2 border-b-2 -mb-px ${
-                      viewMode === 'list'
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <IoList className="w-4 h-4" />
-                    リスト
-                  </button>
-                  <button
-                    onClick={() => setViewMode('kanban')}
-                    className={`px-4 py-2 text-sm font-medium flex items-center gap-2 border-b-2 -mb-px ${
-                      viewMode === 'kanban'
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <IoGrid className="w-4 h-4" />
-                    カンバン
-                  </button>
-                  <button
-                    onClick={() => setViewMode('gantt')}
-                    className={`px-4 py-2 text-sm font-medium flex items-center gap-2 border-b-2 -mb-px ${
-                      viewMode === 'gantt'
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <IoBarChart className="w-4 h-4" />
-                    ガントチャート
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto mt-1">
-                {viewMode === 'list' && (
-                  <div className="space-y-4 pr-2 p-4">
-                    {sortedTasks.map((task) => (
-                      <div
-                        key={task.id}
-                        onClick={() => handleTaskSelect(task.id)}
-                        className={`p-4 border rounded-lg cursor-pointer ${
-                          calculateProgress(task.todos) === 100
-                            ? 'bg-gray-50 opacity-60'
-                            : 'hover:bg-gray-50'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-4">
-                          <h3 className="text-lg font-semibold text-gray-800 flex-shrink-0">{task.title}</h3>
-                          <div className="flex items-center gap-4 ml-auto">
-                            <div className="text-sm text-gray-500 whitespace-nowrap">
-                              TODO: {task.todos.length}件
-                            </div>
-                            <div className="flex items-center gap-2 border-l pl-4">
-                              <div className="w-16 h-2 bg-gray-200 rounded-full">
-                                <div
-                                  className="h-full rounded-full"
-                                  style={{
-                                    width: `${calculateProgress(task.todos)}%`,
-                                    background: `linear-gradient(to right, rgb(219, 234, 254), rgb(37, 99, 235))`
-                                  }}
-                                />
-                              </div>
-                              <span className="text-sm text-gray-500 whitespace-nowrap">
-                                {calculateProgress(task.todos)}%
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-sm text-gray-600 mt-2 line-clamp-2">{task.description}</p>
-                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                          <div className="flex items-center gap-2">
-                            <span>期日:</span>
-                            <span>
-                              {task.todos.length > 0
-                                ? format(
-                                    new Date(Math.min(...task.todos.map(todo => todo.startDate.getTime()))),
-                                    'yyyy年M月d日',
-                                    { locale: ja }
-                                  )
-                                : '未設定'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {viewMode === 'kanban' && (
-                  <div className="flex-1 overflow-x-auto p-4">
-                    <KanbanView 
-                      tasks={sortedTasks} 
-                      projectId={currentProject?.id || ''} 
-                      onTaskSelect={handleTaskSelect}
-                      onTaskUpdate={handleTaskUpdate}
-                      onTaskCreate={handleTaskCreate}
-                    />
-                  </div>
-                )}
-
-                {viewMode === 'gantt' && (
-                  <div className="p-4">
-                    <GanttChartView
-                      onTaskSelect={handleTaskSelect}
-                      onTaskCreate={handleTaskCreate}
-                      onTaskUpdate={handleTaskUpdate}
-                      projectId={currentProject?.id || ''}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          </main>
-        </div>
-      </div>
-
-      {/* タスク作成フォーム */}
-      {isCreatingTask && (
-        <TaskCreationForm
-          onCancel={() => setIsCreatingTask(false)}
-          onTaskCreate={handleTaskCreate}
-          projectId={currentProject?.id}
-          title="新しいタスクを作成"
-        />
-      )}
-
-      {/* タスク詳細モーダル */}
-      {isTaskDetailModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] flex flex-col">
-            <div className="flex justify-between items-center border-b p-4">
-              <h2 className="text-xl font-bold text-gray-800">タスク詳細</h2>
-              <button 
-                onClick={handleCloseTaskDetail}
-                className="p-2 rounded-full hover:bg-gray-100"
-              >
-                <IoClose className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4">
-              <TaskDetail
-                selectedTask={selectedTask}
-                selectedTodoId={selectedTodoId}
-                onTaskUpdate={handleTaskUpdate}
-                tasks={filteredTasks}
-                onTaskSelect={() => {}}
-                onTaskCreate={handleTaskCreate}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* 要件からタスク自動生成ダイアログ */}
-      {showRequirementsGenerator && (
-        <RequirementsTaskGenerator
-          onClose={() => setShowRequirementsGenerator(false)}
-          onTasksCreate={handleAddRequirementsTasks}
-          projectId={currentProject?.id}
-        />
-      )}
-
-      {/* 新規プロジェクト作成後のガイドポップアップ */}
-      <NewProjectGuidePopup 
-        isVisible={showNewProjectGuide} 
-        onClose={() => setShowNewProjectGuide(false)} 
+      <TasksContent 
+        user={user}
+        logout={logout}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        currentProject={currentProject}
+        filteredTasks={filteredTasks}
+        sortTasks={sortTasks}
+        calculateProgress={calculateProgress}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        isCreatingTask={isCreatingTask}
+        setIsCreatingTask={setIsCreatingTask}
+        handleTaskCreate={handleTaskCreate}
+        handleTaskUpdate={handleTaskUpdate}
+        handleTaskSelect={handleTaskSelect}
+        selectedTask={selectedTask}
+        selectedTodoId={selectedTodoId}
+        isTaskDetailModalOpen={isTaskDetailModalOpen}
+        handleCloseTaskDetail={handleCloseTaskDetail}
+        showAiSuggestions={showAiSuggestions}
+        setShowAiSuggestions={setShowAiSuggestions}
+        handleAddAiTask={handleAddAiTask}
+        showRequirementsGenerator={showRequirementsGenerator}
+        setShowRequirementsGenerator={setShowRequirementsGenerator}
+        handleAddRequirementsTasks={handleAddRequirementsTasks}
+        showNewProjectGuide={showNewProjectGuide}
+        setShowNewProjectGuide={setShowNewProjectGuide}
+        sortState={sortState}
+        toggleSort={toggleSort}
       />
     </FilterProvider>
   );
