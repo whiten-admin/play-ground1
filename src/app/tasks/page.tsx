@@ -337,16 +337,15 @@ function TasksContent({
 
             <div className="flex-1 overflow-y-auto mt-1">
               {viewMode === 'list' && (
-                <div className="p-4">
+                <div className="px-4">
                   <table className="w-full border-collapse">
                     <thead>
-                      <tr className="border-b text-left text-sm text-gray-600">
-                        <th className="pb-2 font-medium">タスク名</th>
-                        <th className="pb-2 font-medium text-center">担当者</th>
-                        <th className="pb-2 font-medium text-center">進捗率</th>
-                        <th className="pb-2 font-medium">期日</th>
-                        <th className="pb-2 font-medium text-center">工数</th>
-                        <th className="pb-2 font-medium text-center">TODO</th>
+                      <tr className="bg-gray-50 border-b text-left text-sm text-gray-600">
+                        <th className="py-1 px-2 font-medium text-xs">タスク名</th>
+                        <th className="py-1 px-2 font-medium text-xs text-center">担当者</th>
+                        <th className="py-1 px-2 font-medium text-xs text-center">進捗率</th>
+                        <th className="py-1 px-2 font-medium text-xs">期日</th>
+                        <th className="py-1 px-2 font-medium text-xs text-center">工数</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -386,11 +385,11 @@ function TasksContent({
                                 : 'hover:bg-gray-50 cursor-pointer'
                             }`}
                           >
-                            <td className="py-4">
+                            <td className="py-4 px-2">
                               <div className="font-medium text-gray-800">{task.title}</div>
                               <div className="text-xs text-gray-500 mt-1 line-clamp-1">{task.description}</div>
                             </td>
-                            <td className="py-4 text-center">
+                            <td className="py-4 px-2 text-center">
                               <div className="flex justify-center">
                                 {Array.from(assignees).length > 0 ? (
                                   <div className="flex -space-x-2">
@@ -423,7 +422,7 @@ function TasksContent({
                                 )}
                               </div>
                             </td>
-                            <td className="py-4 text-center">
+                            <td className="py-4 px-2 text-center">
                               <div className="flex flex-col items-center">
                                 {/* ドーナツチャート型の進捗表示 */}
                                 <div className="relative w-10 h-10">
@@ -456,7 +455,7 @@ function TasksContent({
                                 </div>
                               </div>
                             </td>
-                            <td className="py-4">
+                            <td className="py-4 px-2">
                               {earliestDate ? (
                                 <div className={`text-sm ${getDueDateStyle(earliestDate)}`}>
                                   {format(earliestDate, 'yyyy/MM/dd', { locale: ja })}
@@ -465,11 +464,8 @@ function TasksContent({
                                 <span className="text-sm text-gray-400">未設定</span>
                               )}
                             </td>
-                            <td className="py-4 text-center">
+                            <td className="py-4 px-2 text-center">
                               <span className="text-sm">{totalHours.toFixed(1)}h</span>
-                            </td>
-                            <td className="py-4 text-center">
-                              <span className="text-sm">{completedTodos}/{task.todos.length}</span>
                             </td>
                           </tr>
                         )
