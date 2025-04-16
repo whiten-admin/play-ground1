@@ -21,7 +21,6 @@ import TaskCreationForm from '@/features/tasks/components/TaskCreationForm'
 import TaskDetail from '@/features/tasks/components/TaskDetail'
 import { AiTaskSuggestions } from '@/features/tasks/components/AiTaskSuggestions'
 import RequirementsTaskGenerator from '@/features/tasks/components/RequirementsTaskGenerator'
-import ProjectProgressSummary from '@/features/tasks/components/ProjectProgressSummary'
 import { useSearchParams } from 'next/navigation'
 
 type ViewMode = 'list' | 'kanban' | 'gantt'
@@ -320,10 +319,6 @@ export default function TasksPage() {
             {/* ユーザーフィルター */}
             <div className="mb-4">
               <UserFilter />
-            </div>
-            {/* プロジェクト進捗状況 - 全ビュー共通で上部に表示 */}
-            <div className="mb-4">
-              <ProjectProgressSummary tasks={sortedTasks} />
             </div>
             
             <div className="bg-white rounded-lg shadow">

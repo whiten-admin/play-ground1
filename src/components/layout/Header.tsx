@@ -8,6 +8,7 @@ import ProjectCreateModal from '@/features/projects/components/ProjectCreateModa
 import ProjectDetailModal from '@/features/projects/components/ProjectDetailModal'
 import { getAllUsers } from '@/utils/memberUtils'
 import { User, UserRole } from '@/features/tasks/types/user'
+import ProjectProgressIndicator from '@/components/ProjectProgressIndicator'
 
 interface HeaderProps {
   onLogout?: () => void
@@ -185,10 +186,10 @@ export default function Header({ onLogout, user, project }: HeaderProps) {
               
               {!isAllProjectsMode && (
                 <>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <span>{formatDate(displayProject?.startDate)} - {formatDate(displayProject?.endDate)}</span>
+                  <div className="flex flex-col ml-2">
+                    <span className="text-xs text-gray-500">{formatDate(displayProject?.startDate)} - {formatDate(displayProject?.endDate)}</span>
                     {remainingDays !== null && (
-                      <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded">
+                      <span className="text-xs text-blue-600 font-medium">
                         残り{remainingDays}日
                       </span>
                     )}
@@ -211,6 +212,13 @@ export default function Header({ onLogout, user, project }: HeaderProps) {
                       <span className="text-xs text-gray-500">
                         {projectMemberUsers.length}人のメンバー
                       </span>
+                    </div>
+                  )}
+                  
+                  {/* プロジェクト進捗状況を表示 */}
+                  {displayProject && (
+                    <div className="ml-4 border-l pl-4 flex-shrink-0">
+                      <ProjectProgressIndicator compact={true} />
                     </div>
                   )}
                 </>
