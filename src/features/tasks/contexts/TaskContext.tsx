@@ -2,8 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Task } from '@/features/tasks/types/task';
-import { seedTasks } from '@/features/tasks/data/seedData';
-import { getTasksFromLocalStorage, saveSeedDataToLocalStorage, resetToSeedData, resetToScheduledSeedData } from '@/services/storage/utils/seedDataUtils';
+import { getTasksFromLocalStorage, saveSeedDataToLocalStorage, resetToSeedData } from '@/services/storage/utils/seedDataUtils';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 
 interface TaskContextType {
@@ -11,7 +10,6 @@ interface TaskContextType {
   filteredTasks: Task[]; // 現在のプロジェクトのタスクのみ、またはプロジェクト全体モード時は全タスク
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
   resetTasks: () => void;
-  resetTasksWithSchedule: () => void;
   addTask: (task: Task) => void;
   clearAllTasks: () => void;
 }
@@ -19,8 +17,8 @@ interface TaskContextType {
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
 
 export const TaskProvider = ({ children }: { children: ReactNode }) => {
-  // 初期値はシードデータを使用
-  const [tasks, setTasks] = useState<Task[]>(seedTasks);
+  // 初期値は空の配列を使用（ローカルストレージから読み込む前の初期状態）
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [initialized, setInitialized] = useState(false);
   const { currentProject, isAllProjectsMode, filteredProjects } = useProjectContext();
   
@@ -46,23 +44,13 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
     
     try {
       console.log('ローカルストレージからタスク情報をロード中...');
-      const storedTasks = getTasksFromLocalStorage();
-      
-      // ローカルストレージにデータがあればそれを使用、なければシードデータを保存
+      const storedTasks = getTasksFromLocalStorage();      
       if (storedTasks && storedTasks.length > 0) {
         console.log('ローカルストレージからタスクを読み込みました:', storedTasks.length);
         setTasks(storedTasks);
-      } else {
-        console.log('ローカルストレージにデータがないため、シードデータを使用します');
-        // 初期データとして通常のシードデータを使用（スケジュールなし）
-        const defaultTasks = resetToSeedData();
-        setTasks(defaultTasks);
       }
     } catch (error) {
       console.error('ローカルストレージからのデータ読み込みに失敗しました:', error);
-      // エラー時はシードデータを使用
-      const defaultTasks = resetToSeedData();
-      setTasks(defaultTasks);
     } finally {
       setInitialized(true);
     }
@@ -79,12 +67,7 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
   const resetTasks = () => {
     const defaultTasks = resetToSeedData();
     setTasks(defaultTasks);
-  };
-  
-  // スケジュール済みシードデータにリセットする関数
-  const resetTasksWithSchedule = () => {
-    const scheduledTasks = resetToScheduledSeedData();
-    setTasks(scheduledTasks);
+    localStorage.setItem('appTasks', JSON.stringify(defaultTasks))
   };
 
   // 新しいタスクを追加する関数
@@ -107,7 +90,6 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
       filteredTasks,
       setTasks, 
       resetTasks, 
-      resetTasksWithSchedule,
       addTask,
       clearAllTasks 
     }}>

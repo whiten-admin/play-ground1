@@ -4,8 +4,10 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { Project } from '@/features/projects/types/project'
 import { ProjectMember, ProjectMemberRole } from '@/features/projects/types/projectMember'
 import { User } from '@/features/tasks/types/user'
-import { getProjectMembers as getProjectMembersUtil, getProjectUsers as getProjectUsersUtil } from '@/utils/memberUtils'
+import { getProjectUsers as getProjectUsersUtil } from '@/utils/memberUtils'
 import { useAuth } from '@/services/auth/hooks/useAuth'
+import seedProjectsData from '@/features/projects/data/projects.json'
+import seedProjectMembersData from '@/features/projects/data/projectMembers.json'
 
 interface ProjectContextType {
   projects: Project[]
@@ -245,37 +247,30 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const clearAllProjects = () => {
     setProjects([])
     setCurrentProject(null)
-    localStorage.removeItem('currentProjectId')
-    
-    // プロジェクトメンバーもクリア
     setProjectMembers([])
+
+    localStorage.removeItem('projects');
     localStorage.removeItem('projectMembers')
+    localStorage.removeItem('currentProjectId')
   }
   
-  // デフォルトプロジェクトデータにリセット
-  const resetToDefaultProjects = () => {
-    console.log("リセット前のプロジェクト:", projects);
-    console.log("リセット前のプロジェクトメンバー:", projectMembers);
+  // デフォルトプロジェクトデータにリセット（シードデータを使用）
+  const resetToDefaultProjects = () => {        
+    // シードデータをローカルストレージに保存
+    localStorage.setItem('projects', JSON.stringify(seedProjectsData));
+    localStorage.setItem('projectMembers', JSON.stringify(seedProjectMembersData));
     
-    // ローカルストレージからデータを削除
-    localStorage.removeItem('projects');
-    localStorage.removeItem('projectMembers');
-    localStorage.removeItem('currentProjectId');
-    
-    // stateを空に設定
-    setProjects([]);
-    setProjectMembers([]);
-    
-    console.log("リセット後のプロジェクト: 空の配列");
-    console.log("リセット後のプロジェクトメンバー: 空の配列");
-    
+    // シードデータをステートにセット
+    setProjects(seedProjectsData as Project[]);
+    setProjectMembers(seedProjectMembersData as ProjectMember[]);
     setCurrentProject(null);
+    
+    // プロジェクト選択状態をリセット
+    localStorage.removeItem('currentProjectId');
   }
 
   // ユーザーをプロジェクトに割り当てる
-  const assignUserToProject = (projectId: string, userId: string, role: ProjectMemberRole) => {
-    console.log('メンバー登録開始:', { projectId, userId, role });
-    
+  const assignUserToProject = (projectId: string, userId: string, role: ProjectMemberRole) => {    
     // ローカルストレージから最新のメンバー情報を取得
     const storedMembers = localStorage.getItem('projectMembers');
     let currentMembers = projectMembers;
@@ -315,7 +310,6 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       
       // 新しいメンバーリスト
       updatedMembers = [...currentMembers, newMember];
-      console.log('新しいメンバーリスト:', updatedMembers);
       
       // プロジェクトのmembersフィールドも更新
       const project = projects.find(p => p.id === projectId)
@@ -330,10 +324,6 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     
     // stateとローカルストレージを更新
     setProjectMembers(updatedMembers);
-    localStorage.setItem('projectMembers', JSON.stringify(updatedMembers));
-    
-    // デバッグ情報
-    console.log(`ユーザー ${userId} をプロジェクト ${projectId} に ${role} として割り当てました`);
   }
   
   // ユーザーをプロジェクトから削除
@@ -345,7 +335,6 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     
     // stateとローカルストレージを更新
     setProjectMembers(filteredMembers);
-    localStorage.setItem('projectMembers', JSON.stringify(filteredMembers));
     
     // プロジェクトのmembersフィールドからも削除
     const project = projects.find(p => p.id === projectId)
@@ -355,9 +344,6 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         members: project.members.filter(id => id !== userId)
       })
     }
-    
-    // デバッグ情報
-    console.log(`ユーザー ${userId} をプロジェクト ${projectId} から削除しました`);
   }
   
   // プロジェクトに所属するメンバーを取得

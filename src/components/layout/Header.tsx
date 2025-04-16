@@ -16,7 +16,7 @@ interface HeaderProps {
 }
 
 export default function Header({ onLogout, user, project }: HeaderProps) {
-  const { currentProject, filteredProjects, switchProject, createProject, updateProject, getProjectMembers, getProjectUsers, resetToDefaultProjects, isAllProjectsMode } = useProjectContext()
+  const { currentProject, filteredProjects, switchProject, createProject, updateProject, getProjectMembers, isAllProjectsMode } = useProjectContext()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isProjectDetailModalOpen, setIsProjectDetailModalOpen] = useState(false)
