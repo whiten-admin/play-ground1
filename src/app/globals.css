@@ -35,12 +35,13 @@
     border-radius: inherit;
     background: linear-gradient(
       to right,
-      #ff4d4d,
-      #f9cb28,
-      #ff4d4d
+      #dc2626, /* red-600 */
+      #f97316, /* orange-500 */
+      #b91c1c, /* red-700 */
+      #dc2626  /* red-600 */
     );
-    background-size: 200% 100%;
-    animation: gradient 2s linear infinite;
+    background-size: 300% 100%;
+    animation: gradient 3s ease infinite;
     -webkit-mask: 
       linear-gradient(#fff 0 0) content-box, 
       linear-gradient(#fff 0 0);
@@ -52,8 +53,11 @@
     0% {
       background-position: 0% 0%;
     }
+    50% {
+      background-position: 150% 0%;
+    }
     100% {
-      background-position: 200% 0%;
+      background-position: 0% 0%;
     }
   }
 } 

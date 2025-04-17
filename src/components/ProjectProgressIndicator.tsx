@@ -32,8 +32,9 @@ export default function ProjectProgressIndicator({ compact = true }: ProjectProg
 
   // リスクが高いか遅延時間が20時間以上の場合、アニメーションを適用
   const isHighAlert = riskLevel === 'high' || delayHours >= 20;
-  const borderAnimationClass = isHighAlert ? 'animate-border-gradient' : '';
   const bgColorClass = isHighAlert ? 'bg-red-50' : 'bg-gray-50';
+  // 遅延のテキストカラー
+  const delayTextColorClass = isHighAlert ? 'text-red-700 font-medium' : (delayHours > 0 ? 'text-red-600' : 'text-green-600');
 
   // モーダルを開く関数
   const openDetailModal = () => {
@@ -55,7 +56,7 @@ export default function ProjectProgressIndicator({ compact = true }: ProjectProg
           title="詳細を表示"
         >
           <div className="flex items-center gap-1">
-            <span className="text-gray-600">進捗:</span>
+            <span className={`${isHighAlert ? 'text-gray-700' : 'text-gray-600'}`}>進捗:</span>
             <span className="font-medium">{progressPercentage}%</span>
           </div>
           
@@ -63,15 +64,15 @@ export default function ProjectProgressIndicator({ compact = true }: ProjectProg
             <>
               <div className="w-px h-3 bg-gray-300"></div>
               <div className="flex items-center gap-1">
-                <span className="text-gray-600">遅延:</span>
-                <span className="font-medium text-red-600">{delayHours}h</span>
+                <span className={`${isHighAlert ? 'text-gray-700' : 'text-gray-600'}`}>遅延:</span>
+                <span className={`font-medium ${delayTextColorClass}`}>{delayHours}h</span>
               </div>
             </>
           )}
           
           <div className="w-px h-3 bg-gray-300"></div>
           <div className="flex items-center gap-1">
-            <span className="text-gray-600">リスク:</span>
+            <span className={`${isHighAlert ? 'text-gray-700' : 'text-gray-600'}`}>リスク:</span>
             <span className={`px-1.5 py-0.5 rounded-sm font-medium ${riskLevelColorClass}`}>
               {riskLevelText}
             </span>
@@ -92,6 +93,13 @@ export default function ProjectProgressIndicator({ compact = true }: ProjectProg
                 </button>
               </div>
               <div className="p-6">
+                {isHighAlert && (
+                  <div className="mb-4 bg-red-50 p-3 rounded-md border border-red-200 text-sm text-red-700">
+                    <p className="font-medium">⚠️ 警告: このプロジェクトはリスクが高い状態です</p>
+                    <p>プロジェクト進捗に遅れが見られます。詳細を確認し、必要な対策を検討してください。</p>
+                  </div>
+                )}
+
                 <div className="mb-4 bg-blue-50 p-3 rounded-md border border-blue-200 text-sm text-blue-700">
                   <p>※ この進捗詳細画面は今後アップデート予定です。より詳細な分析やバーンダウンチャートは分析画面でご確認いただけます。</p>
                 </div>
@@ -213,7 +221,7 @@ export default function ProjectProgressIndicator({ compact = true }: ProjectProg
         
         <div className="flex flex-col">
           <span className="text-xs text-gray-500">遅延</span>
-          <span className={`font-medium ${delayHours > 0 ? 'text-red-600' : 'text-green-600'}`}>
+          <span className={`font-medium ${delayTextColorClass}`}>
             {delayHours > 0 ? `${delayHours}時間` : 'なし'}
           </span>
         </div>
