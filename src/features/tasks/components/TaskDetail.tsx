@@ -1437,13 +1437,13 @@ export default function TaskDetail({
           ) : (
             <div className="flex gap-2">
               {selectedTask.description ? (
-                <div className="flex-1 prose prose-sm max-w-none p-3 bg-white rounded-md border border-gray-100">
+                <div className="flex-1 prose prose-sm max-w-none p-3 bg-white rounded-md border border-gray-100 min-h-[100px]">
                   <ReactMarkdown rehypePlugins={[rehypeRaw]}>
                     {selectedTask.description}
                   </ReactMarkdown>
                 </div>
               ) : (
-                <p className="flex-1 text-gray-400 italic p-2">
+                <p className="flex-1 text-gray-400 italic p-2 min-h-[100px] flex items-center justify-center">
                   説明はまだ入力されていません。
                 </p>
               )}
