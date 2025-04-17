@@ -14,6 +14,7 @@ interface GanttChartViewProps {
   onTaskSelect: (taskId: string) => void;
   onTaskUpdate?: (updatedTask: Task) => void;
   projectId?: string;
+  showCompletedTasks?: boolean;
 }
 
 // 日付の位置を計算するユーティリティ関数
@@ -23,7 +24,7 @@ const getDatePosition = (date: Date, startDate: Date) => {
   );
 };
 
-export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdate, projectId }: GanttChartViewProps) {
+export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdate, projectId, showCompletedTasks = true }: GanttChartViewProps) {
   const { tasks } = useTaskContext();
   const { currentProject } = useProjectContext();
   const { selectedUserIds, showUnassigned } = useFilterContext();
@@ -60,6 +61,16 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
     });
   };
 
+  // 進捗率を計算する関数
+  const calculateProgress = (todos: Todo[]) => {
+    if (todos.length === 0) return 0;
+    const totalHours = todos.reduce((sum, todo) => sum + todo.estimatedHours, 0);
+    const completedHours = todos
+      .filter(todo => todo.completed)
+      .reduce((sum, todo) => sum + todo.estimatedHours, 0);
+    return Math.round((completedHours / totalHours) * 100);
+  };
+
   // メンバーフィルターを適用する
   const filterTasksByMembers = (tasksToFilter: Task[]): Task[] => {
     return tasksToFilter.filter((task) => {
@@ -85,8 +96,22 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
     });
   };
 
+  // 完了済みタスクをフィルタリングする
+  const filterCompletedTasks = (tasksToFilter: Task[]): Task[] => {
+    if (showCompletedTasks) {
+      return tasksToFilter; // 完了済みタスクを表示する場合はフィルタリングしない
+    }
+    
+    // 進捗率100%のタスクを除外
+    return tasksToFilter.filter(task => calculateProgress(task.todos) < 100);
+  };
+
   // ソート＆フィルタリングされたタスクリスト
-  const filteredAndSortedTasks = sortTasksByStartDate(filterTasksByMembers(tasks));
+  const filteredAndSortedTasks = sortTasksByStartDate(
+    filterCompletedTasks(
+      filterTasksByMembers(tasks)
+    )
+  );
 
   const getDaysBetween = (startDate: Date, endDate: Date) => {
     return Math.ceil(
