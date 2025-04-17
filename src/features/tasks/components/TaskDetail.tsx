@@ -2088,51 +2088,66 @@ export default function TaskDetail({
           <div className="w-1/5 space-y-3">
             {/* 期日 */}
             <div className="bg-gray-50 rounded-md p-2">
-              <div className="font-medium text-xs text-gray-700 mb-1">期日:</div>
+              <div className="font-medium text-xs text-gray-700 mb-1 flex justify-between items-center">
+                <span>期日:</span>
+                <div className="flex space-x-1">
+                  <button
+                    onClick={() => {
+                      if (!selectedTask || !editedTask) return;
+                      
+                      // タスクの期日を1日前に設定
+                      const originalDate = new Date(selectedTask.dueDate);
+                      const updatedDate = new Date(originalDate);
+                      updatedDate.setDate(originalDate.getDate() - 1);
+                      
+                      const updatedTask = {
+                        ...selectedTask,
+                        dueDate: updatedDate,
+                      };
+                      
+                      setEditedTask(updatedTask);
+                      onTaskUpdate?.(updatedTask);
+                    }}
+                    className="text-xs bg-gray-200 hover:bg-gray-300 px-1.5 py-0.5 rounded text-gray-700"
+                  >
+                    -1日
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!selectedTask || !editedTask) return;
+                      
+                      // タスクの期日を1日後に設定
+                      const originalDate = new Date(selectedTask.dueDate);
+                      const updatedDate = new Date(originalDate);
+                      updatedDate.setDate(originalDate.getDate() + 1);
+                      
+                      const updatedTask = {
+                        ...selectedTask,
+                        dueDate: updatedDate,
+                      };
+                      
+                      setEditedTask(updatedTask);
+                      onTaskUpdate?.(updatedTask);
+                    }}
+                    className="text-xs bg-gray-200 hover:bg-gray-300 px-1.5 py-0.5 rounded text-gray-700"
+                  >
+                    +1日
+                  </button>
+                </div>
+              </div>
               {selectedTask.todos.length > 0 ? (
                 <input
                   type="date"
                   value={format(
-                    new Date(
-                      Math.min(
-                        ...selectedTask.todos.map((todo) =>
-                          todo.startDate.getTime()
-                        )
-                      )
-                    ),
+                    new Date(selectedTask.dueDate),
                     'yyyy-MM-dd'
                   )}
                   onChange={(e) => {
                     const newDate = new Date(e.target.value);
                     if (!isNaN(newDate.getTime())) {
-                      // 最も早いTODOを特定
-                      const earliestTodoIdx = selectedTask.todos
-                        .map((todo, idx) => ({
-                          startDate: todo.startDate.getTime(),
-                          idx,
-                        }))
-                        .sort((a, b) => a.startDate - b.startDate)[0].idx;
-
-                      // 該当するTODOの日付を更新
-                      const updatedTodos = [...selectedTask.todos];
-                      const todoToUpdate = { ...updatedTodos[earliestTodoIdx] };
-
-                      // 時間部分は保持して日付のみ更新
-                      const originalDate = new Date(todoToUpdate.startDate);
-                      const updatedDate = new Date(
-                        newDate.getFullYear(),
-                        newDate.getMonth(),
-                        newDate.getDate(),
-                        originalDate.getHours(),
-                        originalDate.getMinutes()
-                      );
-
-                      todoToUpdate.startDate = updatedDate;
-                      updatedTodos[earliestTodoIdx] = todoToUpdate;
-
                       const updatedTask = {
                         ...selectedTask,
-                        todos: updatedTodos,
+                        dueDate: newDate,
                       };
 
                       if (editedTask) {
@@ -2142,13 +2157,9 @@ export default function TaskDetail({
                     }
                   }}
                   className={`w-full p-1 text-sm border border-gray-200 rounded focus:border-blue-500 focus:outline-none text-gray-700 ${getDueDateStyle(
-                    Math.min(
-                      ...selectedTask.todos.map((todo) =>
-                        todo.startDate.getTime()
-                      )
-                    )
+                    selectedTask.dueDate
                   )}`}
-                  aria-label="タスク開始日"
+                  aria-label="タスク期日"
                 />
               ) : (
                 <span className="text-gray-500 text-sm">未設定</span>
