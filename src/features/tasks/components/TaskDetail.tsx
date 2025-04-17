@@ -2167,14 +2167,108 @@ export default function TaskDetail({
             </div>
 
             {/* 予定工数 */}
-            <div className="bg-gray-50 rounded-md p-2">
-              <div className="font-medium text-xs text-gray-700 mb-1">予定工数:</div>
+            <div className="bg-gray-50 rounded-md p-2 flex items-center">
+              <div className="font-medium text-xs text-gray-700 mr-2">予定工数:</div>
               <div className="text-sm text-gray-700 font-medium">
                 {selectedTask.todos.reduce(
                   (total, todo) => total + todo.estimatedHours,
                   0
                 )}
                 時間
+              </div>
+            </div>
+
+            {/* 実績工数 - 新しく追加 */}
+            <div className="bg-gray-50 rounded-md p-2 flex items-center">
+              <div className="font-medium text-xs text-gray-700 mr-2">実績工数:</div>
+              <div className="flex items-center">
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.1"
+                  value={selectedTask.todos.reduce(
+                    (total, todo) => total + todo.actualHours,
+                    0
+                  ).toFixed(1)}
+                  onChange={(e) => {
+                    // 入力値が空の場合は処理しない
+                    if (e.target.value === '') return;
+                    
+                    // 数値に変換
+                    const newHours = parseFloat(e.target.value);
+                    
+                    // 有効な数値の場合のみ更新
+                    if (!isNaN(newHours) && selectedTask.todos.length > 0) {
+                      // 最初のTODOに実績工数を設定
+                      const updatedTodos = [...selectedTask.todos];
+                      updatedTodos[0] = {
+                        ...updatedTodos[0],
+                        actualHours: newHours
+                      };
+                      
+                      const updatedTask = {
+                        ...selectedTask,
+                        todos: updatedTodos
+                      };
+                      
+                      setEditedTask(updatedTask);
+                      onTaskUpdate?.(updatedTask);
+                    }
+                  }}
+                  className="w-20 p-1 text-sm border border-gray-200 rounded focus:border-blue-500 focus:outline-none text-gray-700"
+                  aria-label="実績工数"
+                />
+                <span className="ml-1 text-sm text-gray-700">時間</span>
+              </div>
+            </div>
+
+            {/* 工数偏差 - 新しく追加 */}
+            <div className="bg-gray-50 rounded-md p-2">
+              <div className="font-medium text-xs text-gray-700 mb-1">工数偏差:</div>
+              <div>
+                {(() => {
+                  // 計算に必要な値を取得
+                  const estimatedHours = selectedTask.todos.reduce(
+                    (total, todo) => total + todo.estimatedHours,
+                    0
+                  );
+                  const actualHours = selectedTask.todos.reduce(
+                    (total, todo) => total + todo.actualHours,
+                    0
+                  );
+                  
+                  // 計算（予定工数が0の場合は偏差を計算できないので注意）
+                  const deviation = estimatedHours > 0 
+                    ? ((actualHours - estimatedHours) / estimatedHours) * 100 
+                    : 0;
+                  
+                  // 表示用にフォーマット（小数点以下1桁まで）
+                  const formattedDeviation = deviation.toFixed(1);
+                  
+                  // 偏差に応じて表示色を変更
+                  const textColorClass = deviation > 0 
+                    ? 'text-red-600' 
+                    : deviation < 0 
+                      ? 'text-blue-600'
+                      : 'text-gray-700';
+                  
+                  // 符号を表示用に付加
+                  const sign = deviation > 0 ? '+' : '';
+                  
+                  return (
+                    <div className={`text-sm font-medium flex items-center ${textColorClass}`}>
+                      <span>{sign}{formattedDeviation}%</span>
+                      {deviation !== 0 && (
+                        <span className="ml-2 text-xs text-gray-500">
+                          {deviation > 0 
+                            ? '(予定より超過)' 
+                            : '(予定より短縮)'}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
