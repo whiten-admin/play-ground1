@@ -6,10 +6,11 @@ import { IoAdd } from 'react-icons/io5';
 import { useState, useEffect, useMemo } from 'react';
 import TaskCreationForm from '@/features/tasks/components/TaskCreationForm';
 import { RiDeleteBin6Line } from 'react-icons/ri';
-import { format } from 'date-fns';
+import { format, isBefore, startOfDay } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { BiTimeFive } from 'react-icons/bi';
 import { AiOutlineCalendar } from 'react-icons/ai';
+import { FaFire } from 'react-icons/fa';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 import { ProjectMember } from '@/features/projects/types/projectMember';
 import { getProjectUsers } from '@/utils/memberUtils';
@@ -192,6 +193,17 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
     tasks: tasks.filter(task => getTaskStatus(task) === column.id)
   }));
 
+  // 期日超過かどうかをチェックする関数
+  const isOverdue = (task: Task) => {
+    if (!task.dueDate) return false;
+    const dueDate = new Date(task.dueDate);
+    const today = startOfDay(new Date());
+    const progress = calculateProgress(task);
+    
+    // 期日が過ぎているかつ完了していない場合はtrue
+    return isBefore(dueDate, today) && progress < 100;
+  };
+
   // ドラッグ終了時の処理
   const handleDragEnd = (result: any) => {
     if (!result.destination) return;
@@ -364,86 +376,98 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
                     {...provided.droppableProps}
                     className="flex-1 p-2 space-y-2 overflow-y-auto"
                   >
-                    {column.tasks.map((task, index) => (
-                      <Draggable
-                        key={task.id}
-                        draggableId={task.id}
-                        index={index}
-                      >
-                        {(provided) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            onClick={() => onTaskSelect(task.id)}
-                            className={`bg-white p-3 rounded-lg shadow cursor-pointer transition-shadow ${
-                              calculateProgress(task) === 100
-                                ? 'opacity-60'
-                                : 'hover:shadow-md'
-                            }`}
-                          >
-                            {/* タスク名 */}
-                            <h4 className="font-medium text-gray-800 text-sm mb-2 line-clamp-2">{task.title}</h4>
-                            
-                            <div className="flex flex-col gap-1.5 text-xs">
-                              {/* 工数 */}
-                              <div className="flex items-center text-gray-600">
-                                <BiTimeFive className="mr-1 text-gray-400" />
-                                <span>{calculateTotalEstimatedHours(task)}時間</span>
+                    {column.tasks.map((task, index) => {
+                      const overdueTask = isOverdue(task);
+                      return (
+                        <Draggable
+                          key={task.id}
+                          draggableId={task.id}
+                          index={index}
+                        >
+                          {(provided) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              onClick={() => onTaskSelect(task.id)}
+                              className={`bg-white p-3 rounded-lg shadow cursor-pointer transition-shadow relative ${
+                                calculateProgress(task) === 100
+                                  ? 'opacity-60'
+                                  : 'hover:shadow-md'
+                              }`}
+                            >
+                              {/* 期日超過警告アイコン */}
+                              {overdueTask && (
+                                <div className="absolute right-2 top-2">
+                                  <FaFire className="text-red-500 w-4 h-4" title="期日超過" />
+                                </div>
+                              )}
+                              
+                              {/* タスク名 */}
+                              <h4 className="font-medium text-gray-800 text-sm mb-2 line-clamp-2">{task.title}</h4>
+                              
+                              <div className="flex flex-col gap-1.5 text-xs">
+                                {/* 工数 */}
+                                <div className="flex items-center text-gray-600">
+                                  <BiTimeFive className="mr-1 text-gray-400" />
+                                  <span>{calculateTotalEstimatedHours(task)}時間</span>
+                                </div>
+                                
+                                {/* 期日 */}
+                                <div className="flex items-center text-gray-600">
+                                  <AiOutlineCalendar className="mr-1 text-gray-400" />
+                                  <span className={overdueTask ? 'text-red-500 font-bold' : ''}>
+                                    {formatDate(task.dueDate)}
+                                  </span>
+                                </div>
                               </div>
                               
-                              {/* 期日 */}
-                              <div className="flex items-center text-gray-600">
-                                <AiOutlineCalendar className="mr-1 text-gray-400" />
-                                <span>{formatDate(task.dueDate)}</span>
-                              </div>
-                            </div>
-                            
-                            {/* 進捗バーとパーセント */}
-                            <div className="mt-2 mb-2">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs text-gray-500">進捗</span>
-                                <span className="text-xs font-medium text-blue-600">
-                                  {calculateProgress(task)}%
-                                </span>
-                              </div>
-                              <div className="w-full h-1.5 bg-gray-200 rounded-full">
-                                <div
-                                  className="h-full rounded-full bg-blue-500"
-                                  style={{
-                                    width: `${calculateProgress(task)}%`,
-                                  }}
-                                />
-                              </div>
-                            </div>
-                            
-                            {/* 担当者 */}
-                            <div className="flex items-center mt-2 overflow-hidden">
-                              {getTaskAssignees(task).length > 0 ? (
-                                <div className="flex -space-x-2 overflow-hidden">
-                                  {getTaskAssignees(task).slice(0, 3).map((member, i) => (
-                                    <div 
-                                      key={`${member.id}-${i}`}
-                                      className={`flex-shrink-0 h-6 w-6 rounded-full ${getRoleColor(member.role)} text-white flex items-center justify-center text-xs font-medium border-2 border-white`}
-                                      title={member.name}
-                                    >
-                                      {getUserInitial(member.name)}
-                                    </div>
-                                  ))}
-                                  {getTaskAssignees(task).length > 3 && (
-                                    <div className="flex-shrink-0 h-6 w-6 rounded-full bg-gray-300 text-gray-700 flex items-center justify-center text-xs font-medium border-2 border-white">
-                                      +{getTaskAssignees(task).length - 3}
-                                    </div>
-                                  )}
+                              {/* 進捗バーとパーセント */}
+                              <div className="mt-2 mb-2">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-xs text-gray-500">進捗</span>
+                                  <span className="text-xs font-medium text-blue-600">
+                                    {calculateProgress(task)}%
+                                  </span>
                                 </div>
-                              ) : (
-                                <span className="text-xs text-gray-400 italic">未アサイン</span>
-                              )}
+                                <div className="w-full h-1.5 bg-gray-200 rounded-full">
+                                  <div
+                                    className="h-full rounded-full bg-blue-500"
+                                    style={{
+                                      width: `${calculateProgress(task)}%`,
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                              
+                              {/* 担当者 */}
+                              <div className="flex items-center mt-2 overflow-hidden">
+                                {getTaskAssignees(task).length > 0 ? (
+                                  <div className="flex -space-x-2 overflow-hidden">
+                                    {getTaskAssignees(task).slice(0, 3).map((member, i) => (
+                                      <div 
+                                        key={`${member.id}-${i}`}
+                                        className={`flex-shrink-0 h-6 w-6 rounded-full ${getRoleColor(member.role)} text-white flex items-center justify-center text-xs font-medium border-2 border-white`}
+                                        title={member.name}
+                                      >
+                                        {getUserInitial(member.name)}
+                                      </div>
+                                    ))}
+                                    {getTaskAssignees(task).length > 3 && (
+                                      <div className="flex-shrink-0 h-6 w-6 rounded-full bg-gray-300 text-gray-700 flex items-center justify-center text-xs font-medium border-2 border-white">
+                                        +{getTaskAssignees(task).length - 3}
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-gray-400 italic">未アサイン</span>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
+                          )}
+                        </Draggable>
+                      );
+                    })}
                     {provided.placeholder}
                     
                     {/* カラムごとのタスク追加ボタン */}
