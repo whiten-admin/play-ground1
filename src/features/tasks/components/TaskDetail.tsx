@@ -49,7 +49,13 @@ interface TaskDetailProps {
 interface EditState {
   title: boolean;
   description: boolean;
-  todos: { [key: string]: boolean };
+  todos: { 
+    [key: string]: {
+      text: boolean;
+      memo: boolean;
+      all: boolean;
+    } 
+  };
   assigneeDropdown?: { [key: string]: boolean };
 }
 
@@ -240,6 +246,7 @@ export default function TaskDetail({
   // 編集モードの切り替え
   const toggleEdit = (
     field: 'title' | 'description' | string,
+    editType: 'text' | 'memo' | 'all' = 'all',
     isEditingTodo: boolean = false
   ) => {
     if (!selectedTask) return;
@@ -250,11 +257,17 @@ export default function TaskDetail({
 
     setEditState((prev) => {
       if (isEditingTodo) {
+        // 既存のTODO編集状態を取得または初期化
+        const currentTodoState = prev.todos[field] || { text: false, memo: false, all: false };
+        
         return {
           ...prev,
           todos: {
             ...prev.todos,
-            [field]: !prev.todos[field],
+            [field]: {
+              ...currentTodoState,
+              [editType]: !currentTodoState[editType],
+            },
           },
         };
       }
@@ -268,21 +281,23 @@ export default function TaskDetail({
   // 変更の保存
   const handleSave = (
     field: 'title' | 'description' | string,
+    editType: 'text' | 'memo' | 'all' = 'all',
     isEditingTodo: boolean = false
   ) => {
     if (editedTask && onTaskUpdate) {
       onTaskUpdate(editedTask);
     }
-    toggleEdit(field, isEditingTodo);
+    toggleEdit(field, editType, isEditingTodo);
   };
 
   // 変更のキャンセル
   const handleCancel = (
     field: 'title' | 'description' | string,
+    editType: 'text' | 'memo' | 'all' = 'all',
     isEditingTodo: boolean = false
   ) => {
     setEditedTask(selectedTask);
-    toggleEdit(field, isEditingTodo);
+    toggleEdit(field, editType, isEditingTodo);
   };
 
   // タイトルの更新
@@ -906,17 +921,21 @@ export default function TaskDetail({
         </div>
         <span className="ml-1 mr-2">時間</span>
         <button
-          onClick={() => handleEstimateHours(todo.id, todo.text)}
+          onClick={() => {
+            if (window.confirm('このTODOの作業工数をAIに再見積もりしてもらいますか？\n\n※再見積もりにはAPIコストがかかります')) {
+              handleEstimateHours(todo.id, todo.text);
+            }
+          }}
           disabled={isEstimatingHours}
-          className={`p-1 rounded-md text-blue-500 hover:bg-blue-50 transition-colors ${
+          className={`px-2 py-1 rounded-md text-xs bg-blue-500 text-white hover:bg-blue-600 transition-colors flex items-center gap-1 ${
             isEstimatingHours && currentEstimatingTodoId === todo.id
-              ? 'opacity-50 cursor-not-allowed'
+              ? 'opacity-50 cursor-not-allowed bg-blue-300'
               : ''
           }`}
           title="AIに工数を見積もってもらう"
         >
-          <IoCalculator className="w-4 h-4" />
-          <span className="sr-only">AI工数見積</span>
+          <IoCalculator className="w-3 h-3" />
+          <span>再見積もり</span>
         </button>
       </div>
     );
@@ -1518,7 +1537,7 @@ export default function TaskDetail({
               selectedTask.todos.map((todo) => (
                 <div
                   key={todo.id}
-                  className={`flex items-center group border rounded-lg mb-2 ${
+                  className={`border rounded-lg mb-2 ${
                     selectedTodoId === todo.id
                       ? 'bg-blue-50 border-blue-300 shadow-sm'
                       : todo.completed
@@ -1526,97 +1545,100 @@ export default function TaskDetail({
                       : 'border-gray-200 hover:bg-gray-50'
                   }`}
                 >
-                  <div className="p-2 border-r border-gray-200 flex items-center justify-center">
-                    <input
-                      id={generateInputId('todo-status', todo.id)}
-                      type="checkbox"
-                      checked={todo.completed}
-                      onChange={() => handleTodoStatusChange(todo.id)}
-                      className="w-5 h-5"
-                      aria-label={`${todo.text}の完了状態`}
-                    />
-                    <label
-                      htmlFor={generateInputId('todo-status', todo.id)}
-                      className="sr-only"
-                    >
-                      {todo.text}の完了状態
-                    </label>
-                  </div>
-                  {editState.todos[todo.id] ? (
-                    <div
-                      className={`flex-1 flex items-center gap-2 p-3 ${
-                        todo.completed ? 'bg-gray-100' : ''
-                      }`}
-                    >
-                      <div className="flex-1">
+                  {editState.todos[todo.id]?.all ? (
+                    <div className="flex">
+                      {/* 編集ボタンがすべて（all）を編集するモードの場合の全体編集UI */}
+                      <div className="p-2 border-r border-gray-200 flex items-center justify-center">
                         <input
-                          type="text"
-                          value={todo.text}
-                          onChange={(e) =>
-                            handleTodoTextChange(todo.id, e.target.value)
-                          }
-                          className={`w-full border-b border-gray-300 focus:border-blue-500 focus:outline-none mb-2 ${
-                            todo.completed
-                              ? 'text-gray-500 bg-gray-100'
-                              : 'text-gray-800 bg-white'
-                          }`}
-                          placeholder="TODOの内容を入力"
-                          aria-label={`TODO: ${todo.text}`}
+                          id={generateInputId('todo-status', todo.id)}
+                          type="checkbox"
+                          checked={todo.completed}
+                          onChange={() => handleTodoStatusChange(todo.id)}
+                          className="w-5 h-5"
+                          aria-label={`${todo.text}の完了状態`}
                         />
-                        <div className="text-xs text-gray-500 mt-1 space-y-1 p-1 rounded flex flex-wrap items-center gap-x-4 gap-y-2">
-                          <div className="flex items-center">
-                            <span className="mr-2">着手予定日:</span>
-                            <input
-                              type="date"
-                              value={format(todo.startDate, 'yyyy-MM-dd')}
-                              onChange={(e) => {
-                                const newDate = new Date(e.target.value);
-                                if (!isNaN(newDate.getTime())) {
-                                  const updatedTodo = {
-                                    ...todo,
-                                    startDate: newDate,
-                                  };
-                                  const updatedTodos = selectedTask.todos.map(
-                                    (t) => (t.id === todo.id ? updatedTodo : t)
-                                  );
-                                  const updatedTask = {
-                                    ...selectedTask,
-                                    todos: updatedTodos,
-                                  };
-                                  if (editedTask) {
-                                    setEditedTask(updatedTask);
-                                  }
-                                  onTaskUpdate?.(updatedTask);
-                                }
-                              }}
-                              className={`p-1 border border-gray-200 rounded focus:border-blue-500 focus:outline-none text-gray-700 ${
-                                todo.completed ? 'bg-gray-100' : 'bg-white'
-                              }`}
-                              aria-label={`${todo.text}の開始日`}
-                            />
-                          </div>
-                          <div className="flex items-center">
-                            <span className="mr-2">見積もり工数:</span>
+                        <label
+                          htmlFor={generateInputId('todo-status', todo.id)}
+                          className="sr-only"
+                        >
+                          {todo.text}の完了状態
+                        </label>
+                      </div>
+                      {/* 以下、既存の全体編集UI */}
+                      <div
+                        className={`flex-1 flex items-center gap-2 p-3 ${
+                          todo.completed ? 'bg-gray-100' : ''
+                        }`}
+                      >
+                        {/* 既存のコード */}
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            value={todo.text}
+                            onChange={(e) =>
+                              handleTodoTextChange(todo.id, e.target.value)
+                            }
+                            className={`w-full border-b border-gray-300 focus:border-blue-500 focus:outline-none mb-2 ${
+                              todo.completed
+                                ? 'text-gray-500 bg-gray-100'
+                                : 'text-gray-800 bg-white'
+                            }`}
+                            placeholder="TODOの内容を入力"
+                            aria-label={`TODO: ${todo.text}`}
+                          />
+                          <div className="text-xs text-gray-500 mt-1 space-y-1 p-1 rounded flex flex-wrap items-center gap-x-4 gap-y-2">
                             <div className="flex items-center">
-                              {renderEstimatedHoursInput(todo, true)}
+                              <span className="mr-2">着手予定日:</span>
+                              <input
+                                type="date"
+                                value={format(todo.startDate, 'yyyy-MM-dd')}
+                                onChange={(e) => {
+                                  const newDate = new Date(e.target.value);
+                                  if (!isNaN(newDate.getTime())) {
+                                    const updatedTodo = {
+                                      ...todo,
+                                      startDate: newDate,
+                                    };
+                                    const updatedTodos = selectedTask.todos.map(
+                                      (t) => (t.id === todo.id ? updatedTodo : t)
+                                    );
+                                    const updatedTask = {
+                                      ...selectedTask,
+                                      todos: updatedTodos,
+                                    };
+                                    if (editedTask) {
+                                      setEditedTask(updatedTask);
+                                    }
+                                    onTaskUpdate?.(updatedTask);
+                                  }
+                                }}
+                                className={`p-1 border border-gray-200 rounded focus:border-blue-500 focus:outline-none text-gray-700 ${
+                                  todo.completed ? 'bg-gray-100' : 'bg-white'
+                                }`}
+                                aria-label={`${todo.text}の開始日`}
+                              />
+                            </div>
+                            <div className="flex items-center">
+                              <span className="mr-2">見積もり工数:</span>
+                              <div className="flex items-center">
+                                {renderEstimatedHoursInput(todo, true)}
+                              </div>
+                            </div>
+                            <div className="flex items-center">
+                              {renderAssigneeUI(todo)}
                             </div>
                           </div>
-                          <div className="flex items-center">
-                            {renderAssigneeUI(todo)}
-                          </div>
-                        </div>
-                        {/* メモ欄を常に表示 */}
-                        <div className="mt-1 mb-2 text-sm text-gray-600 bg-gray-50 p-2 rounded border-l-2 border-blue-300">
-                          <div className="relative">
-                            <div
-                              className={`prose prose-sm max-w-none ${
-                                expandedMemos[todo.id]
-                                  ? 'max-h-none'
-                                  : 'max-h-32'
-                              } overflow-hidden transition-all duration-300 ease-in-out`}
-                              ref={(el) => (memoRefs.current[todo.id] = el)}
-                            >
-                              {editState.todos[todo.id] ? (
+                          {/* メモ欄を常に表示 */}
+                          <div className="mt-1 mb-2 text-sm text-gray-600 bg-gray-50 p-2 rounded border-l-2 border-blue-300">
+                            <div className="relative">
+                              <div
+                                className={`prose prose-sm max-w-none ${
+                                  expandedMemos[todo.id]
+                                    ? 'max-h-none'
+                                    : 'max-h-32'
+                                } overflow-hidden transition-all duration-300 ease-in-out`}
+                                ref={(el) => (memoRefs.current[todo.id] = el)}
+                              >
                                 <textarea
                                   value={todo.memo || ''}
                                   onChange={(e) => {
@@ -1646,159 +1668,207 @@ export default function TaskDetail({
                                   rows={4}
                                   aria-label={`${todo.text}のメモ`}
                                 />
-                              ) : (
-                                <>
-                                  {todo.memo ? (
-                                    <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-                                      {todo.memo}
-                                    </ReactMarkdown>
-                                  ) : (
-                                    <p className="text-gray-400 italic">
-                                      メモはまだ入力されていません。
-                                    </p>
-                                  )}
-                                </>
-                              )}
+                              </div>
                             </div>
-                            {!editState.todos[todo.id] &&
-                              todo.memo &&
-                              (expandedMemos[todo.id] ||
-                                (memoHeights[todo.id] ?? 0) > 128) && (
-                                <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-gray-50 to-transparent flex items-end justify-center">
-                                  <button
-                                    onClick={() => {
-                                      setExpandedMemos((prev) => ({
-                                        ...prev,
-                                        [todo.id]: !prev[todo.id],
-                                      }));
-                                    }}
-                                    className="text-blue-500 hover:text-blue-700 flex items-center gap-1 text-xs"
-                                  >
-                                    {expandedMemos[todo.id]
-                                      ? '折りたたむ'
-                                      : 'もっと見る'}
-                                    <svg
-                                      className={`w-4 h-4 transition-transform duration-300 ${
-                                        expandedMemos[todo.id]
-                                          ? 'rotate-180'
-                                          : ''
-                                      }`}
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M19 9l-7 7-7-7"
-                                      />
-                                    </svg>
-                                  </button>
-                                </div>
-                              )}
                           </div>
                         </div>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <button
-                          onClick={() => handleSave(todo.id, true)}
-                          className="p-1 text-green-600 hover:text-green-700"
-                          title="保存"
-                        >
-                          <IoSave className="w-5 h-5" />
-                          <span className="sr-only">保存</span>
-                        </button>
-                        <button
-                          onClick={() => handleCancel(todo.id, true)}
-                          className="p-1 text-red-600 hover:text-red-700"
-                          title="キャンセル"
-                        >
-                          <IoClose className="w-5 h-5" />
-                          <span className="sr-only">キャンセル</span>
-                        </button>
+                        <div className="flex flex-col gap-2">
+                          <button
+                            onClick={() => handleSave(todo.id, 'all', true)}
+                            className="p-1 text-green-600 hover:text-green-700"
+                            title="保存"
+                          >
+                            <IoSave className="w-5 h-5" />
+                            <span className="sr-only">保存</span>
+                          </button>
+                          <button
+                            onClick={() => handleCancel(todo.id, 'all', true)}
+                            className="p-1 text-red-600 hover:text-red-700"
+                            title="キャンセル"
+                          >
+                            <IoClose className="w-5 h-5" />
+                            <span className="sr-only">キャンセル</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ) : (
-                    <div
-                      className={`flex-1 flex items-center gap-2 p-3 ${
-                        todo.completed ? 'bg-gray-100 rounded-r-lg' : ''
-                      }`}
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center">
-                          <span
-                            className={`${
-                              todo.completed
-                                ? 'line-through text-gray-500'
-                                : 'text-gray-800'
-                            }`}
-                          >
-                            {todo.text}
-                          </span>
-                          <button
-                            onClick={() => toggleEdit(todo.id, true)}
-                            className="ml-2 p-1 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100"
-                            title="TODOを編集"
-                          >
-                            <IoPencil className="w-4 h-4" />
-                            <span className="sr-only">TODOを編集</span>
-                          </button>
+                    <>
+                      <div className="flex items-center p-3 group">
+                        <div className="mr-2">
+                          <input
+                            id={generateInputId('todo-status', todo.id)}
+                            type="checkbox"
+                            checked={todo.completed}
+                            onChange={(e) => {
+                              e.stopPropagation(); // 親要素へのクリックイベント伝播を止める
+                              handleTodoStatusChange(todo.id);
+                            }}
+                            className="w-5 h-5"
+                            aria-label={`${todo.text}の完了状態`}
+                          />
                         </div>
-                        <div className="text-xs text-gray-500 mt-1 space-y-1 p-1 rounded flex flex-wrap items-center gap-x-4 gap-y-2">
-                          <div className="flex items-center">
-                            <span className="mr-2">着手予定日:</span>
-                            <input
-                              type="date"
-                              value={format(todo.startDate, 'yyyy-MM-dd')}
-                              onChange={(e) => {
-                                const newDate = new Date(e.target.value);
-                                if (!isNaN(newDate.getTime())) {
-                                  const updatedTodo = {
-                                    ...todo,
-                                    startDate: newDate,
-                                  };
-                                  const updatedTodos = selectedTask.todos.map(
-                                    (t) => (t.id === todo.id ? updatedTodo : t)
-                                  );
-                                  const updatedTask = {
-                                    ...selectedTask,
-                                    todos: updatedTodos,
-                                  };
-                                  if (editedTask) {
-                                    setEditedTask(updatedTask);
-                                  }
-                                  onTaskUpdate?.(updatedTask);
-                                }
+                        <div 
+                          className="flex-1 flex justify-between items-center cursor-pointer"
+                          onClick={() => setExpandedMemos(prev => ({
+                            ...prev,
+                            [todo.id]: !prev[todo.id]
+                          }))}
+                        >
+                          {editState.todos[todo.id]?.text ? (
+                            <div className="flex-1 flex items-center">
+                              <input
+                                type="text"
+                                value={todo.text}
+                                onChange={(e) => handleTodoTextChange(todo.id, e.target.value)}
+                                className={`flex-1 border-b border-gray-300 focus:border-blue-500 focus:outline-none ${
+                                  todo.completed ? 'text-gray-500 bg-gray-100' : 'text-gray-800 bg-white'
+                                }`}
+                                placeholder="TODOの内容を入力"
+                                autoFocus
+                              />
+                              <div className="flex ml-2">
+                                <button
+                                  onClick={() => handleSave(todo.id, 'text', true)}
+                                  className="p-1 text-green-600 hover:text-green-700"
+                                  title="保存"
+                                >
+                                  <IoSave className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleCancel(todo.id, 'text', true)}
+                                  className="p-1 text-red-600 hover:text-red-700"
+                                  title="キャンセル"
+                                >
+                                  <IoClose className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <span 
+                              className={`${
+                                todo.completed
+                                  ? 'line-through text-gray-500'
+                                  : 'text-gray-800'
+                              } cursor-pointer`}
+                              onClick={() => setExpandedMemos(prev => ({
+                                ...prev,
+                                [todo.id]: !prev[todo.id]
+                              }))}
+                              onDoubleClick={(e) => {
+                                e.stopPropagation();
+                                toggleEdit(todo.id, 'text', true);
                               }}
-                              className={`p-1 border border-gray-200 rounded focus:border-blue-500 focus:outline-none text-gray-700 ${
-                                todo.completed ? 'bg-gray-100' : 'bg-white'
-                              }`}
-                              aria-label={`${todo.text}の開始日`}
-                            />
-                          </div>
+                            >
+                              {todo.text}
+                              {/* 編集ボタンを追加 */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleEdit(todo.id, 'text', true);
+                                }}
+                                className="ml-2 opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-gray-600 inline-flex items-center"
+                              >
+                                <IoPencil className="w-3 h-3" />
+                              </button>
+                            </span>
+                          )}
                           <div className="flex items-center">
-                            <span className="mr-2">見積もり工数:</span>
-                            <div className="flex items-center">
-                              {renderEstimatedHoursInput(todo, false)}
+                            {/* 担当者アイコンを簡易表示 */}
+                            {todo.assigneeId && (
+                              <UserAvatar
+                                assigneeId={todo.assigneeId}
+                                size="xs"
+                                showTooltip={true}
+                              />
+                            )}
+                            {/* 工数を簡易表示 */}
+                            <div className="text-xs text-gray-500 ml-2 flex items-center">
+                              <FaClock className="w-3 h-3 mr-1" />
+                              {todo.estimatedHours}h
+                            </div>
+                            <div className="flex opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation(); // イベントの伝播を止める
+                                  handleDeleteTodo(todo.id);
+                                }}
+                                className="p-1 text-red-500 hover:text-red-600"
+                                title="TODOを削除"
+                              >
+                                <IoTrash className="w-4 h-4" />
+                                <span className="sr-only">TODOを削除</span>
+                              </button>
                             </div>
                           </div>
-                          <div className="flex items-center">
-                            {renderAssigneeUI(todo)}
-                          </div>
                         </div>
-                        {/* 非編集モードでもメモ欄を常に表示 */}
-                        <div className="mt-1 mb-2 text-sm text-gray-600 bg-gray-50 p-2 rounded border-l-2 border-blue-300">
-                          <div className="relative">
-                            <div
-                              className={`prose prose-sm max-w-none ${
-                                expandedMemos[todo.id]
-                                  ? 'max-h-none'
-                                  : 'max-h-32'
-                              } overflow-hidden transition-all duration-300 ease-in-out`}
-                              ref={(el) => (memoRefs.current[todo.id] = el)}
-                            >
-                              {editState.todos[todo.id] ? (
+                      </div>
+
+                      {/* 詳細情報（アコーディオン） */}
+                      {expandedMemos[todo.id] && (
+                        <div className="px-3 pb-3 pt-0 border-t border-gray-100 bg-gray-50">
+                          <div className="text-xs text-gray-600 py-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+                            <div className="flex items-center">
+                              <span className="font-medium mr-2">着手予定日:</span>
+                              <input
+                                type="date"
+                                value={format(todo.startDate, 'yyyy-MM-dd')}
+                                onChange={(e) => {
+                                  const newDate = new Date(e.target.value);
+                                  if (!isNaN(newDate.getTime())) {
+                                    const updatedTodo = {
+                                      ...todo,
+                                      startDate: newDate,
+                                    };
+                                    const updatedTodos = selectedTask.todos.map(
+                                      (t) => (t.id === todo.id ? updatedTodo : t)
+                                    );
+                                    const updatedTask = {
+                                      ...selectedTask,
+                                      todos: updatedTodos,
+                                    };
+                                    if (editedTask) {
+                                      setEditedTask(updatedTask);
+                                    }
+                                    onTaskUpdate?.(updatedTask);
+                                  }
+                                }}
+                                className={`p-1 border border-gray-200 rounded focus:border-blue-500 focus:outline-none text-gray-700 ${
+                                  todo.completed ? 'bg-gray-100' : 'bg-white'
+                                }`}
+                                aria-label={`${todo.text}の開始日`}
+                              />
+                            </div>
+                            <div className="flex items-center">
+                              <div className="flex items-center">
+                                {renderEstimatedHoursInput(todo, false)}
+                              </div>
+                            </div>
+                            <div className="flex items-center">
+                              <div className="flex items-center">
+                                {renderAssigneeUI(todo)}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* メモ欄 */}
+                          <div className="mt-2 mb-1 text-sm text-gray-600 bg-white p-2 rounded border border-gray-200">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-medium text-xs text-gray-700">メモ:</span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleEdit(todo.id, 'memo', true);
+                                }}
+                                className="p-1 text-xs text-gray-400 hover:text-gray-600 rounded"
+                                title="メモを編集"
+                              >
+                                <IoPencil className="w-3 h-3" />
+                                <span className="sr-only">メモを編集</span>
+                              </button>
+                            </div>
+                            {editState.todos[todo.id]?.memo ? (
+                              <div className="flex flex-col">
                                 <textarea
                                   value={todo.memo || ''}
                                   onChange={(e) => {
@@ -1807,8 +1877,7 @@ export default function TaskDetail({
                                       memo: e.target.value,
                                     };
                                     const updatedTodos = selectedTask.todos.map(
-                                      (t) =>
-                                        t.id === todo.id ? updatedTodo : t
+                                      (t) => t.id === todo.id ? updatedTodo : t
                                     );
                                     const updatedTask = {
                                       ...selectedTask,
@@ -1819,80 +1888,113 @@ export default function TaskDetail({
                                     }
                                     onTaskUpdate?.(updatedTask);
                                   }}
-                                  className={`w-full border border-gray-200 rounded p-2 text-sm focus:border-blue-500 focus:outline-none mb-2 ${
-                                    todo.completed
-                                      ? 'text-gray-500 bg-gray-100'
-                                      : 'text-gray-600 bg-white'
-                                  }`}
+                                  className="w-full border border-gray-200 rounded p-2 text-sm focus:border-blue-500 focus:outline-none"
                                   placeholder="メモを入力（マークダウン記法が使えます→ **太字**、*斜体*、`コード`、# 見出し、- リスト など）"
                                   rows={4}
-                                  aria-label={`${todo.text}のメモ`}
+                                  autoFocus
                                 />
-                              ) : (
-                                <>
+                                <div className="flex justify-end mt-2">
+                                  <button
+                                    onClick={() => handleSave(todo.id, 'memo', true)}
+                                    className="px-2 py-1 text-xs text-white bg-green-600 rounded hover:bg-green-700 mr-2"
+                                  >
+                                    保存
+                                  </button>
+                                  <button
+                                    onClick={() => handleCancel(todo.id, 'memo', true)}
+                                    className="px-2 py-1 text-xs text-white bg-red-600 rounded hover:bg-red-700"
+                                  >
+                                    キャンセル
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="relative">
+                                <div
+                                  className={`prose prose-sm max-w-none ${
+                                    expandedMemos[`memo-${todo.id}`]
+                                      ? 'max-h-none'
+                                      : 'max-h-32'
+                                  } overflow-hidden transition-all duration-300 ease-in-out cursor-pointer`}
+                                  ref={(el) => (memoRefs.current[todo.id] = el)}
+                                  onDoubleClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleEdit(todo.id, 'memo', true);
+                                  }}
+                                >
                                   {todo.memo ? (
                                     <ReactMarkdown rehypePlugins={[rehypeRaw]}>
                                       {todo.memo}
                                     </ReactMarkdown>
                                   ) : (
-                                    <p className="text-gray-400 italic">
+                                    <p className="text-gray-400 italic text-xs">
                                       メモはまだ入力されていません。
                                     </p>
                                   )}
-                                </>
-                              )}
-                            </div>
-                            {!editState.todos[todo.id] &&
-                              todo.memo &&
-                              (expandedMemos[todo.id] ||
-                                (memoHeights[todo.id] ?? 0) > 128) && (
-                                <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-gray-50 to-transparent flex items-end justify-center">
-                                  <button
-                                    onClick={() => {
-                                      setExpandedMemos((prev) => ({
-                                        ...prev,
-                                        [todo.id]: !prev[todo.id],
-                                      }));
-                                    }}
-                                    className="text-blue-500 hover:text-blue-700 flex items-center gap-1 text-xs"
-                                  >
-                                    {expandedMemos[todo.id]
-                                      ? '折りたたむ'
-                                      : 'もっと見る'}
-                                    <svg
-                                      className={`w-4 h-4 transition-transform duration-300 ${
-                                        expandedMemos[todo.id]
-                                          ? 'rotate-180'
-                                          : ''
-                                      }`}
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M19 9l-7 7-7-7"
-                                      />
-                                    </svg>
-                                  </button>
                                 </div>
-                              )}
+                                {todo.memo && !expandedMemos[`memo-${todo.id}`] &&
+                                  (memoHeights[todo.id] ?? 0) > 128 && (
+                                  <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent flex items-end justify-center">
+                                    <button
+                                      onClick={() => {
+                                        setExpandedMemos((prev) => ({
+                                          ...prev,
+                                          [`memo-${todo.id}`]: true,
+                                        }));
+                                      }}
+                                      className="text-blue-500 hover:text-blue-700 flex items-center gap-1 text-xs"
+                                    >
+                                      もっと見る
+                                      <svg
+                                        className="w-4 h-4"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M19 9l-7 7-7-7"
+                                        />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                )}
+                                {todo.memo && expandedMemos[`memo-${todo.id}`] && (
+                                  <div className="flex justify-center mt-1">
+                                    <button
+                                      onClick={() => {
+                                        setExpandedMemos((prev) => ({
+                                          ...prev,
+                                          [`memo-${todo.id}`]: false,
+                                        }));
+                                      }}
+                                      className="text-blue-500 hover:text-blue-700 flex items-center gap-1 text-xs"
+                                    >
+                                      折りたたむ
+                                      <svg
+                                        className="w-4 h-4 rotate-180"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M19 9l-7 7-7-7"
+                                        />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
-                      </div>
-                      <div className="flex gap-2 opacity-0 group-hover:opacity-100">
-                        <button
-                          onClick={() => handleDeleteTodo(todo.id)}
-                          className="p-1 text-red-500 hover:text-red-600"
-                          title="TODOを削除"
-                        >
-                          <IoTrash className="w-4 h-4" />
-                          <span className="sr-only">TODOを削除</span>
-                        </button>
-                      </div>
-                    </div>
+                      )}
+                    </>
                   )}
                 </div>
               ))
