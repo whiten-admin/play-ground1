@@ -16,6 +16,7 @@ import {
   IoFilter,
   IoCheckbox,
   IoCalculator,
+  IoChevronDown,
 } from 'react-icons/io5';
 import { Task, Todo } from '@/features/tasks/types/task';
 import { format, startOfDay, isBefore, isToday } from 'date-fns';
@@ -101,6 +102,42 @@ const toHalfWidth = (str: string): string => {
   });
 };
 
+// カンバンステータスの定義
+type KanbanStatus = 'not-started' | 'in-progress' | 'completed';
+
+// 拡張したTask型（status属性を追加）
+interface ExtendedTask extends Task {
+  status?: KanbanStatus;
+}
+
+interface KanbanStatusOption {
+  id: KanbanStatus;
+  title: string;
+  bgColor: string;
+  textColor: string;
+}
+
+const kanbanStatusOptions: KanbanStatusOption[] = [
+  {
+    id: 'not-started',
+    title: '未着手',
+    bgColor: 'bg-gray-200',
+    textColor: 'text-gray-800',
+  },
+  {
+    id: 'in-progress',
+    title: '進行中',
+    bgColor: 'bg-blue-100',
+    textColor: 'text-blue-800',
+  },
+  {
+    id: 'completed',
+    title: '完了',
+    bgColor: 'bg-green-100',
+    textColor: 'text-green-800',
+  },
+];
+
 export default function TaskDetail({
   selectedTask,
   selectedTodoId,
@@ -166,6 +203,7 @@ export default function TaskDetail({
   }>({});
   const [memoHeights, setMemoHeights] = useState<{ [key: string]: number }>({});
   const memoRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
 
   // フィルタリングコンテキストを使用
   const { selectedUserIds, showUnassigned } = useFilterContext();
@@ -895,6 +933,56 @@ export default function TaskDetail({
     updateHeights();
   }, [selectedTask?.todos.map((todo) => todo.memo).join(''), editState.todos]); // 編集状態の変更も監視
 
+  // カンバンステータスを取得する関数
+  const getKanbanStatus = (task: Task): KanbanStatus => {
+    // 明示的に設定されたステータスがあればそれを優先
+    const extendedTask = task as ExtendedTask;
+    if (extendedTask.status) {
+      return extendedTask.status;
+    }
+    
+    // ステータスが設定されていなければ進捗率から判定
+    const progress = calculateProgress(task.todos);
+    if (progress === 0) return 'not-started';
+    if (progress === 100) return 'completed';
+    return 'in-progress';
+  };
+
+  // カンバンステータスを変更する関数
+  const updateKanbanStatus = (status: KanbanStatus) => {
+    if (!selectedTask || !editedTask) return;
+
+    const updatedTask = { ...editedTask } as ExtendedTask;
+    
+    // 明示的にステータスを設定
+    updatedTask.status = status;
+    
+    // 進捗状態の調整（必要な場合）
+    switch (status) {
+      case 'not-started':
+        // すべてのTODOを未完了に
+        updatedTask.todos = updatedTask.todos.map(todo => ({
+          ...todo,
+          completed: false
+        }));
+        break;
+      case 'in-progress':
+        // 進行中ステータスでは完了状態を変更しない
+        break;
+      case 'completed':
+        // すべてのTODOを完了に
+        updatedTask.todos = updatedTask.todos.map(todo => ({
+          ...todo,
+          completed: true
+        }));
+        break;
+    }
+
+    setEditedTask(updatedTask as Task);
+    onTaskUpdate?.(updatedTask as Task);
+    setStatusDropdownOpen(false);
+  };
+
   // メイン部分のレンダリング関数
   const renderContent = () => {
     if (!selectedTask) {
@@ -971,6 +1059,39 @@ export default function TaskDetail({
                   </div>
                 </div>
                 <div className="flex items-center gap-2 ml-4">
+                  <div className="relative">
+                    <button
+                      onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}
+                      className={`px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1 ${
+                        kanbanStatusOptions.find(option => option.id === getKanbanStatus(selectedTask))?.bgColor || 'bg-gray-200'
+                      } ${
+                        kanbanStatusOptions.find(option => option.id === getKanbanStatus(selectedTask))?.textColor || 'text-gray-800'
+                      }`}
+                    >
+                      {kanbanStatusOptions.find(option => option.id === getKanbanStatus(selectedTask))?.title || '未着手'}
+                      <IoChevronDown className="w-3 h-3" />
+                    </button>
+                    
+                    {statusDropdownOpen && (
+                      <div className="absolute top-full left-0 mt-1 w-32 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                        <ul className="py-1">
+                          {kanbanStatusOptions.map(option => (
+                            <li key={option.id}>
+                              <button
+                                onClick={() => updateKanbanStatus(option.id)}
+                                className={`w-full text-left px-3 py-2 text-xs ${
+                                  getKanbanStatus(selectedTask) === option.id ? 'bg-gray-100' : ''
+                                } hover:bg-gray-50 flex items-center gap-1`}
+                              >
+                                <div className={`w-2 h-2 rounded-full ${option.bgColor}`}></div>
+                                {option.title}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
                   <div className="text-sm font-medium text-gray-700">
                     進捗率: {calculateProgress(selectedTask.todos)}%
                   </div>
@@ -1006,6 +1127,39 @@ export default function TaskDetail({
                   </div>
                 </div>
                 <div className="flex items-center gap-2 ml-4">
+                  <div className="relative">
+                    <button
+                      onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}
+                      className={`px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1 ${
+                        kanbanStatusOptions.find(option => option.id === getKanbanStatus(selectedTask))?.bgColor || 'bg-gray-200'
+                      } ${
+                        kanbanStatusOptions.find(option => option.id === getKanbanStatus(selectedTask))?.textColor || 'text-gray-800'
+                      }`}
+                    >
+                      {kanbanStatusOptions.find(option => option.id === getKanbanStatus(selectedTask))?.title || '未着手'}
+                      <IoChevronDown className="w-3 h-3" />
+                    </button>
+                    
+                    {statusDropdownOpen && (
+                      <div className="absolute top-full left-0 mt-1 w-32 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                        <ul className="py-1">
+                          {kanbanStatusOptions.map(option => (
+                            <li key={option.id}>
+                              <button
+                                onClick={() => updateKanbanStatus(option.id)}
+                                className={`w-full text-left px-3 py-2 text-xs ${
+                                  getKanbanStatus(selectedTask) === option.id ? 'bg-gray-100' : ''
+                                } hover:bg-gray-50 flex items-center gap-1`}
+                              >
+                                <div className={`w-2 h-2 rounded-full ${option.bgColor}`}></div>
+                                {option.title}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
                   <div className="text-sm font-medium text-gray-700">
                     進捗率: {calculateProgress(selectedTask.todos)}%
                   </div>

@@ -6,6 +6,14 @@ import { IoAdd } from 'react-icons/io5';
 import { useState } from 'react';
 import TaskCreationForm from '@/features/tasks/components/TaskCreationForm';
 
+// カンバンステータス型
+type KanbanStatus = 'not-started' | 'in-progress' | 'completed';
+
+// 拡張したTask型（status属性を追加）
+interface ExtendedTask extends Task {
+  status?: KanbanStatus;
+}
+
 interface KanbanViewProps {
   tasks: Task[];
   onTaskSelect: (taskId: string) => void;
@@ -32,22 +40,37 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
     return Math.round((completedTodos / task.todos.length) * 100);
   };
 
-  // タスクを進捗率に基づいて分類
+  // タスクのステータスを取得する関数
+  const getTaskStatus = (task: Task): KanbanStatus => {
+    const extendedTask = task as ExtendedTask;
+    // 明示的に設定されたステータスがあればそれを優先
+    if (extendedTask.status) {
+      return extendedTask.status;
+    }
+    
+    // ステータスが設定されていなければ進捗率から判定
+    const progress = calculateProgress(task);
+    if (progress === 0) return 'not-started';
+    if (progress === 100) return 'completed';
+    return 'in-progress';
+  };
+
+  // タスクをステータスに基づいて分類
   const columns: KanbanColumn[] = [
     {
       id: 'not-started',
       title: '未着手',
-      tasks: tasks.filter(task => calculateProgress(task) === 0)
+      tasks: tasks.filter(task => getTaskStatus(task) === 'not-started')
     },
     {
       id: 'in-progress',
       title: '進行中',
-      tasks: tasks.filter(task => calculateProgress(task) > 0 && calculateProgress(task) < 100)
+      tasks: tasks.filter(task => getTaskStatus(task) === 'in-progress')
     },
     {
       id: 'completed',
       title: '完了',
-      tasks: tasks.filter(task => calculateProgress(task) === 100)
+      tasks: tasks.filter(task => getTaskStatus(task) === 'completed')
     }
   ];
 
@@ -61,7 +84,10 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
 
     // タスクのTODOの状態を更新
     const updateTaskStatus = (task: Task, newStatus: string) => {
-      const updatedTask = { ...task };
+      const updatedTask = { ...task } as ExtendedTask;
+      
+      // 明示的にステータスを設定
+      updatedTask.status = newStatus as KanbanStatus;
       
       switch (newStatus) {
         case 'not-started':
@@ -72,16 +98,7 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
           }));
           break;
         case 'in-progress':
-          // 一部のTODOを完了に（まだ完了していない場合）
-          if (calculateProgress(task) === 0) {
-            const firstTodo = task.todos[0];
-            if (firstTodo) {
-              updatedTask.todos = task.todos.map((todo, index) => ({
-                ...todo,
-                completed: index === 0
-              }));
-            }
-          }
+          // 進行中ステータスでは完了状態を変更しない
           break;
         case 'completed':
           // すべてのTODOを完了に
@@ -92,7 +109,7 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
           break;
       }
 
-      return updatedTask;
+      return updatedTask as Task;
     };
 
     // タスクの状態を更新
@@ -103,7 +120,12 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
   // 新規タスク作成
   const handleCreateTask = (task: Task) => {
     // カラムに応じたTODOの状態を設定
-    const updatedTask = { ...task };
+    const updatedTask = { ...task } as ExtendedTask;
+    
+    // 明示的にステータスを設定
+    if (creatingInColumn) {
+      updatedTask.status = creatingInColumn as KanbanStatus;
+    }
     
     if (creatingInColumn === 'completed') {
       // 完了カラムの場合、すべてのTODOを完了状態に設定
@@ -111,15 +133,10 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
         ...todo,
         completed: true
       }));
-    } else if (creatingInColumn === 'in-progress') {
-      // 進行中カラムの場合、一部のTODOを完了状態に設定
-      updatedTask.todos = updatedTask.todos.map((todo, index) => ({
-        ...todo,
-        completed: index === 0
-      }));
     }
+    // 進行中カラムの場合は完了状態を変更しない
 
-    onTaskCreate?.(updatedTask);
+    onTaskCreate?.(updatedTask as Task);
     setIsCreatingTask(false);
     setCreatingInColumn(null);
   };
