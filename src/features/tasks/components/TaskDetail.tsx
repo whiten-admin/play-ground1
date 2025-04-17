@@ -409,6 +409,12 @@ export default function TaskDetail({
     setEditedTask(updatedTask);
     onTaskUpdate?.(updatedTask);
     setNewTodoText('');
+    
+    // 新しく追加したTODOの詳細を開く
+    setExpandedMemos(prev => ({
+      ...prev,
+      [newTodo.id]: true
+    }));
   };
 
   // TODOの削除
