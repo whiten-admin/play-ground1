@@ -544,13 +544,13 @@ function TasksContent({
           onClick={handleCloseTaskDetail}
         >
           <div 
-            className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] flex flex-col"
+            className="bg-white rounded-lg shadow-lg w-full max-w-[85vw] max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex-1 overflow-y-auto relative">
               <button 
                 onClick={handleCloseTaskDetail}
-                className="absolute top-3 right-3 p-2 rounded-full hover:bg-gray-100 z-10"
+                className="absolute top-0 right-0 p-2 rounded-full hover:bg-gray-100 z-10"
                 aria-label="閉じる"
               >
                 <IoClose className="w-5 h-5" />
