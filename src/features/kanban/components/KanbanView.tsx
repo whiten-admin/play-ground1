@@ -3,9 +3,17 @@
 import { Task } from '@/features/tasks/types/task';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { IoAdd } from 'react-icons/io5';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import TaskCreationForm from '@/features/tasks/components/TaskCreationForm';
 import { RiDeleteBin6Line } from 'react-icons/ri';
+import { format } from 'date-fns';
+import { ja } from 'date-fns/locale';
+import { BiTimeFive } from 'react-icons/bi';
+import { AiOutlineCalendar } from 'react-icons/ai';
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
+import { ProjectMember } from '@/features/projects/types/projectMember';
+import { getProjectUsers } from '@/utils/memberUtils';
+import { useFilterContext } from '@/features/tasks/filters/FilterContext';
 
 // カンバンステータス型
 type KanbanStatus = string;
@@ -34,12 +42,25 @@ type CustomColumn = {
   title: string;
 };
 
+// プロジェクトメンバーとユーザー情報を組み合わせた型
+interface MemberWithUser {
+  assigneeId: string; // プロジェクトメンバーID
+  userId: string;     // ユーザーID
+  name: string;       // ユーザー名
+  role: string;       // メンバーのロール
+  isCurrentUser?: boolean; // 現在のユーザーかどうか
+}
+
 export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCreate, projectId }: KanbanViewProps) {
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [creatingInColumn, setCreatingInColumn] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isAddingColumn, setIsAddingColumn] = useState(false);
   const [newColumnTitle, setNewColumnTitle] = useState('');
+  const { getProjectMembers } = useProjectContext();
+  const { currentUserId } = useFilterContext();
+  const [projectMembers, setProjectMembers] = useState<ProjectMember[]>([]);
+  const [projectMemberUsers, setProjectMemberUsers] = useState<MemberWithUser[]>([]);
   
   // デフォルトのカラム定義
   const defaultColumns = [
@@ -50,6 +71,31 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
   
   // カスタムカラムの状態を管理
   const [customColumns, setCustomColumns] = useState<CustomColumn[]>([]);
+
+  // プロジェクトメンバーの読み込み
+  useEffect(() => {
+    if (projectId) {
+      const members = getProjectMembers(projectId);
+      setProjectMembers(members);
+
+      // プロジェクトユーザーを直接取得
+      const projectUsers = getProjectUsers(projectId);
+      
+      // プロジェクトメンバーとユーザー情報を結合
+      const memberUsers: MemberWithUser[] = members.map(member => {
+        const userInfo = projectUsers.find(u => u.id === member.userId);
+        return {
+          assigneeId: member.id,
+          userId: member.userId,
+          name: userInfo ? userInfo.name : '不明なユーザー',
+          role: member.role,
+          isCurrentUser: member.userId === currentUserId
+        };
+      });
+      
+      setProjectMemberUsers(memberUsers);
+    }
+  }, [projectId, getProjectMembers, currentUserId]);
 
   // ローカルストレージからカスタムカラムを読み込み
   useEffect(() => {
@@ -85,6 +131,40 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
     if (task.todos.length === 0) return 0;
     const completedTodos = task.todos.filter(todo => todo.completed).length;
     return Math.round((completedTodos / task.todos.length) * 100);
+  };
+
+  // タスクの合計見積もり工数を計算する関数
+  const calculateTotalEstimatedHours = (task: Task) => {
+    return task.todos.reduce((total, todo) => total + (todo.estimatedHours || 0), 0);
+  };
+
+  // 担当者のアイコン表示に使用するユーザー情報を取得
+  const getUserInfo = (assigneeId: string) => {
+    const member = projectMemberUsers.find(m => m.assigneeId === assigneeId);
+    return member || null;
+  };
+
+  // タスクの担当者リストを取得する関数
+  const getTaskAssignees = (task: Task) => {
+    // タスク内の全TODOからユニークな担当者IDを抽出
+    const assigneeIds = Array.from(new Set(task.todos.map(todo => todo.assigneeId).filter(Boolean)));
+    
+    // 各担当者のユーザー情報を取得
+    return assigneeIds.map(assigneeId => {
+      const memberInfo = getUserInfo(assigneeId);
+      
+      if (memberInfo) {
+        return {
+          id: memberInfo.assigneeId,
+          userId: memberInfo.userId,
+          name: memberInfo.name,
+          role: memberInfo.role
+        };
+      }
+      
+      // プロジェクトメンバーに存在しない場合
+      return { id: assigneeId, userId: '', name: '未アサイン', role: 'member' };
+    });
   };
 
   // タスクのステータスを取得する関数
@@ -221,6 +301,34 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
     setCustomColumns(customColumns.filter(c => c.id !== columnId));
   };
 
+  // 日付フォーマット
+  const formatDate = (date: Date) => {
+    try {
+      if (!(date instanceof Date) && date) {
+        date = new Date(date);
+      }
+      return format(date, 'MM/dd (E)', { locale: ja });
+    } catch (error) {
+      return '日付不明';
+    }
+  };
+
+  // ユーザーの頭文字を取得する
+  const getUserInitial = (name: string) => {
+    return name ? name.charAt(0) : '?';
+  };
+
+  // メンバーロールに基づいた色を取得
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'manager':
+        return 'bg-blue-500';
+      case 'member':
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
   return (
     <div className="h-full overflow-x-auto">
       <DragDropContext onDragEnd={handleDragEnd}>
@@ -229,7 +337,7 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
           {columns.map(column => (
             <div
               key={column.id}
-              className="w-40 flex flex-col bg-gray-100 rounded-lg"
+              className="w-60 flex flex-col bg-gray-100 rounded-lg"
             >
               <h3 className="font-medium text-gray-700 p-3 pb-2 flex items-center justify-between">
                 <span className="flex-1 truncate">{column.title}</span>
@@ -274,28 +382,63 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
                                 : 'hover:shadow-md'
                             }`}
                           >
-                            <div className="flex items-center justify-between mb-1.5">
-                              <h4 className="font-medium text-gray-800 text-sm">{task.title}</h4>
-                              <span className="text-xs text-gray-500">
-                                {calculateProgress(task)}%
-                              </span>
+                            {/* タスク名 */}
+                            <h4 className="font-medium text-gray-800 text-sm mb-2 line-clamp-2">{task.title}</h4>
+                            
+                            <div className="flex flex-col gap-1.5 text-xs">
+                              {/* 工数 */}
+                              <div className="flex items-center text-gray-600">
+                                <BiTimeFive className="mr-1 text-gray-400" />
+                                <span>{calculateTotalEstimatedHours(task)}時間</span>
+                              </div>
+                              
+                              {/* 期日 */}
+                              <div className="flex items-center text-gray-600">
+                                <AiOutlineCalendar className="mr-1 text-gray-400" />
+                                <span>{formatDate(task.dueDate)}</span>
+                              </div>
                             </div>
-                            <p className="text-xs text-gray-600 line-clamp-2 mb-1.5">
-                              {task.description}
-                            </p>
-                            <div className="flex items-center gap-1.5">
-                              <div className="flex-1 h-1.5 bg-gray-200 rounded-full">
+                            
+                            {/* 進捗バーとパーセント */}
+                            <div className="mt-2 mb-2">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs text-gray-500">進捗</span>
+                                <span className="text-xs font-medium text-blue-600">
+                                  {calculateProgress(task)}%
+                                </span>
+                              </div>
+                              <div className="w-full h-1.5 bg-gray-200 rounded-full">
                                 <div
-                                  className="h-full rounded-full"
+                                  className="h-full rounded-full bg-blue-500"
                                   style={{
                                     width: `${calculateProgress(task)}%`,
-                                    background: `linear-gradient(to right, rgb(219, 234, 254), rgb(37, 99, 235))`
                                   }}
                                 />
                               </div>
-                              <span className="text-xs text-gray-500">
-                                {task.todos.filter(todo => todo.completed).length}/{task.todos.length}
-                              </span>
+                            </div>
+                            
+                            {/* 担当者 */}
+                            <div className="flex items-center mt-2 overflow-hidden">
+                              {getTaskAssignees(task).length > 0 ? (
+                                <div className="flex -space-x-2 overflow-hidden">
+                                  {getTaskAssignees(task).slice(0, 3).map((member, i) => (
+                                    <div 
+                                      key={`${member.id}-${i}`}
+                                      className={`flex-shrink-0 h-6 w-6 rounded-full ${getRoleColor(member.role)} text-white flex items-center justify-center text-xs font-medium border-2 border-white`}
+                                      title={member.name}
+                                    >
+                                      {getUserInitial(member.name)}
+                                    </div>
+                                  ))}
+                                  {getTaskAssignees(task).length > 3 && (
+                                    <div className="flex-shrink-0 h-6 w-6 rounded-full bg-gray-300 text-gray-700 flex items-center justify-center text-xs font-medium border-2 border-white">
+                                      +{getTaskAssignees(task).length - 3}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-gray-400 italic">未アサイン</span>
+                              )}
                             </div>
                           </div>
                         )}
@@ -320,7 +463,7 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
             </div>
           ))}
           {/* 新しいステータス追加カラム */}
-          <div className="w-40 flex flex-col bg-gray-50 rounded-lg border-dashed border-2 border-gray-200 max-h-[50vh]">
+          <div className="w-60 flex flex-col bg-gray-50 rounded-lg border-dashed border-2 border-gray-200 max-h-[50vh]">
             <h3 className="font-medium text-gray-700 p-3 pb-2">新しいステータス</h3>
             
             <div className="flex-1 p-2">
