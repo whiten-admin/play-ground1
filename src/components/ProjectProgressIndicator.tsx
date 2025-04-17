@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTaskContext } from '@/features/tasks/contexts/TaskContext';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
-import { IoSearch, IoClose } from 'react-icons/io5';
+import { IoClose } from 'react-icons/io5';
 import {
   calculateProgressPercentage,
   calculateDelayHours,
@@ -30,6 +30,11 @@ export default function ProjectProgressIndicator({ compact = true }: ProjectProg
   const riskLevelText = getRiskLevelText(riskLevel);
   const riskLevelColorClass = getRiskLevelColorClass(riskLevel);
 
+  // リスクが高いか遅延時間が20時間以上の場合、アニメーションを適用
+  const isHighAlert = riskLevel === 'high' || delayHours >= 20;
+  const borderAnimationClass = isHighAlert ? 'animate-border-gradient' : '';
+  const bgColorClass = isHighAlert ? 'bg-red-50' : 'bg-gray-50';
+
   // モーダルを開く関数
   const openDetailModal = () => {
     setShowDetailModal(true);
@@ -44,7 +49,11 @@ export default function ProjectProgressIndicator({ compact = true }: ProjectProg
     // ヘッダー用のコンパクト表示
     return (
       <>
-        <div className="flex items-center gap-2 text-xs bg-gray-50 rounded-md py-1 px-2 border border-gray-200">
+        <div 
+          className={`flex items-center gap-2 text-xs ${bgColorClass} rounded-md py-1 px-2 border border-gray-200 relative ${isHighAlert ? 'gradient-border' : ''} cursor-pointer hover:opacity-90 transition-opacity`}
+          onClick={openDetailModal}
+          title="詳細を表示"
+        >
           <div className="flex items-center gap-1">
             <span className="text-gray-600">進捗:</span>
             <span className="font-medium">{progressPercentage}%</span>
@@ -67,14 +76,6 @@ export default function ProjectProgressIndicator({ compact = true }: ProjectProg
               {riskLevelText}
             </span>
           </div>
-          
-          <button 
-            onClick={openDetailModal}
-            className="ml-1 text-gray-500 hover:text-gray-700 p-0.5 rounded-full hover:bg-gray-200 transition-colors"
-            title="詳細を表示"
-          >
-            <IoSearch size={14} />
-          </button>
         </div>
 
         {/* 詳細モーダル */}
@@ -190,7 +191,10 @@ export default function ProjectProgressIndicator({ compact = true }: ProjectProg
 
   // 詳細表示バージョン（将来的に必要になった場合）
   return (
-    <div className="flex flex-col gap-2 p-3 bg-white rounded-lg shadow">
+    <div 
+      className={`flex flex-col gap-2 p-3 ${isHighAlert ? 'bg-red-50' : 'bg-white'} rounded-lg shadow ${isHighAlert ? 'gradient-border' : ''} cursor-pointer hover:opacity-90 transition-opacity`}
+      onClick={openDetailModal}
+    >
       <h3 className="font-medium text-sm text-gray-700">プロジェクト進捗状況</h3>
       
       <div className="flex items-center gap-4">
