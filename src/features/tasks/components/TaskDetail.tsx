@@ -29,6 +29,8 @@ import { FaClock } from 'react-icons/fa';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
+import UserAvatarGroup from '@/components/ui/UserAvatarGroup';
+import { FiUsers } from 'react-icons/fi';
 
 type ViewMode = 'list' | 'kanban' | 'gantt';
 
@@ -939,14 +941,17 @@ export default function TaskDetail({
               <>
                 <div className="flex-1">
                   <div className="flex items-center mb-2">
-                    <input
-                      type="text"
-                      value={editedTask?.title}
-                      onChange={handleTitleChange}
-                      className="text-xl font-bold text-gray-800 w-full border-b border-gray-300 focus:border-blue-500 focus:outline-none"
-                      placeholder="タスクのタイトルを入力"
-                      aria-label="タスクのタイトル"
-                    />
+                    <div className="flex items-center">
+                      <span className="text-gray-400 text-sm mr-1">#{selectedTask.id}</span>
+                      <input
+                        type="text"
+                        value={editedTask?.title}
+                        onChange={handleTitleChange}
+                        className="text-xl font-bold text-gray-800 w-full border-b border-gray-300 focus:border-blue-500 focus:outline-none"
+                        placeholder="タスクのタイトルを入力"
+                        aria-label="タスクのタイトル"
+                      />
+                    </div>
                     <button
                       onClick={() => handleSave('title')}
                       className="ml-2 p-1 text-green-600 hover:text-green-700"
@@ -984,6 +989,7 @@ export default function TaskDetail({
               <>
                 <div className="flex-1">
                   <div className="flex items-center">
+                    <span className="text-gray-400 text-sm mr-1">#{selectedTask.id}</span>
                     <h2 className="text-xl font-bold text-gray-800">
                       {selectedTask.title}
                     </h2>
@@ -1018,9 +1024,8 @@ export default function TaskDetail({
           </div>
 
           <div className="flex flex-wrap gap-4 mt-2">
-            <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-md border border-gray-100">
-              <FaClock className="text-gray-500" />
-              <span className="font-medium text-gray-700">期日:</span>
+            <div className="flex items-center gap-2 px-2 bg-gray-50 rounded-md">
+              <span className="font-medium text-sm text-gray-700">期日:</span>
               {selectedTask.todos.length > 0 ? (
                 <input
                   type="date"
@@ -1087,9 +1092,8 @@ export default function TaskDetail({
               )}
             </div>
 
-            <div className="p-2 bg-gray-50 rounded-md border border-gray-100 flex items-center">
-              <IoBarChart className="text-gray-500 mr-2" />
-              <span className="text-gray-500 mr-2 font-medium">予定工数:</span>
+            <div className="px-2 bg-gray-50 rounded-md flex items-center">
+              <span className="text-gray-500 mr-2 font-medium text-sm">予定工数:</span>
               <div className="text-sm text-gray-700 font-medium">
                 {selectedTask.todos.reduce(
                   (total, todo) => total + todo.estimatedHours,
@@ -1099,8 +1103,10 @@ export default function TaskDetail({
               </div>
             </div>
 
-            <div className="p-2 bg-gray-50 rounded-md border border-gray-100 flex items-center">
-              <span className="text-gray-500 mr-2 font-medium">担当:</span>
+            <div className="px-2 bg-gray-50 rounded-md flex items-center">
+              <span className="text-gray-500 mr-2 font-medium text-sm flex items-center">
+                担当:
+              </span>
               <div className="text-sm text-gray-700">
                 {(() => {
                   // タスクの担当者を子TODOから計算
@@ -1111,11 +1117,16 @@ export default function TaskDetail({
                     }
                   });
                   const assigneeIdArray = Array.from(assigneeIds);
-                  return assigneeIdArray.length > 0
-                    ? assigneeIdArray
-                        .map((id) => getProjectMemberName(id))
-                        .join(', ')
-                    : '担当者なし';
+                  return assigneeIdArray.length > 0 ? (
+                    <UserAvatarGroup
+                      assigneeIds={assigneeIdArray}
+                      size="sm"
+                      showTooltip={true}
+                      maxAvatars={5}
+                    />
+                  ) : (
+                    '担当者なし'
+                  );
                 })()}
               </div>
             </div>
