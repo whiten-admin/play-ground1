@@ -31,6 +31,7 @@ import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import UserAvatarGroup from '@/components/ui/UserAvatarGroup';
+import UserAvatar from '@/components/ui/UserAvatar';
 import { FiUsers } from 'react-icons/fi';
 
 type ViewMode = 'list' | 'kanban' | 'gantt';
@@ -49,6 +50,7 @@ interface EditState {
   title: boolean;
   description: boolean;
   todos: { [key: string]: boolean };
+  assigneeDropdown?: { [key: string]: boolean };
 }
 
 // APIの使用回数を取得する関数をインポート
@@ -151,6 +153,7 @@ export default function TaskDetail({
     title: false,
     description: false,
     todos: {},
+    assigneeDropdown: {},
   });
   const [editedTask, setEditedTask] = useState<Task | null>(null);
   const [newTodoText, setNewTodoText] = useState('');
@@ -204,6 +207,7 @@ export default function TaskDetail({
   const [memoHeights, setMemoHeights] = useState<{ [key: string]: number }>({});
   const memoRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+  const assigneeDropdownRef = useRef<{[key: string]: HTMLDivElement | null}>({});
 
   // フィルタリングコンテキストを使用
   const { selectedUserIds, showUnassigned } = useFilterContext();
@@ -983,6 +987,105 @@ export default function TaskDetail({
     setStatusDropdownOpen(false);
   };
 
+  // ドロップダウンの外側をクリックしたときに閉じる
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      Object.entries(assigneeDropdownRef.current).forEach(([todoId, element]) => {
+        if (element && !element.contains(event.target as Node) && editState.assigneeDropdown?.[todoId]) {
+          setEditState(prev => ({
+            ...prev,
+            assigneeDropdown: {
+              ...prev.assigneeDropdown || {},
+              [todoId]: false
+            }
+          }));
+        }
+      });
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [editState.assigneeDropdown]);
+
+  // 担当者UIコンポーネント（編集モード・通常モード共通）
+  const renderAssigneeUI = (todo: Todo) => {
+    return (
+      <div className="flex items-center">
+        <span className="mr-1">担当:</span>
+        <div className="relative" ref={el => assigneeDropdownRef.current[todo.id] = el}>
+          <div 
+            onClick={() => {
+              setEditState(prev => ({
+                ...prev,
+                assigneeDropdown: {
+                  ...prev.assigneeDropdown || {},
+                  [todo.id]: !prev.assigneeDropdown?.[todo.id]
+                }
+              }));
+            }}
+            className="cursor-pointer"
+          >
+            {todo.assigneeId ? (
+              <UserAvatar
+                assigneeId={todo.assigneeId}
+                size="sm"
+                showTooltip={true}
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs">
+                未
+              </div>
+            )}
+          </div>
+          {editState.assigneeDropdown?.[todo.id] && (
+            <div className="absolute top-full left-0 mt-1 z-10 min-w-[180px]">
+              <ProjectMemberAssignSelect
+                assigneeId={todo.assigneeId}
+                onAssigneeChange={(newAssigneeId) => {
+                  if (!selectedTask) return;
+                  
+                  // TODOの担当者を更新
+                  const updatedTodo = {
+                    ...todo,
+                    assigneeId: newAssigneeId,
+                  };
+
+                  // タスクのTODOリストを更新
+                  const updatedTodos = selectedTask.todos.map(
+                    (t) => (t.id === todo.id ? updatedTodo : t)
+                  );
+
+                  // 全体のタスク情報を更新
+                  const updatedTask: Task = {
+                    ...selectedTask,
+                    todos: updatedTodos,
+                  };
+
+                  if (editedTask) {
+                    setEditedTask(updatedTask);
+                  }
+                  onTaskUpdate?.(updatedTask);
+                  
+                  // ドロップダウンを閉じる
+                  setEditState(prev => ({
+                    ...prev,
+                    assigneeDropdown: {
+                      ...prev.assigneeDropdown || {},
+                      [todo.id]: false
+                    }
+                  }));
+                }}
+                size="sm"
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   // メイン部分のレンダリング関数
   const renderContent = () => {
     if (!selectedTask) {
@@ -1499,34 +1602,7 @@ export default function TaskDetail({
                             </div>
                           </div>
                           <div className="flex items-center">
-                            <span className="mr-1">担当:</span>
-                            <ProjectMemberAssignSelect
-                              assigneeId={todo.assigneeId}
-                              onAssigneeChange={(newAssigneeId) => {
-                                // TODOの担当者を更新
-                                const updatedTodo = {
-                                  ...todo,
-                                  assigneeId: newAssigneeId,
-                                };
-
-                                // タスクのTODOリストを更新
-                                const updatedTodos = selectedTask.todos.map(
-                                  (t) => (t.id === todo.id ? updatedTodo : t)
-                                );
-
-                                // 全体のタスク情報を更新
-                                const updatedTask = {
-                                  ...selectedTask,
-                                  todos: updatedTodos,
-                                };
-
-                                if (editedTask) {
-                                  setEditedTask(updatedTask);
-                                }
-                                onTaskUpdate?.(updatedTask);
-                              }}
-                              size="sm"
-                            />
+                            {renderAssigneeUI(todo)}
                           </div>
                         </div>
                         {/* メモ欄を常に表示 */}
@@ -1708,34 +1784,7 @@ export default function TaskDetail({
                             </div>
                           </div>
                           <div className="flex items-center">
-                            <span className="mr-1">担当:</span>
-                            <ProjectMemberAssignSelect
-                              assigneeId={todo.assigneeId}
-                              onAssigneeChange={(newAssigneeId) => {
-                                // TODOの担当者を更新
-                                const updatedTodo = {
-                                  ...todo,
-                                  assigneeId: newAssigneeId,
-                                };
-
-                                // タスクのTODOリストを更新
-                                const updatedTodos = selectedTask.todos.map(
-                                  (t) => (t.id === todo.id ? updatedTodo : t)
-                                );
-
-                                // 全体のタスク情報を更新
-                                const updatedTask = {
-                                  ...selectedTask,
-                                  todos: updatedTodos,
-                                };
-
-                                if (editedTask) {
-                                  setEditedTask(updatedTask);
-                                }
-                                onTaskUpdate?.(updatedTask);
-                              }}
-                              size="sm"
-                            />
+                            {renderAssigneeUI(todo)}
                           </div>
                         </div>
                         {/* 非編集モードでもメモ欄を常に表示 */}
