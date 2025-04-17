@@ -2,6 +2,7 @@
 
 import { useTaskContext } from '@/features/tasks/contexts/TaskContext';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
+import { useFilterContext } from '@/features/tasks/filters/FilterContext';
 import { useEffect, useRef, useState } from 'react';
 import { IoAdd, IoBulb, IoTrash } from 'react-icons/io5';
 import { Task, Todo } from '@/features/tasks/types/task';
@@ -25,6 +26,7 @@ const getDatePosition = (date: Date, startDate: Date) => {
 export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdate, projectId }: GanttChartViewProps) {
   const { tasks } = useTaskContext();
   const { currentProject } = useProjectContext();
+  const { selectedUserIds, showUnassigned } = useFilterContext();
   const containerRef = useRef<HTMLDivElement>(null);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [newTask, setNewTask] = useState<Partial<Task>>({
@@ -58,8 +60,33 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
     });
   };
 
-  // ソートされたタスクリスト
-  const sortedTasks = sortTasksByStartDate(tasks);
+  // メンバーフィルターを適用する
+  const filterTasksByMembers = (tasksToFilter: Task[]): Task[] => {
+    return tasksToFilter.filter((task) => {
+      // 各タスクのTODOから担当者リストを作成
+      const taskAssignees = new Set<string>();
+      task.todos.forEach((todo) => {
+        if (todo.assigneeId) {
+          taskAssignees.add(todo.assigneeId);
+        }
+      });
+
+      // アサインされていないタスクを表示するかどうか
+      if (showUnassigned && taskAssignees.size === 0) {
+        return true;
+      }
+
+      // 選択されたユーザーのタスクを表示
+      if (Array.from(taskAssignees).some((id) => selectedUserIds.includes(id))) {
+        return true;
+      }
+
+      return false;
+    });
+  };
+
+  // ソート＆フィルタリングされたタスクリスト
+  const filteredAndSortedTasks = sortTasksByStartDate(filterTasksByMembers(tasks));
 
   const getDaysBetween = (startDate: Date, endDate: Date) => {
     return Math.ceil(
@@ -513,7 +540,7 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
     console.log('GanttChart: toggleTodoStatus called with:', { taskId, todoId });
     
     // タスクを検索
-    const task = sortedTasks.find(t => t.id === taskId);
+    const task = filteredAndSortedTasks.find(t => t.id === taskId);
     if (!task) {
       console.log('GanttChart: Task not found:', taskId);
       return;
@@ -546,7 +573,7 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
             <span>タスク</span>
           </div>
           {/* タスク一覧 */}
-          {sortedTasks.map((task) => (
+          {filteredAndSortedTasks.map((task) => (
             <div key={task.id} className="border-b">
               {/* 親タスク */}
               <div 
@@ -636,7 +663,7 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
               />
 
               {/* タスクのガントチャート */}
-              {sortedTasks.map((task) => (
+              {filteredAndSortedTasks.map((task) => (
                 <div key={task.id}>
                   {/* 親タスク */}
                   <div className="h-8 relative bg-gray-50">
