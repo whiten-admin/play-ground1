@@ -3,11 +3,12 @@
 import { Task } from '@/features/tasks/types/task';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { IoAdd } from 'react-icons/io5';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import TaskCreationForm from '@/features/tasks/components/TaskCreationForm';
+import { RiDeleteBin6Line } from 'react-icons/ri';
 
 // カンバンステータス型
-type KanbanStatus = 'not-started' | 'in-progress' | 'completed';
+type KanbanStatus = string;
 
 // 拡張したTask型（status属性を追加）
 interface ExtendedTask extends Task {
@@ -28,10 +29,56 @@ type KanbanColumn = {
   tasks: Task[];
 };
 
+type CustomColumn = {
+  id: string;
+  title: string;
+};
+
 export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCreate, projectId }: KanbanViewProps) {
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [creatingInColumn, setCreatingInColumn] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isAddingColumn, setIsAddingColumn] = useState(false);
+  const [newColumnTitle, setNewColumnTitle] = useState('');
+  
+  // デフォルトのカラム定義
+  const defaultColumns = [
+    { id: 'not-started', title: '未着手' },
+    { id: 'in-progress', title: '進行中' },
+    { id: 'completed', title: '完了' }
+  ];
+  
+  // カスタムカラムの状態を管理
+  const [customColumns, setCustomColumns] = useState<CustomColumn[]>([]);
+
+  // ローカルストレージからカスタムカラムを読み込み
+  useEffect(() => {
+    const loadCustomColumns = () => {
+      if (typeof window === 'undefined') return; // SSR対応
+      
+      try {
+        const savedColumns = localStorage.getItem(`kanban-columns-${projectId}`);
+        if (savedColumns) {
+          setCustomColumns(JSON.parse(savedColumns));
+        }
+      } catch (error) {
+        console.error('カスタムカラムの読み込みに失敗しました:', error);
+      }
+    };
+    
+    loadCustomColumns();
+  }, [projectId]);
+
+  // カスタムカラムが変更されたらローカルストレージに保存
+  useEffect(() => {
+    if (typeof window === 'undefined') return; // SSR対応
+    
+    try {
+      localStorage.setItem(`kanban-columns-${projectId}`, JSON.stringify(customColumns));
+    } catch (error) {
+      console.error('カスタムカラムの保存に失敗しました:', error);
+    }
+  }, [customColumns, projectId]);
 
   // 進捗率を計算する関数
   const calculateProgress = (task: Task) => {
@@ -55,24 +102,15 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
     return 'in-progress';
   };
 
+  // 全てのカラム（デフォルト + カスタム）
+  const allColumns = [...defaultColumns, ...customColumns];
+
   // タスクをステータスに基づいて分類
-  const columns: KanbanColumn[] = [
-    {
-      id: 'not-started',
-      title: '未着手',
-      tasks: tasks.filter(task => getTaskStatus(task) === 'not-started')
-    },
-    {
-      id: 'in-progress',
-      title: '進行中',
-      tasks: tasks.filter(task => getTaskStatus(task) === 'in-progress')
-    },
-    {
-      id: 'completed',
-      title: '完了',
-      tasks: tasks.filter(task => getTaskStatus(task) === 'completed')
-    }
-  ];
+  const columns: KanbanColumn[] = allColumns.map(column => ({
+    id: column.id,
+    title: column.title,
+    tasks: tasks.filter(task => getTaskStatus(task) === column.id)
+  }));
 
   // ドラッグ終了時の処理
   const handleDragEnd = (result: any) => {
@@ -87,27 +125,23 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
       const updatedTask = { ...task } as ExtendedTask;
       
       // 明示的にステータスを設定
-      updatedTask.status = newStatus as KanbanStatus;
+      updatedTask.status = newStatus;
       
-      switch (newStatus) {
-        case 'not-started':
-          // すべてのTODOを未完了に
-          updatedTask.todos = task.todos.map(todo => ({
-            ...todo,
-            completed: false
-          }));
-          break;
-        case 'in-progress':
-          // 進行中ステータスでは完了状態を変更しない
-          break;
-        case 'completed':
-          // すべてのTODOを完了に
-          updatedTask.todos = task.todos.map(todo => ({
-            ...todo,
-            completed: true
-          }));
-          break;
+      // デフォルトステータスの場合、特定の処理を適用
+      if (newStatus === 'not-started') {
+        // すべてのTODOを未完了に
+        updatedTask.todos = task.todos.map(todo => ({
+          ...todo,
+          completed: false
+        }));
+      } else if (newStatus === 'completed') {
+        // すべてのTODOを完了に
+        updatedTask.todos = task.todos.map(todo => ({
+          ...todo,
+          completed: true
+        }));
       }
+      // カスタムステータスやin-progressステータスでは完了状態を変更しない
 
       return updatedTask as Task;
     };
@@ -124,37 +158,96 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
     
     // 明示的にステータスを設定
     if (creatingInColumn) {
-      updatedTask.status = creatingInColumn as KanbanStatus;
+      updatedTask.status = creatingInColumn;
     }
     
+    // デフォルトステータスの特別処理
     if (creatingInColumn === 'completed') {
       // 完了カラムの場合、すべてのTODOを完了状態に設定
       updatedTask.todos = updatedTask.todos.map(todo => ({
         ...todo,
         completed: true
       }));
+    } else if (creatingInColumn === 'not-started') {
+      // 未着手カラムの場合、すべてのTODOを未完了状態に設定
+      updatedTask.todos = updatedTask.todos.map(todo => ({
+        ...todo,
+        completed: false
+      }));
     }
-    // 進行中カラムの場合は完了状態を変更しない
+    // その他のカラムの場合は完了状態を変更しない
 
     onTaskCreate?.(updatedTask as Task);
     setIsCreatingTask(false);
     setCreatingInColumn(null);
   };
 
+  // 新しいカラム追加
+  const handleAddColumn = () => {
+    if (!newColumnTitle.trim()) return;
+    
+    // IDを生成（タイトルをスネークケースに変換）
+    const columnId = newColumnTitle.trim().toLowerCase().replace(/\s+/g, '-');
+    
+    // すでに同じIDまたはタイトルが存在する場合はエラー
+    if (allColumns.some(c => c.id === columnId || c.title === newColumnTitle.trim())) {
+      setErrorMessage('同じ名前のステータスがすでに存在します');
+      return;
+    }
+    
+    const newColumn: CustomColumn = { id: columnId, title: newColumnTitle.trim() };
+    setCustomColumns([...customColumns, newColumn]);
+    setNewColumnTitle('');
+    setIsAddingColumn(false);
+    setErrorMessage(null);
+  };
+
+  // カスタムカラム削除
+  const handleDeleteColumn = (columnId: string) => {
+    // デフォルトカラムは削除できない
+    if (defaultColumns.some(c => c.id === columnId)) return;
+    
+    // このカラムのタスクを「未着手」に移動
+    if (tasks.some(task => getTaskStatus(task) === columnId) && onTaskUpdate) {
+      tasks.forEach(task => {
+        if (getTaskStatus(task) === columnId) {
+          const updatedTask = { ...task } as ExtendedTask;
+          updatedTask.status = 'not-started';
+          onTaskUpdate(updatedTask as Task);
+        }
+      });
+    }
+    
+    setCustomColumns(customColumns.filter(c => c.id !== columnId));
+  };
+
   return (
     <div className="h-full overflow-x-auto">
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="flex gap-4 min-w-max h-full p-4">
+        <div className="flex gap-4 min-w-max h-full px-2">
+          {/* タスクカラム */}
           {columns.map(column => (
             <div
               key={column.id}
               className="w-40 flex flex-col bg-gray-100 rounded-lg"
             >
               <h3 className="font-medium text-gray-700 p-3 pb-2 flex items-center justify-between">
-                {column.title}
-                <span className="text-sm text-gray-500">
-                  {column.tasks.length}件
-                </span>
+                <span className="flex-1 truncate">{column.title}</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-sm text-gray-500">
+                    {column.tasks.length}件
+                  </span>
+                  {/* デフォルト以外のカラムは削除可能 */}
+                  {!defaultColumns.some(c => c.id === column.id) && (
+                    <button
+                      onClick={() => handleDeleteColumn(column.id)}
+                      className="p-1 text-gray-400 hover:text-red-500 rounded-full hover:bg-gray-200"
+                      title="このステータスを削除"
+                    >
+                      <RiDeleteBin6Line className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </h3>
               <Droppable droppableId={column.id}>
                 {(provided) => (
@@ -226,6 +319,54 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
               </Droppable>
             </div>
           ))}
+          {/* 新しいステータス追加カラム */}
+          <div className="w-40 flex flex-col bg-gray-50 rounded-lg border-dashed border-2 border-gray-200 max-h-[50vh]">
+            <h3 className="font-medium text-gray-700 p-3 pb-2">新しいステータス</h3>
+            
+            <div className="flex-1 p-2">
+              {isAddingColumn ? (
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={newColumnTitle}
+                    onChange={(e) => setNewColumnTitle(e.target.value)}
+                    placeholder="ステータス名"
+                    className="w-full p-2 text-sm border rounded"
+                    autoFocus
+                  />
+                  {errorMessage && (
+                    <p className="text-xs text-red-500">{errorMessage}</p>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleAddColumn}
+                      className="flex-1 p-1 text-xs bg-blue-500 text-white rounded"
+                    >
+                      追加
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsAddingColumn(false);
+                        setNewColumnTitle('');
+                        setErrorMessage(null);
+                      }}
+                      className="flex-1 p-1 text-xs bg-gray-200 rounded"
+                    >
+                      キャンセル
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setIsAddingColumn(true)}
+                  className="w-full h-full p-2 text-sm text-gray-500 hover:text-gray-700 flex items-center justify-center gap-1 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <IoAdd className="w-5 h-5" />
+                  ステータス追加
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </DragDropContext>
       
@@ -239,9 +380,7 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
           onTaskCreate={handleCreateTask}
           projectId={projectId}
           title={`新しいタスクを作成${
-            creatingInColumn === 'not-started' ? ' (未着手)' :
-            creatingInColumn === 'in-progress' ? ' (進行中)' :
-            creatingInColumn === 'completed' ? ' (完了)' : ''
+            creatingInColumn ? ` (${columns.find(c => c.id === creatingInColumn)?.title || ''})` : ''
           }`}
         />
       )}
