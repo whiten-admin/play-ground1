@@ -1,5 +1,15 @@
 import { User } from './user';
 
+// ステータスの型定義
+export type TaskStatus = string;
+
+// ステータスの色情報を定義する型
+export interface StatusColor {
+  bgColor: string;  // 背景色のCSSクラス
+  textColor: string; // テキスト色のCSSクラス
+  borderColor: string; // 境界線色のCSSクラス
+}
+
 export interface Todo {
   id: string;
   text: string;
@@ -22,6 +32,8 @@ export interface Task {
   completedDateTime?: Date; // 完了日時
   todos: Todo[];
   projectId: string; // タスクが属するプロジェクトのID
+  status?: TaskStatus; // タスクのステータス
+  statusColor?: StatusColor; // ステータスに関連する色情報
 }
 
 export interface Project {

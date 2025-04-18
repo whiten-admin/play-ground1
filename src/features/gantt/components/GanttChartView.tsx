@@ -2,6 +2,7 @@
 
 import { useTaskContext } from '@/features/tasks/contexts/TaskContext';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
+import { useFilterContext } from '@/features/tasks/filters/FilterContext';
 import { useEffect, useRef, useState } from 'react';
 import { IoAdd, IoBulb, IoTrash } from 'react-icons/io5';
 import { Task, Todo } from '@/features/tasks/types/task';
@@ -13,6 +14,7 @@ interface GanttChartViewProps {
   onTaskSelect: (taskId: string) => void;
   onTaskUpdate?: (updatedTask: Task) => void;
   projectId?: string;
+  showCompletedTasks?: boolean;
 }
 
 // 日付の位置を計算するユーティリティ関数
@@ -22,9 +24,10 @@ const getDatePosition = (date: Date, startDate: Date) => {
   );
 };
 
-export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdate, projectId }: GanttChartViewProps) {
+export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdate, projectId, showCompletedTasks = true }: GanttChartViewProps) {
   const { tasks } = useTaskContext();
   const { currentProject } = useProjectContext();
+  const { selectedUserIds, showUnassigned } = useFilterContext();
   const containerRef = useRef<HTMLDivElement>(null);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [newTask, setNewTask] = useState<Partial<Task>>({
@@ -58,8 +61,57 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
     });
   };
 
-  // ソートされたタスクリスト
-  const sortedTasks = sortTasksByStartDate(tasks);
+  // 進捗率を計算する関数
+  const calculateProgress = (todos: Todo[]) => {
+    if (todos.length === 0) return 0;
+    const totalHours = todos.reduce((sum, todo) => sum + todo.estimatedHours, 0);
+    const completedHours = todos
+      .filter(todo => todo.completed)
+      .reduce((sum, todo) => sum + todo.estimatedHours, 0);
+    return Math.round((completedHours / totalHours) * 100);
+  };
+
+  // メンバーフィルターを適用する
+  const filterTasksByMembers = (tasksToFilter: Task[]): Task[] => {
+    return tasksToFilter.filter((task) => {
+      // 各タスクのTODOから担当者リストを作成
+      const taskAssignees = new Set<string>();
+      task.todos.forEach((todo) => {
+        if (todo.assigneeId) {
+          taskAssignees.add(todo.assigneeId);
+        }
+      });
+
+      // アサインされていないタスクを表示するかどうか
+      if (showUnassigned && taskAssignees.size === 0) {
+        return true;
+      }
+
+      // 選択されたユーザーのタスクを表示
+      if (Array.from(taskAssignees).some((id) => selectedUserIds.includes(id))) {
+        return true;
+      }
+
+      return false;
+    });
+  };
+
+  // 完了済みタスクをフィルタリングする
+  const filterCompletedTasks = (tasksToFilter: Task[]): Task[] => {
+    if (showCompletedTasks) {
+      return tasksToFilter; // 完了済みタスクを表示する場合はフィルタリングしない
+    }
+    
+    // 進捗率100%のタスクを除外
+    return tasksToFilter.filter(task => calculateProgress(task.todos) < 100);
+  };
+
+  // ソート＆フィルタリングされたタスクリスト
+  const filteredAndSortedTasks = sortTasksByStartDate(
+    filterCompletedTasks(
+      filterTasksByMembers(tasks)
+    )
+  );
 
   const getDaysBetween = (startDate: Date, endDate: Date) => {
     return Math.ceil(
@@ -513,7 +565,7 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
     console.log('GanttChart: toggleTodoStatus called with:', { taskId, todoId });
     
     // タスクを検索
-    const task = sortedTasks.find(t => t.id === taskId);
+    const task = filteredAndSortedTasks.find(t => t.id === taskId);
     if (!task) {
       console.log('GanttChart: Task not found:', taskId);
       return;
@@ -546,7 +598,7 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
             <span>タスク</span>
           </div>
           {/* タスク一覧 */}
-          {sortedTasks.map((task) => (
+          {filteredAndSortedTasks.map((task) => (
             <div key={task.id} className="border-b">
               {/* 親タスク */}
               <div 
@@ -636,7 +688,7 @@ export default function GanttChartView({ onTaskCreate, onTaskSelect, onTaskUpdat
               />
 
               {/* タスクのガントチャート */}
-              {sortedTasks.map((task) => (
+              {filteredAndSortedTasks.map((task) => (
                 <div key={task.id}>
                   {/* 親タスク */}
                   <div className="h-8 relative bg-gray-50">
@@ -689,17 +741,57 @@ const TaskBar = ({ task, calendarRange }: { task: Task; calendarRange: { totalDa
   const totalTodos = task.todos.length;
   const progress = totalTodos > 0 ? (completedTodos / totalTodos) * 100 : 0;
 
+  // ステータスに基づく色を取得
+  let barColor = 'bg-blue-100';
+  let progressBarColor = 'bg-blue-500';
+  let borderColor = 'border-blue-200';
+  
+  // ステータスに応じた色情報を取得
+  if (task.status) {
+    // ステータスカラーマッピング
+    const statusColorMap: { [key: string]: { bgColor: string; textColor: string; borderColor: string } } = {
+      'not-started': { bgColor: 'bg-yellow-200', textColor: 'text-yellow-800', borderColor: 'border-yellow-300' },
+      'in-progress': { bgColor: 'bg-blue-200', textColor: 'text-blue-800', borderColor: 'border-blue-300' },
+      'completed': { bgColor: 'bg-gray-200', textColor: 'text-gray-800', borderColor: 'border-gray-300' },
+      // 他のステータスもここに追加
+    };
+    
+    // 設定されたステータスに対応する色情報を取得
+    const statusColor = statusColorMap[task.status];
+    if (statusColor) {
+      barColor = statusColor.bgColor;
+      borderColor = statusColor.borderColor;
+      
+      // プログレスバーの色を基本色から取得
+      const baseColor = barColor.split('-')[1];
+      // より濃い色を使用
+      progressBarColor = `bg-${baseColor}-500`;
+    }
+  }
+
+  // バーの表示位置が正しいか検証
+  if (startPos < 0) return null;
+  if (endPos - startPos <= 0) return null;
+
   return (
     <div
-      className="absolute h-8 bg-gray-200 rounded flex flex-col justify-center overflow-hidden"
+      className={`absolute h-8 rounded ${barColor} border ${borderColor} overflow-hidden`}
       style={{
         left: `${(startPos - 1) * (100 / calendarRange.totalDays)}%`,
         width: `${((endPos - startPos) + 1) * (100 / calendarRange.totalDays)}%`,
-        zIndex: 0
+        top: '4px',
       }}
     >
-      <div className="h-full bg-blue-500 absolute left-0 top-0" style={{ width: `${progress}%` }} />
-      <div className="px-1 z-10 text-xs font-semibold truncate">{task.title}</div>
+      {/* 進捗バー */}
+      <div
+        className={`absolute top-0 left-0 h-full ${progressBarColor} opacity-50`}
+        style={{ width: `${progress}%` }}
+      />
+      
+      {/* タスクタイトル */}
+      <div className="px-2 py-1 text-xs font-medium relative z-10 truncate">
+        {task.title}
+      </div>
     </div>
   );
 };

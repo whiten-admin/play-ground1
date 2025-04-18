@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTaskContext } from '@/features/tasks/contexts/TaskContext';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
-import { IoSearch, IoClose } from 'react-icons/io5';
+import { IoClose } from 'react-icons/io5';
 import {
   calculateProgressPercentage,
   calculateDelayHours,
@@ -30,6 +30,12 @@ export default function ProjectProgressIndicator({ compact = true }: ProjectProg
   const riskLevelText = getRiskLevelText(riskLevel);
   const riskLevelColorClass = getRiskLevelColorClass(riskLevel);
 
+  // リスクが高いか遅延時間が20時間以上の場合、アニメーションを適用
+  const isHighAlert = riskLevel === 'high' || delayHours >= 20;
+  const bgColorClass = isHighAlert ? 'bg-red-50' : 'bg-gray-50';
+  // 遅延のテキストカラー
+  const delayTextColorClass = isHighAlert ? 'text-red-700 font-medium' : (delayHours > 0 ? 'text-red-600' : 'text-green-600');
+
   // モーダルを開く関数
   const openDetailModal = () => {
     setShowDetailModal(true);
@@ -44,9 +50,13 @@ export default function ProjectProgressIndicator({ compact = true }: ProjectProg
     // ヘッダー用のコンパクト表示
     return (
       <>
-        <div className="flex items-center gap-2 text-xs bg-gray-50 rounded-md py-1 px-2 border border-gray-200">
+        <div 
+          className={`flex items-center gap-2 text-xs ${bgColorClass} rounded-md py-1 px-2 border border-gray-200 relative ${isHighAlert ? 'gradient-border' : ''} cursor-pointer hover:opacity-90 transition-opacity`}
+          onClick={openDetailModal}
+          title="詳細を表示"
+        >
           <div className="flex items-center gap-1">
-            <span className="text-gray-600">進捗:</span>
+            <span className={`${isHighAlert ? 'text-gray-700' : 'text-gray-600'}`}>進捗:</span>
             <span className="font-medium">{progressPercentage}%</span>
           </div>
           
@@ -54,27 +64,19 @@ export default function ProjectProgressIndicator({ compact = true }: ProjectProg
             <>
               <div className="w-px h-3 bg-gray-300"></div>
               <div className="flex items-center gap-1">
-                <span className="text-gray-600">遅延:</span>
-                <span className="font-medium text-red-600">{delayHours}h</span>
+                <span className={`${isHighAlert ? 'text-gray-700' : 'text-gray-600'}`}>遅延:</span>
+                <span className={`font-medium ${delayTextColorClass}`}>{delayHours}h</span>
               </div>
             </>
           )}
           
           <div className="w-px h-3 bg-gray-300"></div>
           <div className="flex items-center gap-1">
-            <span className="text-gray-600">リスク:</span>
+            <span className={`${isHighAlert ? 'text-gray-700' : 'text-gray-600'}`}>リスク:</span>
             <span className={`px-1.5 py-0.5 rounded-sm font-medium ${riskLevelColorClass}`}>
               {riskLevelText}
             </span>
           </div>
-          
-          <button 
-            onClick={openDetailModal}
-            className="ml-1 text-gray-500 hover:text-gray-700 p-0.5 rounded-full hover:bg-gray-200 transition-colors"
-            title="詳細を表示"
-          >
-            <IoSearch size={14} />
-          </button>
         </div>
 
         {/* 詳細モーダル */}
@@ -91,6 +93,13 @@ export default function ProjectProgressIndicator({ compact = true }: ProjectProg
                 </button>
               </div>
               <div className="p-6">
+                {isHighAlert && (
+                  <div className="mb-4 bg-red-50 p-3 rounded-md border border-red-200 text-sm text-red-700">
+                    <p className="font-medium">⚠️ 警告: このプロジェクトはリスクが高い状態です</p>
+                    <p>プロジェクト進捗に遅れが見られます。詳細を確認し、必要な対策を検討してください。</p>
+                  </div>
+                )}
+
                 <div className="mb-4 bg-blue-50 p-3 rounded-md border border-blue-200 text-sm text-blue-700">
                   <p>※ この進捗詳細画面は今後アップデート予定です。より詳細な分析やバーンダウンチャートは分析画面でご確認いただけます。</p>
                 </div>
@@ -190,7 +199,10 @@ export default function ProjectProgressIndicator({ compact = true }: ProjectProg
 
   // 詳細表示バージョン（将来的に必要になった場合）
   return (
-    <div className="flex flex-col gap-2 p-3 bg-white rounded-lg shadow">
+    <div 
+      className={`flex flex-col gap-2 p-3 ${isHighAlert ? 'bg-red-50' : 'bg-white'} rounded-lg shadow ${isHighAlert ? 'gradient-border' : ''} cursor-pointer hover:opacity-90 transition-opacity`}
+      onClick={openDetailModal}
+    >
       <h3 className="font-medium text-sm text-gray-700">プロジェクト進捗状況</h3>
       
       <div className="flex items-center gap-4">
@@ -209,7 +221,7 @@ export default function ProjectProgressIndicator({ compact = true }: ProjectProg
         
         <div className="flex flex-col">
           <span className="text-xs text-gray-500">遅延</span>
-          <span className={`font-medium ${delayHours > 0 ? 'text-red-600' : 'text-green-600'}`}>
+          <span className={`font-medium ${delayTextColorClass}`}>
             {delayHours > 0 ? `${delayHours}時間` : 'なし'}
           </span>
         </div>

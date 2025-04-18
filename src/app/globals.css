@@ -17,6 +17,49 @@
       transform: translateY(0);
     }
   }
+  
+  /* グラデーションボーダーアニメーション */
+  .gradient-border {
+    position: relative;
+    z-index: 0;
+    overflow: hidden;
+    border: none !important;
+  }
+  
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    z-index: -2;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    background: linear-gradient(
+      to right,
+      #dc2626, /* red-600 */
+      #f97316, /* orange-500 */
+      #b91c1c, /* red-700 */
+      #dc2626  /* red-600 */
+    );
+    background-size: 300% 100%;
+    animation: gradient 3s ease infinite;
+    -webkit-mask: 
+      linear-gradient(#fff 0 0) content-box, 
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+  }
+  
+  @keyframes gradient {
+    0% {
+      background-position: 0% 0%;
+    }
+    50% {
+      background-position: 150% 0%;
+    }
+    100% {
+      background-position: 0% 0%;
+    }
+  }
 } 
 
 /* サイドバー開閉ボタンのスタイル */

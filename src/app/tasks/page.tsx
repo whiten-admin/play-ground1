@@ -123,6 +123,8 @@ interface TasksContentProps {
   setShowNewProjectGuide: (show: boolean) => void;
   sortState: SortState;
   toggleSort: (field: SortField) => void;
+  showCompletedTasks: boolean;
+  setShowCompletedTasks: (show: boolean) => void;
 }
 
 function TasksContent({
@@ -154,7 +156,9 @@ function TasksContent({
   showNewProjectGuide,
   setShowNewProjectGuide,
   sortState,
-  toggleSort
+  toggleSort,
+  showCompletedTasks,
+  setShowCompletedTasks
 }: TasksContentProps) {
   // ここでFilterContextのデータを使用する
   const { selectedUserIds, showUnassigned, currentUserId } = useFilterContext();
@@ -226,7 +230,13 @@ function TasksContent({
     return false;
   });
 
-  const sortedTasks = sortTasks(userFilteredTasks);
+  // ユーザーフィルターを適用した後、完了済みタスクのフィルタリングもする
+  let sortedTasks = sortTasks(userFilteredTasks);
+  
+  // 完了済みタスクを表示しない場合は、進捗が100%のタスクを除外
+  if (!showCompletedTasks) {
+    sortedTasks = sortedTasks.filter(task => calculateProgress(task.todos) < 100);
+  }
   
   return (
     <div className="flex h-screen bg-gray-100">
@@ -316,7 +326,7 @@ function TasksContent({
                 </button>
                 <div className="flex-grow"></div>
                 {viewMode === 'list' && (
-                  <div className="flex items-center">
+                  <div className="flex items-center gap-2">
                     <button
                       onClick={() => toggleSort('dueDate')}
                       className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
@@ -330,6 +340,34 @@ function TasksContent({
                         sortState.order === 'asc' ? <IoCaretUp className="w-3 h-3" /> : <IoCaretDown className="w-3 h-3" />
                       )}
                     </button>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="showCompletedTasks"
+                        checked={showCompletedTasks}
+                        onChange={(e) => setShowCompletedTasks(e.target.checked)}
+                        className="mr-1 h-3 w-3"
+                      />
+                      <label htmlFor="showCompletedTasks" className="text-xs text-gray-600 cursor-pointer">
+                        完了済みタスクを表示
+                      </label>
+                    </div>
+                  </div>
+                )}
+                {viewMode === 'gantt' && (
+                  <div className="flex items-center">
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="showCompletedTasksGantt"
+                        checked={showCompletedTasks}
+                        onChange={(e) => setShowCompletedTasks(e.target.checked)}
+                        className="mr-1 h-3 w-3"
+                      />
+                      <label htmlFor="showCompletedTasksGantt" className="text-xs text-gray-600 cursor-pointer">
+                        完了済みタスクを表示
+                      </label>
+                    </div>
                   </div>
                 )}
               </div>
@@ -513,6 +551,7 @@ function TasksContent({
                     onTaskCreate={handleTaskCreate}
                     onTaskUpdate={handleTaskUpdate}
                     projectId={currentProject?.id || ''}
+                    showCompletedTasks={showCompletedTasks}
                   />
                 </div>
               )}
@@ -598,6 +637,8 @@ export default function TasksPage() {
     field: 'dueDate',
     order: 'asc'
   })
+  // 完了済みタスクを表示するかどうかの状態 (デフォルトは非表示)
+  const [showCompletedTasks, setShowCompletedTasks] = useState(false)
   // タスク詳細モーダル用の状態を追加
   const [isTaskDetailModalOpen, setIsTaskDetailModalOpen] = useState(false)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
@@ -610,8 +651,6 @@ export default function TasksPage() {
   
   // 新規プロジェクト作成後のガイド表示状態
   const [showNewProjectGuide, setShowNewProjectGuide] = useState(false)
-  
-  // フィルタリングコンテキストを使用しない（TasksContentで使用する）
   
   // サイドバーの状態を監視
   useEffect(() => {
@@ -830,6 +869,8 @@ export default function TasksPage() {
         setShowNewProjectGuide={setShowNewProjectGuide}
         sortState={sortState}
         toggleSort={toggleSort}
+        showCompletedTasks={showCompletedTasks}
+        setShowCompletedTasks={setShowCompletedTasks}
       />
     </FilterProvider>
   );
