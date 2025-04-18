@@ -741,17 +741,57 @@ const TaskBar = ({ task, calendarRange }: { task: Task; calendarRange: { totalDa
   const totalTodos = task.todos.length;
   const progress = totalTodos > 0 ? (completedTodos / totalTodos) * 100 : 0;
 
+  // ステータスに基づく色を取得
+  let barColor = 'bg-blue-100';
+  let progressBarColor = 'bg-blue-500';
+  let borderColor = 'border-blue-200';
+  
+  // ステータスに応じた色情報を取得
+  if (task.status) {
+    // ステータスカラーマッピング
+    const statusColorMap: { [key: string]: { bgColor: string; textColor: string; borderColor: string } } = {
+      'not-started': { bgColor: 'bg-yellow-200', textColor: 'text-yellow-800', borderColor: 'border-yellow-300' },
+      'in-progress': { bgColor: 'bg-blue-200', textColor: 'text-blue-800', borderColor: 'border-blue-300' },
+      'completed': { bgColor: 'bg-gray-200', textColor: 'text-gray-800', borderColor: 'border-gray-300' },
+      // 他のステータスもここに追加
+    };
+    
+    // 設定されたステータスに対応する色情報を取得
+    const statusColor = statusColorMap[task.status];
+    if (statusColor) {
+      barColor = statusColor.bgColor;
+      borderColor = statusColor.borderColor;
+      
+      // プログレスバーの色を基本色から取得
+      const baseColor = barColor.split('-')[1];
+      // より濃い色を使用
+      progressBarColor = `bg-${baseColor}-500`;
+    }
+  }
+
+  // バーの表示位置が正しいか検証
+  if (startPos < 0) return null;
+  if (endPos - startPos <= 0) return null;
+
   return (
     <div
-      className="absolute h-8 bg-gray-200 rounded flex flex-col justify-center overflow-hidden"
+      className={`absolute h-8 rounded ${barColor} border ${borderColor} overflow-hidden`}
       style={{
         left: `${(startPos - 1) * (100 / calendarRange.totalDays)}%`,
         width: `${((endPos - startPos) + 1) * (100 / calendarRange.totalDays)}%`,
-        zIndex: 0
+        top: '4px',
       }}
     >
-      <div className="h-full bg-blue-500 absolute left-0 top-0" style={{ width: `${progress}%` }} />
-      <div className="px-1 z-10 text-xs font-semibold truncate">{task.title}</div>
+      {/* 進捗バー */}
+      <div
+        className={`absolute top-0 left-0 h-full ${progressBarColor} opacity-50`}
+        style={{ width: `${progress}%` }}
+      />
+      
+      {/* タスクタイトル */}
+      <div className="px-2 py-1 text-xs font-medium relative z-10 truncate">
+        {task.title}
+      </div>
     </div>
   );
 };

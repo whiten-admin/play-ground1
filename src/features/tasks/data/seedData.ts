@@ -30,6 +30,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-04-05'),
     completedDateTime: undefined,
     projectId: '1', // プロジェクトA
+    status: 'not-started',
     todos: [
       {
         id: 'todo-1-1',
@@ -84,6 +85,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-04-10'),
     completedDateTime: undefined,
     projectId: '1', // プロジェクトA
+    status: 'not-started',
     todos: [
       {
         id: 'todo-2-1',
@@ -138,6 +140,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-04-15'),
     completedDateTime: undefined,
     projectId: '1', // プロジェクトA
+    status: 'not-started',
     todos: [
       {
         id: 'todo-3-1',
@@ -192,6 +195,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-04-24'),
     completedDateTime: undefined,
     projectId: '1', // プロジェクトA
+    status: 'not-started',
     todos: [
       {
         id: 'todo-4-1',
@@ -246,6 +250,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-04-30'),
     completedDateTime: undefined,
     projectId: '1', // プロジェクトA
+    status: 'not-started',
     todos: [
       {
         id: 'todo-5-1',
@@ -300,6 +305,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-05'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-6-1',
@@ -354,6 +360,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-10'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-7-1',
@@ -419,6 +426,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-15'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-8-1',
@@ -484,6 +492,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-21'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-9-1',
@@ -560,6 +569,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-26'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-10-1',
@@ -625,6 +635,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-31'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-11-1',
@@ -690,6 +701,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-04-15'),
     completedDateTime: undefined,
     projectId: '2', // プロジェクトB
+    status: 'not-started',
     todos: [
       {
         id: 'todo-b1-1',
@@ -755,6 +767,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-04-25'),
     completedDateTime: undefined,
     projectId: '2',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-b2-1',
@@ -820,6 +833,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-10'),
     completedDateTime: undefined,
     projectId: '2',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-b3-1',
@@ -896,6 +910,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-20'),
     completedDateTime: undefined,
     projectId: '2',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-b4-1',
@@ -961,6 +976,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-31'),
     completedDateTime: undefined,
     projectId: '2',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-b5-1',
@@ -1037,6 +1053,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-20'),
     completedDateTime: undefined,
     projectId: '3', // プロジェクトC
+    status: 'not-started',
     todos: [
       {
         id: 'todo-c1-1',
@@ -1102,6 +1119,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-10'),
     completedDateTime: undefined,
     projectId: '3',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-c2-1',
@@ -1167,6 +1185,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-04-30'),
     completedDateTime: undefined,
     projectId: '3',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-c3-1',
@@ -1232,6 +1251,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-25'),
     completedDateTime: undefined,
     projectId: '3',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-c4-1',
@@ -1297,6 +1317,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-31'),
     completedDateTime: undefined,
     projectId: '3',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-c5-1',
@@ -1373,6 +1394,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-04-20'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-12-1',
@@ -1449,6 +1471,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-04-26'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-13-1',
@@ -1525,6 +1548,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-01'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-14-1',
@@ -1590,6 +1614,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-06'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-15-1',
@@ -1655,6 +1680,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-12'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-16-1',
@@ -1731,6 +1757,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-17'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-17-1',
@@ -1796,6 +1823,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-23'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-18-1',
@@ -1872,6 +1900,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-28'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-19-1',
@@ -1937,6 +1966,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-04-05'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-20-1',
@@ -2002,6 +2032,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-04-10'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-21-1',
@@ -2067,6 +2098,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-04-15'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-22-1',
@@ -2143,6 +2175,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-04-21'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-23-1',
@@ -2219,6 +2252,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-04-26'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-24-1',
@@ -2284,6 +2318,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-01'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-25-1',
@@ -2349,6 +2384,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-06'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-26-1',
@@ -2414,6 +2450,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-12'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-27-1',
@@ -2490,6 +2527,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-17'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-28-1',
@@ -2555,6 +2593,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-23'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-29-1',
@@ -2631,6 +2670,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-05-28'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-30-1',
@@ -2696,6 +2736,7 @@ export const seedTasks: Task[] = [
     dueDate: parseDate('2025-06-03'),
     completedDateTime: undefined,
     projectId: '1',
+    status: 'not-started',
     todos: [
       {
         id: 'todo-31-1',

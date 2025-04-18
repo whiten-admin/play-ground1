@@ -22,6 +22,11 @@ type KanbanStatus = string;
 // 拡張したTask型（status属性を追加）
 interface ExtendedTask extends Task {
   status?: KanbanStatus;
+  statusColor?: {
+    bgColor: string;
+    textColor: string;
+    borderColor: string;
+  };
 }
 
 interface KanbanViewProps {
@@ -36,11 +41,17 @@ type KanbanColumn = {
   id: string;
   title: string;
   tasks: Task[];
+  bgColor?: string; // 背景色
+  textColor?: string; // テキスト色
+  borderColor?: string; // ボーダー色
 };
 
 type CustomColumn = {
   id: string;
   title: string;
+  bgColor?: string; // 背景色
+  textColor?: string; // テキスト色
+  borderColor?: string; // ボーダー色
 };
 
 // プロジェクトメンバーとユーザー情報を組み合わせた型
@@ -58,6 +69,9 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isAddingColumn, setIsAddingColumn] = useState(false);
   const [newColumnTitle, setNewColumnTitle] = useState('');
+  const [newColumnBgColor, setNewColumnBgColor] = useState('bg-gray-200');
+  const [newColumnTextColor, setNewColumnTextColor] = useState('text-gray-800');
+  const [newColumnBorderColor, setNewColumnBorderColor] = useState('border-gray-300');
   const { getProjectMembers } = useProjectContext();
   const { currentUserId } = useFilterContext();
   const [projectMembers, setProjectMembers] = useState<ProjectMember[]>([]);
@@ -65,9 +79,27 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
   
   // デフォルトのカラム定義
   const defaultColumns = [
-    { id: 'not-started', title: '未着手' },
-    { id: 'in-progress', title: '進行中' },
-    { id: 'completed', title: '完了' }
+    { 
+      id: 'not-started', 
+      title: '未着手',
+      bgColor: 'bg-yellow-200',
+      textColor: 'text-yellow-800',
+      borderColor: 'border-yellow-300'
+    },
+    { 
+      id: 'in-progress', 
+      title: '進行中',
+      bgColor: 'bg-blue-200',
+      textColor: 'text-blue-800',
+      borderColor: 'border-blue-300'
+    },
+    { 
+      id: 'completed', 
+      title: '完了',
+      bgColor: 'bg-gray-200',
+      textColor: 'text-gray-800',
+      borderColor: 'border-gray-300'
+    }
   ];
   
   // カスタムカラムの状態を管理
@@ -190,7 +222,10 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
   const columns: KanbanColumn[] = allColumns.map(column => ({
     id: column.id,
     title: column.title,
-    tasks: tasks.filter(task => getTaskStatus(task) === column.id)
+    tasks: tasks.filter(task => getTaskStatus(task) === column.id),
+    bgColor: column.bgColor,
+    textColor: column.textColor,
+    borderColor: column.borderColor
   }));
 
   // 期日超過かどうかをチェックする関数
@@ -202,6 +237,16 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
     
     // 期日が過ぎているかつ完了していない場合はtrue
     return isBefore(dueDate, today) && progress < 100;
+  };
+
+  // ステータスに対応する色情報を取得する関数
+  const getStatusColors = (statusId: string) => {
+    const column = allColumns.find(col => col.id === statusId);
+    return {
+      bgColor: column?.bgColor || 'bg-gray-200',
+      textColor: column?.textColor || 'text-gray-800',
+      borderColor: column?.borderColor || 'border-gray-300'
+    };
   };
 
   // ドラッグ終了時の処理
@@ -216,8 +261,9 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
     const updateTaskStatus = (task: Task, newStatus: string) => {
       const updatedTask = { ...task } as ExtendedTask;
       
-      // 明示的にステータスを設定
+      // 明示的にステータスと色情報を設定
       updatedTask.status = newStatus;
+      updatedTask.statusColor = getStatusColors(newStatus);
       
       // デフォルトステータスの場合、特定の処理を適用
       if (newStatus === 'not-started') {
@@ -251,6 +297,7 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
     // 明示的にステータスを設定
     if (creatingInColumn) {
       updatedTask.status = creatingInColumn;
+      updatedTask.statusColor = getStatusColors(creatingInColumn);
     }
     
     // デフォルトステータスの特別処理
@@ -287,9 +334,19 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
       return;
     }
     
-    const newColumn: CustomColumn = { id: columnId, title: newColumnTitle.trim() };
+    const newColumn: CustomColumn = { 
+      id: columnId, 
+      title: newColumnTitle.trim(),
+      bgColor: newColumnBgColor,
+      textColor: newColumnTextColor,
+      borderColor: newColumnBorderColor
+    };
+    
     setCustomColumns([...customColumns, newColumn]);
     setNewColumnTitle('');
+    setNewColumnBgColor('bg-gray-200');
+    setNewColumnTextColor('text-gray-800');
+    setNewColumnBorderColor('border-gray-300');
     setIsAddingColumn(false);
     setErrorMessage(null);
   };
@@ -341,6 +398,18 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
     }
   };
 
+  // 色選択オプション
+  const colorOptions = [
+    { bg: 'bg-gray-200', text: 'text-gray-800', border: 'border-gray-300', label: 'グレー' },
+    { bg: 'bg-blue-200', text: 'text-blue-800', border: 'border-blue-300', label: 'ブルー' },
+    { bg: 'bg-green-200', text: 'text-green-800', border: 'border-green-300', label: '緑' },
+    { bg: 'bg-yellow-200', text: 'text-yellow-800', border: 'border-yellow-300', label: '黄色' },
+    { bg: 'bg-red-200', text: 'text-red-800', border: 'border-red-300', label: '赤' },
+    { bg: 'bg-purple-200', text: 'text-purple-800', border: 'border-purple-300', label: '紫' },
+    { bg: 'bg-pink-200', text: 'text-pink-800', border: 'border-pink-300', label: 'ピンク' },
+    { bg: 'bg-indigo-200', text: 'text-indigo-800', border: 'border-indigo-300', label: 'インディゴ' },
+  ];
+
   return (
     <div className="h-full overflow-x-auto">
       <DragDropContext onDragEnd={handleDragEnd}>
@@ -349,7 +418,9 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
           {columns.map(column => (
             <div
               key={column.id}
-              className="w-60 flex flex-col bg-gray-100 rounded-lg"
+              className={`w-60 flex flex-col rounded-lg ${
+                column.bgColor || 'bg-gray-100'
+              }`}
             >
               <h3 className="font-medium text-gray-700 p-3 pb-2 flex items-center justify-between">
                 <span className="flex-1 truncate">{column.title}</span>
@@ -476,7 +547,7 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
                         setIsCreatingTask(true);
                         setCreatingInColumn(column.id);
                       }}
-                      className="w-full p-2 text-sm text-gray-500 hover:text-gray-700 flex items-center justify-center gap-1 rounded-lg border border-dashed border-gray-300 hover:border-gray-400 transition-colors"
+                      className="w-full p-2 text-sm text-gray-500 hover:text-gray-700 flex items-center justify-center gap-1 rounded-lg border border-dashed border-gray-300 hover:border-gray-400 transition-colors bg-white"
                     >
                       <IoAdd className="w-4 h-4" />
                       タスク追加
@@ -501,6 +572,28 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
                     className="w-full p-2 text-sm border rounded"
                     autoFocus
                   />
+                  
+                  <div className="mt-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">色を選択</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {colorOptions.map((color, index) => (
+                        <button
+                          key={index}
+                          className={`p-2 rounded ${color.bg} ${color.text} ${color.border} border flex items-center justify-center h-8 text-xs ${
+                            newColumnBgColor === color.bg ? 'ring-2 ring-offset-2 ring-blue-500' : ''
+                          }`}
+                          onClick={() => {
+                            setNewColumnBgColor(color.bg);
+                            setNewColumnTextColor(color.text);
+                            setNewColumnBorderColor(color.border);
+                          }}
+                        >
+                          {color.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
                   {errorMessage && (
                     <p className="text-xs text-red-500">{errorMessage}</p>
                   )}
@@ -515,6 +608,9 @@ export default function KanbanView({ tasks, onTaskSelect, onTaskUpdate, onTaskCr
                       onClick={() => {
                         setIsAddingColumn(false);
                         setNewColumnTitle('');
+                        setNewColumnBgColor('bg-gray-200');
+                        setNewColumnTextColor('text-gray-800');
+                        setNewColumnBorderColor('border-gray-300');
                         setErrorMessage(null);
                       }}
                       className="flex-1 p-1 text-xs bg-gray-200 rounded"
