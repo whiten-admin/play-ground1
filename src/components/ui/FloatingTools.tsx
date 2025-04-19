@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import { Notepad } from './Notepad';
-import { MeetingSummary } from './MeetingSummary';
+import { TaskFromMinutes } from './TaskFromMinutes';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 
 export const FloatingTools = () => {
   const [isNotepadOpen, setIsNotepadOpen] = useState(false);
-  const [isMeetingSummaryOpen, setIsMeetingSummaryOpen] = useState(false);
+  const [isTaskFromMinutesOpen, setIsTaskFromMinutesOpen] = useState(false);
   const { filteredProjects, currentProject } = useProjectContext();
   
   // プロジェクトが存在するかどうかをチェック
@@ -15,11 +15,11 @@ export const FloatingTools = () => {
 
   const toggleNotepad = () => {
     setIsNotepadOpen(!isNotepadOpen);
-    if (isMeetingSummaryOpen) setIsMeetingSummaryOpen(false);
+    if (isTaskFromMinutesOpen) setIsTaskFromMinutesOpen(false);
   };
 
-  const toggleMeetingSummary = () => {
-    setIsMeetingSummaryOpen(!isMeetingSummaryOpen);
+  const toggleTaskFromMinutes = () => {
+    setIsTaskFromMinutesOpen(!isTaskFromMinutesOpen);
     if (isNotepadOpen) setIsNotepadOpen(false);
   };
 
@@ -31,9 +31,9 @@ export const FloatingTools = () => {
         </div>
       )}
       
-      {isMeetingSummaryOpen && (
-        <div className="bg-white rounded-lg shadow-lg p-4 mb-2 w-80">
-          <MeetingSummary onClose={() => setIsMeetingSummaryOpen(false)} />
+      {isTaskFromMinutesOpen && (
+        <div className="bg-white rounded-lg shadow-lg p-4 mb-2 w-[800px] max-h-[90vh] overflow-auto">
+          <TaskFromMinutes onClose={() => setIsTaskFromMinutesOpen(false)} />
         </div>
       )}
       
@@ -48,12 +48,12 @@ export const FloatingTools = () => {
           </svg>
         </button>
         
-        {/* プロジェクトが存在する場合のみ会議要約取り込みボタンを表示 */}
+        {/* プロジェクトが存在する場合のみ議事録からタスク生成ボタンを表示 */}
         {hasProjects && (
           <button
-            onClick={toggleMeetingSummary}
+            onClick={toggleTaskFromMinutes}
             className="bg-purple-500 hover:bg-purple-600 text-white p-2 rounded-full w-12 h-12 flex items-center justify-center shadow-lg"
-            aria-label="会議要約取り込み"
+            aria-label="議事録からタスク生成"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

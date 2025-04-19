@@ -19,6 +19,12 @@ function getTodayDate(): string {
 }
 
 function getApiUsage(): ApiUsage {
+  // サーバーサイドレンダリング環境ではlocalStorageは使用できないため、
+  // チェックを追加
+  if (typeof window === 'undefined') {
+    return { date: getTodayDate(), count: 0 };
+  }
+
   const storedUsage = localStorage.getItem(API_USAGE_KEY);
   if (!storedUsage) {
     return { date: getTodayDate(), count: 0 };
@@ -33,12 +39,23 @@ function getApiUsage(): ApiUsage {
 }
 
 function incrementApiUsage(): void {
+  // サーバーサイドレンダリング環境ではlocalStorageは使用できないため、
+  // チェックを追加
+  if (typeof window === 'undefined') {
+    return;
+  }
+
   const usage = getApiUsage();
   usage.count += 1;
   localStorage.setItem(API_USAGE_KEY, JSON.stringify(usage));
 }
 
 function checkApiLimit(): boolean {
+  // サーバーサイドレンダリング環境では常に制限なしとする
+  if (typeof window === 'undefined') {
+    return true;
+  }
+
   const usage = getApiUsage();
   return usage.count < DAILY_LIMIT;
 }
@@ -583,6 +600,89 @@ TODOは論理的な順序で提案し、タスク完了に必要な具体的な�
         'TODO提案中にエラーが発生しました: ' +
           (error.message || '不明なエラー')
       );
+    }
+  }
+}
+
+export async function extractTasksFromMinutes(minutesText: string) {
+  if (!checkApiLimit()) {
+    throw new Error(
+      `1日のAPI使用回数制限（${DAILY_LIMIT}回）を超えました。明日までお待ちください。`
+    );
+  }
+
+  if (!process.env.NEXT_PUBLIC_OPENAI_API_KEY) {
+    throw new Error('OpenAI APIキーが設定されていません。');
+  }
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo-16k',
+      temperature: 0.3,
+      max_tokens: 2000,
+      messages: [
+        {
+          role: 'system',
+          content:
+            'あなたは議事録からタスクを抽出するアシスタントです。議事録から宿題事項やタスクを抽出して、適切な形式で返してください。必ず有効なJSON形式で返してください。',
+        },
+        {
+          role: 'user',
+          content: `以下の議事録から、宿題事項やタスクを抽出してください。議事録を分析して、明確に定義されたタスク、アクションアイテム、または担当者に割り当てられた作業を特定してください。
+必ず以下のJSONフォーマットで回答してください。他の文章は含めず、純粋なJSONのみを返してください：
+
+{
+  "tasks": [
+    {
+      "name": "タスク名",
+      "description": "タスクの詳細説明",
+      "dueDate": "YYYY-MM-DD形式の期日（言及があれば）",
+      "estimatedHours": 見積工数（数値、言及があれば）,
+      "todos": ["必要なTODO項目1", "必要なTODO項目2"],
+      "assignee": "担当者名（言及があれば）"
+    }
+  ]
+}
+
+議事録：
+${minutesText}`,
+        },
+      ],
+    });
+
+    if (!completion.choices[0].message.content) {
+      throw new Error('応答が空です。');
+    }
+
+    try {
+      // JSONとして解析する前に、余計な文字列を取り除く処理を追加
+      const content = completion.choices[0].message.content.trim();
+      // バッククォートやマークダウンコードブロックを削除する処理
+      const jsonStr = content
+        .replace(/^```json\s*/, '')
+        .replace(/^```\s*/, '')
+        .replace(/\s*```$/, '')
+        .trim();
+      
+      const result = JSON.parse(jsonStr);
+      incrementApiUsage();
+      return result.tasks || [];
+    } catch (jsonError) {
+      console.error('JSON解析エラー:', jsonError, '受信内容:', completion.choices[0].message.content);
+      throw new Error('APIレスポンスのJSON解析に失敗しました。');
+    }
+  } catch (error: any) {
+    console.error('Error extracting tasks from minutes:', error);
+
+    // エラーメッセージの判定
+    if (error?.status === 429) {
+      throw new Error(
+        'OpenAI APIのリクエスト制限に達しました。しばらく待ってから再試行してください。'
+      );
+    } else if (error?.status === 401) {
+      throw new Error('OpenAI APIキーが無効です。APIキーを確認してください。');
+    } else {
+      throw new Error('議事録からのタスク抽出中にエラーが発生しました。');
     }
   }
 }
